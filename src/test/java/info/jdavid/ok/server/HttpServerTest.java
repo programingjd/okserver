@@ -6,8 +6,6 @@ import com.squareup.okhttp.Protocol;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
-import info.jdavid.ok.server.HttpServer;
-import info.jdavid.ok.server.MediaTypes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
