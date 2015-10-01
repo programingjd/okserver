@@ -96,6 +96,19 @@ public class HttpServer {
   }
 
   /**
+   * Sets a custom dispatcher.
+   * @param dispatcher the dispatcher responsible for distributing the connection requests.
+   * @return this
+   */
+  public HttpServer dispatcher(final Dispatcher dispatcher) {
+    if (mStarted.get()) {
+      throw new IllegalStateException("The dispatcher cannot be changed while the server is running.");
+    }
+    this.mDispatcher = dispatcher;
+    return this;
+  }
+
+  /**
    * Shuts the server down.
    */
   public void shutdown() {
@@ -124,7 +137,7 @@ public class HttpServer {
           catch (final IOException e) { log(e); }
           finally {
             try { serverSocket.close(); } catch (final IOException ignore) {}
-            try { dispatcher.shutdown(); } catch (Exception e) { log(e); }
+            try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
             mStarted.set(false);
           }
         }
