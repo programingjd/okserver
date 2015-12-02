@@ -3,6 +3,7 @@ package info.jdavid.ok.server;
 import com.squareup.okhttp.MediaType;
 
 
+@SuppressWarnings("unused")
 public class MediaTypes {
   public static final MediaType CSS = MediaType.parse("text/css");
   public static final MediaType CSV = MediaType.parse("text/csv");
@@ -45,4 +46,6 @@ public class MediaTypes {
   public static final MediaType BMP = MediaType.parse("image/bmp");
   public static final MediaType SVG = MediaType.parse("image/svg+xml");
   public static final MediaType ICO = MediaType.parse("image/x-icon");
+
+  public static final MediaType SSE = MediaType.parse("text/event-stream");
 }

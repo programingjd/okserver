@@ -1,11 +1,13 @@
 package info.jdavid.ok.server;
 
+import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 
 import com.squareup.okhttp.Protocol;
 import com.squareup.okhttp.internal.http.StatusLine;
 
 
+@SuppressWarnings("unused")
 public class StatusLines {
   public static final StatusLine CONTINUE = // 100
     c(StatusLine.HTTP_CONTINUE, "Continue");
@@ -120,5 +122,20 @@ public class StatusLines {
 
   private static StatusLine c(final int code, final String message) {
     return new StatusLine(Protocol.HTTP_1_1, code, message);
+  }
+
+  public static StatusLine get(final int code) {
+    for (final Field field: StatusLines.class.getDeclaredFields()) {
+      if (field.getType() == StatusLine.class) {
+        try {
+          final StatusLine statusLine = (StatusLine)field.get(null);
+          if (statusLine != null && statusLine.code == code) {
+            return statusLine;
+          }
+        }
+        catch (final IllegalAccessException ignore) {}
+      }
+    }
+    return null;
   }
 }

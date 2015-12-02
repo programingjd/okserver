@@ -12,8 +12,8 @@ import okio.Buffer;
 import okio.BufferedSource;
 
 
+@SuppressWarnings("unused")
 public final class Response {
-
 
   private final Protocol protocol;
   private final int code;
@@ -102,11 +102,6 @@ public final class Response {
       this.body = response.body;
     }
 
-    public Builder protocol(final Protocol protocol) {
-      this.protocol = protocol;
-      return this;
-    }
-
     public Builder statusLine(final StatusLine statusLine) {
       this.protocol = statusLine.protocol;
       this.code = statusLine.code;
@@ -114,8 +109,34 @@ public final class Response {
       return this;
     }
 
-    public Builder message(final String message) {
-      this.message = message;
+    public Builder noCache(final String etag) {
+      if (etag != null) headers.set("ETag", etag);
+      headers.set("Cache-Control", "no-cache");
+      return this;
+    }
+
+    public Builder noStore() {
+      headers.removeAll("ETag").set("Cache-Control", "no-store");
+      return this;
+    }
+
+    public Builder etag(final String etag) {
+      if (etag == null) {
+        headers.removeAll("ETag");
+      }
+      else {
+        headers.set("ETag", etag);
+      }
+      return this;
+    }
+
+    public Builder priv() {
+      headers.add("Cache-Control", "private");
+      return this;
+    }
+
+    public Builder maxAge(final long secs) {
+      headers.add("Cache-Control", "max-age=" + secs);
       return this;
     }
 

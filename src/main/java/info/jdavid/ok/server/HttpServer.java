@@ -11,12 +11,14 @@ import okio.Okio;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
+@SuppressWarnings("unused")
 public class HttpServer {
 
   @SuppressWarnings("unused")
@@ -51,7 +53,7 @@ public class HttpServer {
 
   private final AtomicBoolean mStarted = new AtomicBoolean();
   private int mPort = 8080;
-  private String mHostname = "localhost";
+  private String mHostname = null;
   private long mMaxRequestSize = 65536;
   private Thread mThread = null;
   private Dispatcher mDispatcher = null;
@@ -70,6 +72,14 @@ public class HttpServer {
   }
 
   /**
+   * Gets the port number for the server.
+   * @return the server port number.
+   */
+  public int port() {
+    return mPort;
+  }
+
+  /**
    * Sets the host name for the server.
    * @param hostname the host name.
    * @return this.
@@ -83,6 +93,14 @@ public class HttpServer {
   }
 
   /**
+   * Gets the host name for the server.
+   * @return the server host name.
+   */
+  public String hostname() {
+    return mHostname;
+  }
+
+  /**
    * Sets the maximum request size allowed by the server.
    * @param size the maximum request size in bytes.
    * @return this.
@@ -93,6 +111,14 @@ public class HttpServer {
     }
     this.mMaxRequestSize = size;
     return this;
+  }
+
+  /**
+   * Gets the maximum request size allowed by the server.
+   * @return the maximum allowed request size.
+   */
+  public long maxRequestSize() {
+    return mMaxRequestSize;
   }
 
   /**
@@ -117,6 +143,14 @@ public class HttpServer {
   }
 
   /**
+   * Returns whether the server is running or not.
+   * @return true if the server has been started, false if it hasn't, or has been stopped since.
+   */
+  public boolean isRunning() {
+    return mStarted.get();
+  }
+
+  /**
    * Starts the server.
    */
   public void start() {
@@ -126,12 +160,19 @@ public class HttpServer {
     try {
       final Dispatcher dispatcher = mDispatcher == null ? createDefaultDispatcher() : mDispatcher;
       dispatcher.start();
-      final ServerSocket serverSocket =
-        new ServerSocket(mPort, -1, InetAddress.getByName(mHostname));
+      final InetAddress address;
+      if (mHostname == null) {
+        address = new InetSocketAddress(0).getAddress();
+      }
+      else {
+        address = InetAddress.getByName(mHostname);
+      }
+      final ServerSocket serverSocket = new ServerSocket(mPort, -1, address);
       serverSocket.setReuseAddress(true);
       (mThread = new Thread(new Runnable() {
         @Override public void run() {
           try {
+            //noinspection InfiniteLoopStatement
             while (true) { dispatch(dispatcher, serverSocket.accept()); }
           }
           catch (final IOException e) { log(e); }
@@ -170,54 +211,45 @@ public class HttpServer {
         final String request = in.readUtf8LineStrict();
         if (request == null || request.length() == 0) return;
         final int index1 = request.indexOf(' ');
-        if (index1 == -1) throw new IllegalStateException();
-        final String method = request.substring(0, index1);
-        final int index2 = request.indexOf(' ', index1 + 1);
-        if (index2 == -1) throw new IllegalStateException();
-        final String path = request.substring(index1 + 1, index2);
-        final Headers.Builder headersBuilder = new Headers.Builder();
-        String header;
-        while ((header = in.readUtf8LineStrict()).length() != 0) {
-          headersBuilder.add(header);
-        }
-        final boolean useBody = HttpMethod.permitsRequestBody(method);
+        final String method = index1 == -1 ? null : request.substring(0, index1);
+        final int index2 = method == null ? -1 : request.indexOf(' ', index1 + 1);
+        final String path = index2 == -1 ? null : request.substring(index1 + 1, index2);
         final Response response;
-        if ("100-continue".equals(headersBuilder.get("Expect"))) {
-          response = new Response.Builder().
-            statusLine(StatusLines.CONTINUE).noBody().build();
+        if (method == null || path == null) {
+          response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
         }
         else {
-          final String contentLength = headersBuilder.get("Content-Length");
-          final long length = contentLength == null ? -1 : Long.parseLong(contentLength);
-          if (length > mMaxRequestSize) {
+          final boolean useBody = HttpMethod.permitsRequestBody(method);
+          final Headers.Builder headersBuilder = new Headers.Builder();
+          String header;
+          while ((header = in.readUtf8LineStrict()).length() != 0) {
+            headersBuilder.add(header);
+          }
+          if ("100-continue".equals(headersBuilder.get("Expect"))) {
             response = new Response.Builder().
-              statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
+              statusLine(StatusLines.CONTINUE).noBody().build();
           }
           else {
-            if (length == 0) {
-              response = handle(method, path, headersBuilder.build(), null);
+            final String contentLength = headersBuilder.get("Content-Length");
+            final long length = contentLength == null ? -1 : Long.parseLong(contentLength);
+            if (length > mMaxRequestSize) {
+              response = new Response.Builder().
+                statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
             }
             else {
-              if (length > 0) {
-                if (useBody) {
-                  final Buffer body = new Buffer();
-                  if (!socket.isClosed()) in.readFully(body, length);
-                  body.flush();
-                  response = handle(method, path, headersBuilder.build(), body);
-                }
-                else {
-                  response = handle(method, path, headersBuilder.build(), null);
-                }
+              if (length == 0) {
+                response = handle(method, path, headersBuilder.build(), null);
               }
-              else if ("chunked".equals(headersBuilder.get("Transfer-encoding"))) {
+              else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
                 if (useBody) {
                   final Buffer body = new Buffer();
                   long total = 0L;
+                  boolean invalid = false;
                   while (true) {
                     final long chunkSize = Long.parseLong(in.readUtf8LineStrict().trim(), 16);
                     total += chunkSize;
                     if (chunkSize == 0) {
-                      if (in.readUtf8LineStrict().length() != 0) throw new IllegalStateException();
+                      if (in.readUtf8LineStrict().length() != 0) invalid = true;
                       break;
                     }
                     if (total > mMaxRequestSize) {
@@ -225,9 +257,16 @@ public class HttpServer {
                     }
                     if (!socket.isClosed()) in.read(body, chunkSize);
                     body.flush();
-                    if (in.readUtf8LineStrict().length() != 0) throw new IllegalStateException();
+                    if (in.readUtf8LineStrict().length() != 0) {
+                      invalid = true;
+                      break;
+                    }
                   }
-                  if (total > mMaxRequestSize) {
+                  if (invalid) {
+                    response = new Response.Builder().
+                      statusLine(StatusLines.BAD_REQUEST).noBody().build();
+                  }
+                  else if (total > mMaxRequestSize) {
                     response = new Response.Builder().
                       statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
                   }
@@ -239,10 +278,12 @@ public class HttpServer {
                   response = handle(method, path, headersBuilder.build(), null);
                 }
               }
-              else {
+              else { // length > 0
                 if (useBody) {
-                  response = new Response.Builder().
-                    statusLine(StatusLines.LENGTH_REQUIRED).noBody().build();
+                  final Buffer body = new Buffer();
+                  if (!socket.isClosed()) in.readFully(body, length);
+                  body.flush();
+                  response = handle(method, path, headersBuilder.build(), body);
                 }
                 else {
                   response = handle(method, path, headersBuilder.build(), null);
@@ -283,7 +324,7 @@ public class HttpServer {
             final Buffer buffer = new Buffer();
             final long step = 65536;
             long read;
-            while((read = data.source().read(buffer, step)) > 0) {
+            while((read = data.source().read(buffer, step)) > -1) {
               buffer.flush();
               out.write(buffer, read);
               out.flush();

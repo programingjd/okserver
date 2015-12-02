@@ -1,20 +1,28 @@
 package info.jdavid.ok.server;
 
 import com.squareup.okhttp.HttpUrl;
+import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Protocol;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
+import okio.BufferedSink;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 
 
+//@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class HttpServerTest {
 
   private static Request.Builder request(final String... segments) {
@@ -37,7 +45,15 @@ public class HttpServerTest {
 
   @BeforeClass
   public static void startServer() {
-    SERVER.port(8080).start();
+    SERVER.port(8080).maxRequestSize(512).start();
+    // Use an http client once to get rid of the static initializer penalty.
+    // This is done so that the first test elapsed time doesn't get artificially high.
+    try {
+      final OkHttpClient client = new OkHttpClient();
+      client.setReadTimeout(1, TimeUnit.SECONDS);
+      client().newCall(new Request.Builder().url("http://google.com").build()).execute();
+    }
+    catch (final IOException ignore) {}
   }
 
   @AfterClass
@@ -59,6 +75,83 @@ public class HttpServerTest {
 //    assertEquals("0", r.header("Content-Length"));
 //    assertEquals("", r.body().string());
 //  }
+
+  @Test
+  public void testBadRequest() throws IOException {
+    final Socket socket = new Socket("localhost", 8080);
+    final BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    final PrintWriter writer = new PrintWriter(socket.getOutputStream());
+    writer.write("Test");
+    writer.write('\n');
+    writer.flush();
+    assertEquals("HTTP/1.1 400 Bad Request", reader.readLine());
+  }
+
+  @Test
+  public void testIllegalState() throws IOException {
+    try {
+      SERVER.hostname("test");
+      fail();
+    }
+    catch (final IllegalStateException e) {
+      assertNull(SERVER.hostname());
+    }
+    try {
+      SERVER.port(8090);
+      fail();
+    }
+    catch (final IllegalStateException e) {
+      assertEquals(8080, SERVER.port());
+    }
+    try {
+      SERVER.maxRequestSize(1024);
+    }
+    catch (final IllegalStateException e) {
+      assertEquals(512, SERVER.maxRequestSize());
+    }
+    try {
+      SERVER.start();
+    }
+    catch (final IllegalStateException e) {
+      assertTrue(SERVER.isRunning());
+    }
+  }
+
+  @Test
+  public void testPayloadTooLarge() throws IOException {
+    final Response r = client().newCall(
+      request("test").
+        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[700])).
+        build()
+    ).execute();
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(413, r.code());
+    assertEquals("Payload Too Large", r.message());
+  }
+
+  @Test
+  public void testNotFound() throws IOException {
+    final Response r = client().newCall(
+      request("notfound").
+        build()
+    ).execute();
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(404, r.code());
+    assertEquals("Not Found", r.message());
+  }
+
+  @Test
+  public void testMethodNotAllowed() throws IOException {
+    final Response r = client().newCall(
+      request("wrongmethod").
+        post(RequestBody.create(MediaTypes.TEXT, "abc")).
+        build()
+    ).execute();
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(405, r.code());
+    assertEquals("Method Not Allowed", r.message());
+  }
+
 
   @Test
   public void testGet1() throws IOException {
@@ -137,6 +230,80 @@ public class HttpServerTest {
     assertNull(r.header("Content-Type"));
     assertEquals("0", r.header("Content-Length"));
     assertEquals("", r.body().string());
+  }
+
+  @Test
+  public void testExplicitChunked() throws IOException {
+    //final RequestBody body = RequestBody.create(MediaTypes.OCTET_STREAM, "some_data");
+    final Response r = client().newCall(
+      request("test").
+        post(new RequestBody() {
+          @Override
+          public MediaType contentType() {
+            return MediaTypes.OCTET_STREAM;
+          }
+
+          @Override
+          public void writeTo(final BufferedSink sink) throws IOException {
+            sink.writeHexadecimalUnsignedLong(4);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("chun");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(11);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("ked_request");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(7);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("_data_1");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(0);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("\r\n");
+          }
+        }).
+        header("Transfer-Encoding", "chunked").
+        header("Content-Length", "-1").
+        build()
+    ).execute();
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("chunked_request_data_1", r.body().source().readUtf8());
+  }
+
+  @Test
+  public void testImplicitChunked() throws IOException {
+    final Response r = client().newCall(
+      request("test").
+        post(new RequestBody() {
+          @Override public MediaType contentType() {
+            return MediaTypes.OCTET_STREAM;
+          }
+          @Override public void writeTo(final BufferedSink sink) throws IOException {
+            sink.writeHexadecimalUnsignedLong(4);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("chun");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(11);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("ked_request");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(7);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("_data_1");
+            sink.writeUtf8("\r\n");
+            sink.writeHexadecimalUnsignedLong(0);
+            sink.writeUtf8("\r\n");
+            sink.writeUtf8("\r\n");
+          }
+        }).
+        build()
+    ).execute();
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("chunked_request_data_1", r.body().source().readUtf8());
   }
 
 }
