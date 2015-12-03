@@ -5,7 +5,7 @@ import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Protocol;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
-import info.jdavid.ok.server.samples.SSE;
+import info.jdavid.ok.server.samples.SSEWithEventLoop;
 import okio.Buffer;
 import okio.BufferedSource;
 import org.junit.AfterClass;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 
 //@FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class SSETest {
+public class SSEWithEventLoopTest {
 
   private static Request.Builder request(final String... segments) {
     HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(8081);
@@ -37,7 +37,7 @@ public class SSETest {
     return client;
   }
 
-  private static final SSE SERVER = new SSE(8081, 5, 0);
+  private static final SSEWithEventLoop SERVER = new SSEWithEventLoop(8081, 5, 0);
 
   @BeforeClass
   public static void startServer() {

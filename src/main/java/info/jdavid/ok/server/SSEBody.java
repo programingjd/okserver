@@ -34,6 +34,20 @@ public class SSEBody extends ResponseBody {
 
   }
 
+  /**
+   * SSE Event source responsive for sending events.
+   */
+  public static interface EventSource {
+
+    /**
+     * Registers the sse body for new message notifications.
+     * The event source should not send any message after the body has been closed.
+     * @param body the see body to register.
+     */
+    public void connect(final SSEBody body);
+
+  }
+
   private final Buffer mBuffer;
   private final SSESource mSource;
 
@@ -61,7 +75,7 @@ public class SSEBody extends ResponseBody {
         int delay = initialDelay;
         while (true) {
           if (delay < 0) {
-            mSource.stop();
+            SSEBody.this.stop();
             break;
           }
           else if (delay > 0) {
@@ -72,9 +86,46 @@ public class SSEBody extends ResponseBody {
       }
     }.start();
   }
+
+  /**
+   * Creates an SSE body with the default retry delay and the specified event source.
+   * @param eventSource the event source.
+   */
+  public SSEBody(final EventSource eventSource) {
+    this(5, eventSource);
+  }
+
+  /**
+   * Creates an SSE body with the specified retry delay and the specified event source.
+   * @param retrySecs the retry delay in seconds.
+   * @param eventSource the event source.
+   */
+  public SSEBody(final int retrySecs, final EventSource eventSource) {
+    super();
+    mBuffer = new Buffer();
+    mSource = new SSESource(mBuffer);
+    mBuffer.writeUtf8("retry: " + retrySecs + "\n");
+    eventSource.connect(this);
+  }
+
   @Override public MediaType contentType() { return MediaTypes.SSE; }
   @Override public long contentLength() { return -1; }
   @Override public BufferedSource source() { return mSource; }
+
+  /**
+   * Stops the SSE stream.
+   */
+  public void stop() {
+    mSource.stop();
+  }
+
+  /**
+   * Returns whether the SSE stream has been stopped and no more events should be sent.
+   * @return true if the stream has been stopped, false if it is still running.
+   */
+  public boolean isStopped() {
+    return mSource.isStopped();
+  }
 
   /**
    * Writes an event data to the stream.
@@ -90,6 +141,7 @@ public class SSEBody extends ResponseBody {
     public SSESource(final Buffer buffer) {
       this.mBuffer = buffer;
     }
+    public boolean isStopped() { return mStopped; }
     public void stop() {
       mStopped = true;
     }
@@ -160,7 +212,7 @@ public class SSEBody extends ResponseBody {
       return Math.max(mStopped ? -1 : 0, mBuffer.read(sink, byteCount));
     }
     @Override public Timeout timeout() { return Timeout.NONE; }
-    @Override public void close() throws IOException { mBuffer.close(); }
+    @Override public void close() throws IOException { stop(); mBuffer.close(); }
   }
 
 }

@@ -9,7 +9,7 @@ import info.jdavid.ok.server.StatusLines;
 import okio.Buffer;
 
 
-public class SSE {
+public class SSEWithEventLoop {
 
   protected final HttpServer mServer;
   private final int mRetry;
@@ -24,9 +24,10 @@ public class SSE {
     }
   };
 
-  public SSE(final int port, final int retrySecs, final int periodSecs) {
+  public SSEWithEventLoop(final int port, final int retrySecs, final int periodSecs) {
     mRetry = retrySecs;
     mPeriod = periodSecs;
+    //noinspection Duplicates
     mServer = new HttpServer() {
       @Override protected Response handle(final String method, final String path,
                                           final Headers requestHeaders, final Buffer requestBody) {
@@ -67,7 +68,7 @@ public class SSE {
   }
 
   public static void main(final String[] args) {
-    new SSE(8080, 5, 10).start();
+    new SSEWithEventLoop(8080, 5, 10).start();
   }
 
 }
