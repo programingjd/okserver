@@ -55,7 +55,7 @@ public class HttpServer {
   private int mPort = 8080;
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
-  private Thread mThread = null;
+  private ServerSocket mServerSocket = null;
   private Dispatcher mDispatcher = null;
 
   /**
@@ -139,7 +139,13 @@ public class HttpServer {
    */
   public void shutdown() {
     if (!mStarted.get()) return;
-    mThread.interrupt();
+    try {
+      mServerSocket.close();
+    }
+    catch (final IOException ignore) {}
+    finally {
+      mStarted.set(false);
+    }
   }
 
   /**
@@ -167,22 +173,27 @@ public class HttpServer {
       else {
         address = InetAddress.getByName(mHostname);
       }
-      final ServerSocket serverSocket = new ServerSocket(mPort, -1, address);
+      final ServerSocket serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
       serverSocket.setReuseAddress(true);
-      (mThread = new Thread(new Runnable() {
+      new Thread(new Runnable() {
         @Override public void run() {
           try {
             //noinspection InfiniteLoopStatement
-            while (true) { dispatch(dispatcher, serverSocket.accept()); }
+            while (true) {
+              dispatch(dispatcher, serverSocket.accept());
+            }
           }
-          catch (final IOException e) { log(e); }
+          catch (final IOException e) {
+            log(e);
+          }
           finally {
             try { serverSocket.close(); } catch (final IOException ignore) {}
             try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
+            mServerSocket = null;
             mStarted.set(false);
           }
         }
-      })).start();
+      }).start();
     }
     catch (final IOException e) {
       log(e);
@@ -196,7 +207,9 @@ public class HttpServer {
   }
 
   protected void dispatch(final Dispatcher dispatcher, final Socket socket) {
-    dispatcher.dispatch(new Request(socket));
+    if (!Thread.currentThread().isInterrupted()) {
+      dispatcher.dispatch(new Request(socket));
+    }
   }
 
   protected Dispatcher createDefaultDispatcher() {

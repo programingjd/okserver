@@ -4,6 +4,10 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.ResponseBody;
@@ -28,6 +32,7 @@ public class SSEBody extends ResponseBody {
      * Event loop step. This method should figure out if an event should be sent, and if so, create it and
      * write it (with SSEBody.writeEventData), and then return how much time to wait before running this
      * step again. If a negative delay is returned, the loop will be stopped.
+     * @param body the SSE body to write to.
      * @return the delay before running the loop step again.
      */
     public int loop(final SSEBody body);
@@ -46,6 +51,49 @@ public class SSEBody extends ResponseBody {
      */
     public void connect(final SSEBody body);
 
+  }
+
+  public static class DefaultEventSource implements EventSource {
+    private final Collection<SSEBody> mBodies = Collections.synchronizedCollection(new ArrayList<SSEBody>());
+    @Override final public void connect(SSEBody body) {
+      mBodies.add(body);
+    }
+    public final void write(final String data) {
+      final Iterator<SSEBody> i = mBodies.iterator();
+      while (i.hasNext()) {
+        final SSEBody body = i.next();
+        if (body.isStopped()) {
+          i.remove();
+        }
+        else {
+          body.writeEventData(data);
+        }
+      }
+    }
+    public final void end(final String data) {
+      final Iterator<SSEBody> i = mBodies.iterator();
+      while (i.hasNext()) {
+        final SSEBody body = i.next();
+        if (body.isStopped()) {
+          i.remove();
+        }
+        else {
+          body.writeEventData(data);
+          body.stop();
+          i.remove();
+        }
+      }
+    }
+    public final void end() {
+      final Iterator<SSEBody> i = mBodies.iterator();
+      while (i.hasNext()) {
+        final SSEBody body = i.next();
+        if (!body.isStopped()) {
+          body.stop();
+        }
+        i.remove();
+      }
+    }
   }
 
   private final Buffer mBuffer;

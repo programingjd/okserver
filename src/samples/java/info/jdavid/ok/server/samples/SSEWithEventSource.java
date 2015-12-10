@@ -1,9 +1,5 @@
 package info.jdavid.ok.server.samples;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.squareup.okhttp.Headers;
@@ -22,38 +18,17 @@ public class SSEWithEventSource {
   private final int mPeriod;
 
   // Sends 5 OK messages.
-  private class SSEEventSource implements SSEBody.EventSource {
-    private final Collection<SSEBody> mBodies = Collections.synchronizedCollection(new ArrayList<SSEBody>());
+  private class SSEEventSource extends SSEBody.DefaultEventSource {
     private final AtomicBoolean mStarted = new AtomicBoolean();
     private final Thread mThread = new Thread() {
       @Override public void run() {
-        for (int i=0; i<5; ++i) {
-          final Iterator<SSEBody> iter = mBodies.iterator();
-          while (iter.hasNext()) {
-            final SSEBody body = iter.next();
-            if (body.isStopped()) {
-              iter.remove();
-            }
-            else {
-              body.writeEventData("OK");
-            }
-          }
-          try {
-            Thread.sleep(mPeriod * 1000);
-          }
-          catch (final InterruptedException ignore) {}
+        for (int i=0; i<4; ++i) {
+          write("OK");
+          try { Thread.sleep(mPeriod * 1000); } catch (final InterruptedException ignore) {}
         }
-        final Iterator<SSEBody> iter = mBodies.iterator();
-        while (iter.hasNext()) {
-          final SSEBody body = iter.next();
-          if (!body.isStopped()) body.stop();
-          iter.remove();
-        }
+        end("OK");
       }
     };
-    @Override public void connect(final SSEBody body) {
-      mBodies.add(body);
-    }
     public void start() {
       if (mStarted.getAndSet(true)) throw new IllegalStateException();
       mThread.start();
@@ -109,7 +84,15 @@ public class SSEWithEventSource {
     mServer.shutdown();
   }
 
+
   public static void main(final String[] args) {
+    final HttpServer server = new HttpServer().port(8083);
+    server.start();
+    server.shutdown();
+  }
+
+
+  public static void main2(final String[] args) {
     new SSEWithEventSource(8080, 5, 10).start();
   }
 
