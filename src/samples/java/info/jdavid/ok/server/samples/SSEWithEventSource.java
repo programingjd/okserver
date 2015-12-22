@@ -4,9 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.squareup.okhttp.Headers;
 import info.jdavid.ok.server.HttpServer;
-import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
-import info.jdavid.ok.server.SSEBody;
 import info.jdavid.ok.server.StatusLines;
 import okio.Buffer;
 
@@ -18,7 +16,7 @@ public class SSEWithEventSource {
   private final int mPeriod;
 
   // Sends 5 OK messages.
-  private class SSEEventSource extends SSEBody.DefaultEventSource {
+  private class SSEEventSource extends Response.SSE.DefaultEventSource {
     private final AtomicBoolean mStarted = new AtomicBoolean();
     private final Thread mThread = new Thread() {
       @Override public void run() {
@@ -60,15 +58,7 @@ public class SSEWithEventSource {
   }
 
   private Response sse() {
-    return new Response.Builder().
-      statusLine(StatusLines.OK).
-      header("Content-Type", MediaTypes.SSE.toString()).
-      header("Cache-Control", "no-cache").
-      header("Connection", "keep-alive").
-      header("Access-Control-Allow-Origin", "*").
-      header("Access-Control-Allow-Methods", "GET").
-      header("Access-Control-Allow-Headers", "Content-Type, Accept").
-      body(new SSEBody(mRetry, mEventSource)).build();
+    return new Response.SSE(mRetry, mEventSource);
   }
 
   public void startLoop() {

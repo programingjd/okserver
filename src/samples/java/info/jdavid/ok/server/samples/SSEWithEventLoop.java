@@ -2,9 +2,7 @@ package info.jdavid.ok.server.samples;
 
 import com.squareup.okhttp.Headers;
 import info.jdavid.ok.server.HttpServer;
-import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
-import info.jdavid.ok.server.SSEBody;
 import info.jdavid.ok.server.StatusLines;
 import okio.Buffer;
 
@@ -15,9 +13,9 @@ public class SSEWithEventLoop {
   private final int mRetry;
   private final int mPeriod;
   // Sends 5 OK messages and then closes.
-  private final SSEBody.EventLoop mEventLoop = new SSEBody.EventLoop() {
+  private final Response.SSE.EventLoop mEventLoop = new Response.SSE.EventLoop() {
     private int mCounter = 0;
-    @Override public int loop(final SSEBody body) {
+    @Override public int loop(final Response.SSE.Body body) {
       body.writeEventData("OK");
       if (++mCounter == 5) return -1;
       return mPeriod;
@@ -47,15 +45,7 @@ public class SSEWithEventLoop {
   }
 
   private Response sse() {
-    return new Response.Builder().
-      statusLine(StatusLines.OK).
-      header("Content-Type", MediaTypes.SSE.toString()).
-      header("Cache-Control", "no-cache").
-      header("Connection", "keep-alive").
-      header("Access-Control-Allow-Origin", "*").
-      header("Access-Control-Allow-Methods", "GET").
-      header("Access-Control-Allow-Headers", "Content-Type, Accept").
-      body(new SSEBody(mRetry, mEventLoop, 0)).build();
+    return new Response.SSE(mRetry, mEventLoop, 0);
   }
 
   public void start() {

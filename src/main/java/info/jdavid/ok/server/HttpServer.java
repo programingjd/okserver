@@ -2,7 +2,6 @@ package info.jdavid.ok.server;
 
 import com.squareup.okhttp.Headers;
 import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.ResponseBody;
 import com.squareup.okhttp.internal.http.HttpMethod;
 import okio.Buffer;
 import okio.BufferedSink;
@@ -326,35 +325,18 @@ public class HttpServer {
         }
         out.writeUtf8("\r\n");
         out.flush();
-        final ResponseBody data = r.body();
-        if (data != null ) {
-          final long length = data.contentLength();
-          if (length > 0) {
-            out.write(data.source(), data.contentLength());
-            out.flush();
-          }
-          else if (length < 0) {
-            final Buffer buffer = new Buffer();
-            final long step = 65536;
-            long read;
-            while((read = data.source().read(buffer, step)) > -1) {
-              buffer.flush();
-              out.write(buffer, read);
-              out.flush();
-            }
-          }
-        }
+
+        r.writeBody(in, out, socket);
       }
-      finally {
+      catch (final Exception e) {
         try { in.close(); } catch (final IOException ignore) {}
         try { out.close(); } catch (final IOException ignore) {}
+        try { socket.close(); } catch (final IOException ignore) {}
+        throw new RuntimeException(e);
       }
     }
     catch (final IOException e) {
       log(e);
-    }
-    finally {
-      try { socket.close(); } catch (final IOException ignore) {}
     }
   }
 
