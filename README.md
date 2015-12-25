@@ -1,11 +1,12 @@
 ![jcenter](https://img.shields.io/badge/_jcenter_-_2.6.3-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_21/21-green.png?style=flat)
 # okserver
 A simple http server for the jvm and android, built on top of [okhttp](https://github.com/square/okhttp).
+
 ## Download ##
 
 The maven artifacts are on [Bintray](https://bintray.com/programingjd/maven/info.jdavid.ok.server/view)
 and [jcenter](https://bintray.com/search?query=info.jdavid.ok.server).
-
+[Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/2.6.3/okserver-2.6.3.jar) the latest jar.
 [Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/2.6.3/okserver-2.6.3.jar) the latest jar.
 
 __Maven__
