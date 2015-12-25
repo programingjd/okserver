@@ -95,7 +95,7 @@ test {
           return "![jcenter](${badge('jcenter',v,'6688ff')}) &#x2003; ![jcenter](${badge(label,text,color)})"
         case 8: return "[Download](${download}) the latest jar."
         case 18: return "  <version>${v}</version>"
-        case 31: return "  compile 'info.jdavid.ok.serer:okserver:${v}'"
+        case 31: return "  compile 'info.jdavid.ok.server:okserver:${v}'"
         default: return line
       }
     }.join('\n').with { readme.text = it }

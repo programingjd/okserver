@@ -29,7 +29,7 @@ repositories {
 ```
 ```
 dependencies {
-  compile 'info.jdavid.ok.serer:okserver:2.6.3'
+  compile 'info.jdavid.ok.server:okserver:2.6.3'
 }
 ```
 
