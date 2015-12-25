@@ -4,11 +4,12 @@ buildscript {
   }
   dependencies {
     classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.5'
+    classpath 'org.jsoup:jsoup:1.8.3'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '2.6.2'
+version '2.6.3'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -22,10 +23,9 @@ repositories {
   jcenter()
 }
 
-dependencies {
-  compile 'com.squareup.okio:okio:1.6.0'
-  compile 'com.squareup.okhttp:okhttp:2.6.0'
-  testCompile group: 'junit', name: 'junit', version: '4.12'
+configurations {
+  samplesCompile.extendsFrom compile
+  samplesRuntime.extendsFrom runtime
 }
 
 sourceSets {
@@ -39,6 +39,18 @@ sourceSets {
       srcDir file('src/samples/resources')
     }
   }
+  test {
+    java {
+      compileClasspath += samples.output
+      runtimeClasspath += samples.output
+    }
+  }
+}
+
+dependencies {
+  compile 'com.squareup.okio:okio:1.6.0'
+  compile 'com.squareup.okhttp:okhttp:2.6.0'
+  testCompile 'junit:junit:4.12'
 }
 
 jacoco {
@@ -60,6 +72,35 @@ test {
     classDumpFile = file("$buildDir/jacoco/classpathdumps")
   }
   systemProperty 'https.proptocols', 'TLSv1.2'
+  doLast {
+    File html = reports.html.entryPoint
+    def doc = org.jsoup.Jsoup.parse(html, 'UTF-8')
+    int total = doc.select('#tests > .counter').text() as int
+    int failed = doc.select('#failures > .counter').text() as int
+
+    def readme = file('README.md')
+    def badge = { String label, String text, String color ->
+      "https://img.shields.io/badge/_${label}_-_${text}-${color}.png?style=flat"
+    }
+    String label = 'Tests'
+    String text = "${total-failed}/${total}"
+    String color = failed == 0 ? 'green' : (failed < 3 ? 'yellow' : 'red')
+    String v = project.version
+    def download =
+      "https://bintray.com/artifact/download/programingjd/maven/info/jdavid/" +
+      "ok/server/okserver/$v/okserver-${v}.jar"
+    readme.readLines().withIndex().collect { line, i ->
+      switch (i) {
+        case 0:
+          return "![jcenter](${badge('jcenter',v,'6688ff')}) &#x2003; ![jcenter](${badge(label,text,color)})"
+        case 8: return "[Download](${download}) the latest jar."
+        case 18: return "  <version>${v}</version>"
+        case 31: return "  compile 'info.jdavid.ok.serer:okserver:${v}'"
+        default: return line
+      }
+    }.join('\n').with { readme.text = it }
+  }
+  finalizedBy tasks.jacocoTestReport
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
@@ -115,6 +156,8 @@ bintray {
     }
   }
 }
+
+tasks.bintrayUpload.dependsOn tasks.check
 
 def getBintrayApiKey() {
   def f = new File("$projectDir/local.properties")
