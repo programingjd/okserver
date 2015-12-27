@@ -25,6 +25,7 @@ public interface Dispatcher {
       }
       catch (final InterruptedException ignore) {}
       mExecutors.shutdownNow();
+      mExecutors = null;
     }
   }
 

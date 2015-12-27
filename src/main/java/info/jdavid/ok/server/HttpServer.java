@@ -51,6 +51,7 @@ public class HttpServer {
   }
 
   private final AtomicBoolean mStarted = new AtomicBoolean();
+  private final AtomicBoolean mSetup = new AtomicBoolean();
   private int mPort = 8080;
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
@@ -133,6 +134,16 @@ public class HttpServer {
     return this;
   }
 
+  private Dispatcher dispatcher() {
+    Dispatcher dispatcher = mDispatcher;
+    if (dispatcher == null) {
+      dispatcher = mDispatcher = createDefaultDispatcher();
+    }
+    return dispatcher;
+  }
+
+  protected void setup() {}
+
   /**
    * Shuts the server down.
    */
@@ -163,7 +174,8 @@ public class HttpServer {
       throw new IllegalStateException("The server has already been started.");
     }
     try {
-      final Dispatcher dispatcher = mDispatcher == null ? createDefaultDispatcher() : mDispatcher;
+      if (!mSetup.getAndSet(true)) setup();
+      final Dispatcher dispatcher = dispatcher();
       dispatcher.start();
       final InetAddress address;
       if (mHostname == null) {
