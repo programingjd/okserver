@@ -2,7 +2,7 @@ package info.jdavid.ok.server.samples;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.squareup.okhttp.Headers;
+import okhttp3.Headers;
 import info.jdavid.ok.server.HttpServer;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;

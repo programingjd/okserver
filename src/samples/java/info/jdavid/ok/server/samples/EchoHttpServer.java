@@ -1,8 +1,8 @@
 package info.jdavid.ok.server.samples;
 
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.ResponseBody;
+import okhttp3.Headers;
+import okhttp3.MediaType;
+import okhttp3.ResponseBody;
 import info.jdavid.ok.server.HttpServer;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;

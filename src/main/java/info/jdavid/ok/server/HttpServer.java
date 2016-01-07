@@ -1,8 +1,8 @@
 package info.jdavid.ok.server;
 
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.internal.http.HttpMethod;
+import okhttp3.Headers;
+import okhttp3.MediaType;
+import okhttp3.internal.http.HttpMethod;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;

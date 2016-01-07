@@ -1,10 +1,10 @@
 package info.jdavid.ok.server;
 
-import com.squareup.okhttp.HttpUrl;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Protocol;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.Response;
 import info.jdavid.ok.server.samples.SSEWithEventLoop;
 import okio.Buffer;
 import okio.BufferedSource;
@@ -31,10 +31,10 @@ public class SSEWithEventLoopTest {
     return new Request.Builder().url(url.build());
   }
 
+  private static OkHttpClient client = new OkHttpClient();
+
   private static OkHttpClient client() {
-    final OkHttpClient client = new OkHttpClient();
-    client.setReadTimeout(0, TimeUnit.SECONDS);
-    return client;
+    return client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
   }
 
   private static final SSEWithEventLoop SERVER = new SSEWithEventLoop(8081, 5, 0);
@@ -45,9 +45,8 @@ public class SSEWithEventLoopTest {
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.
     try {
-      final OkHttpClient client = new OkHttpClient();
-      client.setReadTimeout(1, TimeUnit.SECONDS);
-      client().newCall(new Request.Builder().url("http://google.com").build()).execute();
+      final OkHttpClient c = client.newBuilder().readTimeout(1, TimeUnit.SECONDS).build();
+      c.newCall(new Request.Builder().url("http://google.com").build()).execute();
     }
     catch (final IOException ignore) {}
   }

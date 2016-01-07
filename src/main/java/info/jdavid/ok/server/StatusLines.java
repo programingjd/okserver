@@ -3,8 +3,8 @@ package info.jdavid.ok.server;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 
-import com.squareup.okhttp.Protocol;
-import com.squareup.okhttp.internal.http.StatusLine;
+import okhttp3.Protocol;
+import okhttp3.internal.http.StatusLine;
 
 
 @SuppressWarnings("unused")

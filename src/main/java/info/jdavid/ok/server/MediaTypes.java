@@ -1,6 +1,6 @@
 package info.jdavid.ok.server;
 
-import com.squareup.okhttp.MediaType;
+import okhttp3.MediaType;
 
 
 @SuppressWarnings("unused")

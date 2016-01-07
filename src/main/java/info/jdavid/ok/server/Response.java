@@ -8,11 +8,11 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.Protocol;
-import com.squareup.okhttp.ResponseBody;
-import com.squareup.okhttp.internal.http.StatusLine;
+import okhttp3.Headers;
+import okhttp3.MediaType;
+import okhttp3.Protocol;
+import okhttp3.ResponseBody;
+import okhttp3.internal.http.StatusLine;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
@@ -197,12 +197,7 @@ public abstract class Response {
       }
       else {
         contentType(body.contentType());
-        long contentLength = -1;
-        try {
-          contentLength = body.contentLength();
-        }
-        catch (final IOException ignore) {}
-        contentLength(contentLength);
+        contentLength(body.contentLength());
       }
       return this;
     }

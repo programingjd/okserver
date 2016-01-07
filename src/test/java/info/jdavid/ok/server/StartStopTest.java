@@ -5,9 +5,9 @@ import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.util.concurrent.TimeUnit;
 
-import com.squareup.okhttp.HttpUrl;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -24,11 +24,14 @@ public class StartStopTest {
     return new Request.Builder().url(url.build());
   }
 
+
+  private static OkHttpClient client = new OkHttpClient();
+
   private static OkHttpClient client() {
-    final OkHttpClient client = new OkHttpClient();
-    client.setConnectTimeout(250, TimeUnit.MILLISECONDS);
-    client.setReadTimeout(250, TimeUnit.MILLISECONDS);
-    return client;
+    return client.newBuilder().
+      connectTimeout(250, TimeUnit.MILLISECONDS).
+      readTimeout(250, TimeUnit.MILLISECONDS).
+      build();
   }
 
   @Test

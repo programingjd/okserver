@@ -1,6 +1,6 @@
 package info.jdavid.ok.server;
 
-import com.squareup.okhttp.internal.http.StatusLine;
+import okhttp3.internal.http.StatusLine;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

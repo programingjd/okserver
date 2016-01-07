@@ -1,12 +1,12 @@
 package info.jdavid.ok.server;
 
-import com.squareup.okhttp.HttpUrl;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Protocol;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import okio.BufferedSink;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -35,10 +35,10 @@ public class HttpServerTest {
     return new Request.Builder().url(url.build());
   }
 
+  private static OkHttpClient client = new OkHttpClient();
+
   private static OkHttpClient client() {
-    final OkHttpClient client = new OkHttpClient();
-    client.setReadTimeout(0, TimeUnit.SECONDS);
-    return client;
+    return client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
   }
 
   private static final HttpServer SERVER = new HttpServer();
@@ -49,9 +49,8 @@ public class HttpServerTest {
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.
     try {
-      final OkHttpClient client = new OkHttpClient();
-      client.setReadTimeout(1, TimeUnit.SECONDS);
-      client().newCall(new Request.Builder().url("http://google.com").build()).execute();
+      final OkHttpClient c = client.newBuilder().readTimeout(1, TimeUnit.SECONDS).build();
+      c.newCall(new Request.Builder().url("http://google.com").build()).execute();
     }
     catch (final IOException ignore) {}
   }
@@ -232,50 +231,13 @@ public class HttpServerTest {
     assertEquals("", r.body().string());
   }
 
-  @Test
-  public void testExplicitChunked() throws IOException {
-    //final RequestBody body = RequestBody.create(MediaTypes.OCTET_STREAM, "some_data");
+  private void testChunked(final boolean explicit) throws IOException {
+    final Request.Builder requestBuilder = request("test");
+    if (explicit) {
+      requestBuilder.header("Transfer-Encoding", "chunked").header("Content-Length", "-1");
+    }
     final Response r = client().newCall(
-      request("test").
-        post(new RequestBody() {
-          @Override
-          public MediaType contentType() {
-            return MediaTypes.OCTET_STREAM;
-          }
-
-          @Override
-          public void writeTo(final BufferedSink sink) throws IOException {
-            sink.writeHexadecimalUnsignedLong(4);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("chun");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(11);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("ked_request");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(7);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("_data_1");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(0);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("\r\n");
-          }
-        }).
-        header("Transfer-Encoding", "chunked").
-        header("Content-Length", "-1").
-        build()
-    ).execute();
-    assertEquals(Protocol.HTTP_1_1, r.protocol());
-    assertEquals(200, r.code());
-    assertEquals("OK", r.message());
-    assertEquals("chunked_request_data_1", r.body().source().readUtf8());
-  }
-
-  @Test
-  public void testImplicitChunked() throws IOException {
-    final Response r = client().newCall(
-      request("test").
+      requestBuilder.
         post(new RequestBody() {
           @Override public MediaType contentType() {
             return MediaTypes.OCTET_STREAM;
@@ -297,13 +259,22 @@ public class HttpServerTest {
             sink.writeUtf8("\r\n");
             sink.writeUtf8("\r\n");
           }
-        }).
-        build()
+        }).build()
     ).execute();
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
     assertEquals("chunked_request_data_1", r.body().source().readUtf8());
+  }
+
+  @Test
+  public void testExplicitChunked() throws IOException {
+    testChunked(true);
+  }
+
+  @Test
+  public void testImplicitChunked() throws IOException {
+    testChunked(false);
   }
 
 }
