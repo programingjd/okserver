@@ -3,13 +3,13 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.5'
+    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
     classpath 'org.jsoup:jsoup:1.8.3'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.0.1'
+version '3.1.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -49,7 +49,7 @@ sourceSets {
 
 dependencies {
   compile 'com.squareup.okio:okio:1.6.0'
-  compile 'com.squareup.okhttp3:okhttp:3.0.1'
+  compile 'com.squareup.okhttp3:okhttp:3.1.1'
   testCompile 'junit:junit:4.12'
 }
 
@@ -145,6 +145,8 @@ bintray {
     websiteUrl = 'https://github.com/programingjd/okserver'
     issueTrackerUrl = 'https://github.com/programingjd/okserver/issues'
     vcsUrl = 'https://github.com/programingjd/okserver.git'
+    githubRepo = 'programingjd/okserver'
+    githubReleaseNotesFile = 'README.md'
     licenses = ['Apache-2.0']
     labels = ['server','http','okio','okhttp','java']
     publicDownloadNumbers = true
