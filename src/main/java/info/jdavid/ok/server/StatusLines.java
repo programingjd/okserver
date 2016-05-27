@@ -7,7 +7,7 @@ import okhttp3.Protocol;
 import okhttp3.internal.http.StatusLine;
 
 
-@SuppressWarnings("unused")
+@SuppressWarnings({ "unused", "WeakerAccess" })
 public class StatusLines {
   public static final StatusLine CONTINUE = // 100
     c(StatusLine.HTTP_CONTINUE, "Continue");

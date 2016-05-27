@@ -5,6 +5,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
+@SuppressWarnings("WeakerAccess")
 public interface Dispatcher {
 
   public void start();

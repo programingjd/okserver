@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
-@SuppressWarnings("unused")
+@SuppressWarnings({ "unused", "WeakerAccess" })
 public class HttpServer {
 
   @SuppressWarnings("unused")

@@ -10,6 +10,7 @@ import okio.Buffer;
 import okio.BufferedSource;
 
 
+@SuppressWarnings("WeakerAccess")
 public class EchoHttpServer {
 
   private final HttpServer mServer;

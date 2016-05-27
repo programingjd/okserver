@@ -18,7 +18,7 @@ import okio.BufferedSink;
 import okio.BufferedSource;
 
 
-@SuppressWarnings("unused")
+@SuppressWarnings({ "unused", "WeakerAccess" })
 public abstract class Response {
 
   private final Protocol protocol;

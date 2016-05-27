@@ -9,6 +9,7 @@ import info.jdavid.ok.server.StatusLines;
 import okio.Buffer;
 
 
+@SuppressWarnings("WeakerAccess")
 public class SSEWithEventSource {
 
   protected final HttpServer mServer;

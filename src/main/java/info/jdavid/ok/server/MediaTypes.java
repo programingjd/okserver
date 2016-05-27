@@ -3,7 +3,7 @@ package info.jdavid.ok.server;
 import okhttp3.MediaType;
 
 
-@SuppressWarnings("unused")
+@SuppressWarnings({ "unused", "WeakerAccess" })
 public class MediaTypes {
   public static final MediaType CSS = MediaType.parse("text/css");
   public static final MediaType CSV = MediaType.parse("text/csv");
