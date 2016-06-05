@@ -4,15 +4,16 @@ buildscript {
   }
   dependencies {
     classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
-    classpath 'org.jsoup:jsoup:1.8.3'
+    classpath 'org.jsoup:jsoup:1.9.2'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.3.0'
+version '3.3.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
+apply plugin: 'idea'
 apply plugin: 'maven-publish'
 apply plugin: 'com.jfrog.bintray'
 
@@ -24,6 +25,9 @@ repositories {
 }
 
 configurations {
+  provided
+  letsencryptCompile.extendsFrom compile
+  letsencryptRuntime.extendsFrom runtime
   samplesCompile.extendsFrom compile
   samplesRuntime.extendsFrom runtime
 }
@@ -39,17 +43,33 @@ sourceSets {
       srcDir file('src/samples/resources')
     }
   }
+  letsencrypt {
+    java {
+      compileClasspath += configurations.provided
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+  }
   test {
     java {
+      compileClasspath += letsencrypt.output
+      runtimeClasspath += letsencrypt.output
       compileClasspath += samples.output
       runtimeClasspath += samples.output
     }
   }
 }
 
+idea {
+  module {
+    scopes.PROVIDED.plus += [ configurations.provided ]
+  }
+}
+
 dependencies {
   compile 'com.squareup.okio:okio:1.8.0'
-  compile 'com.squareup.okhttp3:okhttp:3.3.0'
+  compile 'com.squareup.okhttp3:okhttp:3.3.1'
+  provided  files("$projectDir/libs/android.util.base64.mock.jar")
   testCompile 'junit:junit:4.12'
 }
 
