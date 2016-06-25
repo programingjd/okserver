@@ -1,6 +1,7 @@
 package info.jdavid.ok.server;
 
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.internal.http.HttpMethod;
 import okio.Buffer;
@@ -15,6 +16,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocketFactory;
 
 
 @SuppressWarnings({ "unused", "WeakerAccess" })
@@ -57,6 +61,7 @@ public class HttpServer {
   private long mMaxRequestSize = 65536;
   private ServerSocket mServerSocket = null;
   private Dispatcher mDispatcher = null;
+
 
   /**
    * Sets the port number for the server.
@@ -167,6 +172,14 @@ public class HttpServer {
   }
 
   /**
+   * Returns the SSL Context for https connections.
+   * @return the ssl context, null if https is not supported by the server.
+   */
+  protected SSLContext getSSLContext() {
+    return null;
+  }
+
+  /**
    * Starts the server.
    */
   public void start() {
@@ -184,7 +197,12 @@ public class HttpServer {
       else {
         address = InetAddress.getByName(mHostname);
       }
-      final ServerSocket serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
+      final SSLContext ssl = getSSLContext();
+      final ServerSocket serverSocket = mServerSocket =
+        ssl == null ?
+          new ServerSocket(mPort, -1, address) :
+          ssl.getServerSocketFactory().createServerSocket(mPort, -1, address);
+
       serverSocket.setReuseAddress(true);
       new Thread(new Runnable() {
         @Override public void run() {
@@ -354,8 +372,14 @@ public class HttpServer {
 
   protected Response handle(final String method, final String path,
                             final Headers requestHeaders, final Buffer requestBody) {
+    return handle(method, HttpUrl.parse("http://localhost:" + mPort + path),
+                  requestHeaders, requestBody);
+  }
+
+  protected Response handle(final String method, final HttpUrl url,
+                            final Headers requestHeaders, final Buffer requestBody) {
     final Response.Builder builder = new Response.Builder();
-    if ("/test".equals(path)) {
+    if ("/test".equals(url.encodedPath())) {
       builder.statusLine(StatusLines.OK);
       builder.headers(requestHeaders);
       if (requestBody != null) {
@@ -374,5 +398,7 @@ public class HttpServer {
     }
     return builder.build();
   }
+
+
 
 }
