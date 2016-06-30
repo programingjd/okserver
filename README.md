@@ -1,4 +1,4 @@
-![jcenter](https://img.shields.io/badge/_jcenter_-_3.3.1b-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_21/21-green.png?style=flat)
+![jcenter](https://img.shields.io/badge/_jcenter_-_3.3.1d-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_21/21-green.png?style=flat)
 # okserver
 A simple http server for the jvm and android, built on top of [okhttp](https://github.com/square/okhttp).
 
@@ -7,7 +7,7 @@ A simple http server for the jvm and android, built on top of [okhttp](https://g
 The maven artifacts are on [Bintray](https://bintray.com/programingjd/maven/info.jdavid.ok.server/view)
 and [jcenter](https://bintray.com/search?query=info.jdavid.ok.server).
 
-[Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/3.3.1b/okserver-3.3.1b.jar) the latest jar.
+[Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/3.3.1d/okserver-3.3.1d.jar) the latest jar.
 
 __Maven__
 
@@ -17,7 +17,7 @@ Include [those settings](https://bintray.com/repo/downloadMavenRepoSettingsFile/
 <dependency>
   <groupId>info.jdavid.ok.server</groupId>
   <artifactId>okserver</artifactId>
-  <version>3.3.1b</version>
+  <version>3.3.1d</version>
 </dependency>
 ```
 __Gradle__
@@ -30,7 +30,7 @@ repositories {
 ```
 ```
 dependencies {
-  compile 'info.jdavid.ok.server:okserver:3.3.1b'
+  compile 'info.jdavid.ok.server:okserver:3.3.1d'
 }
 ```
 

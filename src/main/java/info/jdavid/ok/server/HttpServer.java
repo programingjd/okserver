@@ -18,7 +18,6 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocketFactory;
 
 
 @SuppressWarnings({ "unused", "WeakerAccess" })
@@ -68,7 +67,7 @@ public class HttpServer {
    * @param port the port number.
    * @return this.
    */
-  public HttpServer port(final int port) {
+  public final HttpServer port(final int port) {
     if (mStarted.get()) {
       throw new IllegalStateException("The port number cannot be changed while the server is running.");
     }
@@ -80,7 +79,7 @@ public class HttpServer {
    * Gets the port number for the server.
    * @return the server port number.
    */
-  public int port() {
+  public final int port() {
     return mPort;
   }
 
@@ -89,7 +88,7 @@ public class HttpServer {
    * @param hostname the host name.
    * @return this.
    */
-  public HttpServer hostname(final String hostname) {
+  public final HttpServer hostname(final String hostname) {
     if (mStarted.get()) {
       throw new IllegalStateException("The host name cannot be changed while the server is running.");
     }
@@ -101,7 +100,7 @@ public class HttpServer {
    * Gets the host name for the server.
    * @return the server host name.
    */
-  public String hostname() {
+  public final String hostname() {
     return mHostname;
   }
 
@@ -110,7 +109,7 @@ public class HttpServer {
    * @param size the maximum request size in bytes.
    * @return this.
    */
-  public HttpServer maxRequestSize(final long size) {
+  public final HttpServer maxRequestSize(final long size) {
     if (mStarted.get()) {
       throw new IllegalStateException("The max request size cannot be changed while the server is running.");
     }
@@ -122,7 +121,7 @@ public class HttpServer {
    * Gets the maximum request size allowed by the server.
    * @return the maximum allowed request size.
    */
-  public long maxRequestSize() {
+  public final long maxRequestSize() {
     return mMaxRequestSize;
   }
 
@@ -131,7 +130,7 @@ public class HttpServer {
    * @param dispatcher the dispatcher responsible for distributing the connection requests.
    * @return this
    */
-  public HttpServer dispatcher(final Dispatcher dispatcher) {
+  public final HttpServer dispatcher(final Dispatcher dispatcher) {
     if (mStarted.get()) {
       throw new IllegalStateException("The dispatcher cannot be changed while the server is running.");
     }
@@ -167,7 +166,7 @@ public class HttpServer {
    * Returns whether the server is running or not.
    * @return true if the server has been started, false if it hasn't, or has been stopped since.
    */
-  public boolean isRunning() {
+  public final boolean isRunning() {
     return mStarted.get();
   }
 
@@ -182,7 +181,7 @@ public class HttpServer {
   /**
    * Starts the server.
    */
-  public void start() {
+  public final void start() {
     if (mStarted.getAndSet(true)) {
       throw new IllegalStateException("The server has already been started.");
     }
@@ -372,8 +371,13 @@ public class HttpServer {
 
   protected Response handle(final String method, final String path,
                             final Headers requestHeaders, final Buffer requestBody) {
-    return handle(method, HttpUrl.parse("http://localhost:" + mPort + path),
-                  requestHeaders, requestBody);
+    final HttpUrl url = new HttpUrl.Builder().
+      scheme(getSSLContext() == null ? "http" : "https").
+      host(mHostname == null ? "0.0.0.0" : mHostname).
+      port(mPort).
+      addEncodedPathSegments(path.indexOf('/') == 0 ? path.substring(1) : path).
+      build();
+    return handle(method, url, requestHeaders, requestBody);
   }
 
   protected Response handle(final String method, final HttpUrl url,
@@ -398,7 +402,5 @@ public class HttpServer {
     }
     return builder.build();
   }
-
-
 
 }

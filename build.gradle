@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.3.1c'
+version '3.3.1d'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
