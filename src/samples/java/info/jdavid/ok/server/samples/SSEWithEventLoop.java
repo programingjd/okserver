@@ -4,6 +4,7 @@ import okhttp3.Headers;
 import info.jdavid.ok.server.HttpServer;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
+import okhttp3.HttpUrl;
 import okio.Buffer;
 
 
@@ -28,10 +29,10 @@ public class SSEWithEventLoop {
     mPeriod = periodSecs;
     //noinspection Duplicates
     mServer = new HttpServer() {
-      @Override protected Response handle(final String method, final String path,
+      @Override protected Response handle(final boolean secure, final String method, final HttpUrl url,
                                           final Headers requestHeaders, final Buffer requestBody) {
         if (!"GET".equals(method)) return unsupported();
-        if (!"/sse".equals(path)) return notFound();
+        if (!"/sse".equals(url.encodedPath())) return notFound();
         return sse();
       }
     }.port(port);

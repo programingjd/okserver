@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -55,12 +56,28 @@ public class HttpServer {
 
   private final AtomicBoolean mStarted = new AtomicBoolean();
   private final AtomicBoolean mSetup = new AtomicBoolean();
-  private int mPort = 8080;
+  private int mPort = 8080; // 80
+  private int mSecurePort = 8181; // 443
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
   private ServerSocket mServerSocket = null;
+  private ServerSocket mSecureServerSocket = null;
   private Dispatcher mDispatcher = null;
 
+  /**
+   * Sets the port number for the server.
+   * @param port the port number.
+   * @param securePort the secure port number.
+   * @return this.
+   */
+  public final HttpServer ports(final int port, final int securePort) {
+    if (mStarted.get()) {
+      throw new IllegalStateException("The port number cannot be changed while the server is running.");
+    }
+    this.mPort = port;
+    this.mSecurePort = securePort;
+    return this;
+  }
 
   /**
    * Sets the port number for the server.
@@ -81,6 +98,27 @@ public class HttpServer {
    */
   public final int port() {
     return mPort;
+  }
+
+  /**
+   * Sets the port number for the server (secure connections).
+   * @param port the port number.
+   * @return this.
+   */
+  public final HttpServer securePort(final int port) {
+    if (mStarted.get()) {
+      throw new IllegalStateException("The port number cannot be changed while the server is running.");
+    }
+    this.mSecurePort = port;
+    return this;
+  }
+
+  /**
+   * Gets the port number for the server (secure connections).
+   * @return the server secure port number.
+   */
+  public final int securePort() {
+    return mSecurePort;
   }
 
   /**
@@ -157,6 +195,10 @@ public class HttpServer {
       mServerSocket.close();
     }
     catch (final IOException ignore) {}
+    try {
+      if (mSecureServerSocket != null) mSecureServerSocket.close();
+    }
+    catch (final IOException ignore) {}
     finally {
       mStarted.set(false);
     }
@@ -196,32 +238,67 @@ public class HttpServer {
       else {
         address = InetAddress.getByName(mHostname);
       }
-      final SSLContext ssl = getSSLContext();
-      final ServerSocket serverSocket = mServerSocket =
-        ssl == null ?
-          new ServerSocket(mPort, -1, address) :
-          ssl.getServerSocketFactory().createServerSocket(mPort, -1, address);
 
+      final ServerSocket serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
       serverSocket.setReuseAddress(true);
+
+      final SSLContext ssl = getSSLContext();
+      final ServerSocket secureServerSocket = mSecureServerSocket =
+        ssl == null ? null : ssl.getServerSocketFactory().createServerSocket(mSecurePort, -1, address);
+      if (secureServerSocket != null) secureServerSocket.setReuseAddress(true);
+
       new Thread(new Runnable() {
         @Override public void run() {
           try {
             //noinspection InfiniteLoopStatement
             while (true) {
-              dispatch(dispatcher, serverSocket.accept());
+              try {
+                dispatch(dispatcher, serverSocket.accept(), false);
+              }
+              catch (final IOException e) {
+                if (serverSocket.isClosed()) break;
+                log(e);
+              }
             }
-          }
-          catch (final IOException e) {
-            log(e);
           }
           finally {
             try { serverSocket.close(); } catch (final IOException ignore) {}
+            try { if (secureServerSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
             try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
             mServerSocket = null;
+            mSecureServerSocket = null;
             mStarted.set(false);
           }
         }
       }).start();
+
+      if (secureServerSocket != null) {
+        new Thread(new Runnable() {
+          @Override public void run() {
+            try {
+              //noinspection InfiniteLoopStatement
+              while (true) {
+                try {
+                  dispatch(dispatcher, secureServerSocket.accept(), true);
+                }
+                catch (final IOException e) {
+                  if (secureServerSocket.isClosed()) break;
+                  log(e);
+                }
+              }
+            }
+            finally {
+              try { serverSocket.close(); } catch (final IOException ignore) {}
+              try { secureServerSocket.close(); } catch (final IOException ignore) {}
+              try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
+              mServerSocket = null;
+              mSecureServerSocket = null;
+              mStarted.set(false);
+            }
+          }
+        }).start();
+      }
+
     }
     catch (final IOException e) {
       log(e);
@@ -230,13 +307,14 @@ public class HttpServer {
 
   public final class Request {
     private final Socket mSocket;
-    private Request(final Socket socket) { mSocket = socket; }
-    public void serve() { HttpServer.this.serve(mSocket); }
+    private final boolean mSecure;
+    private Request(final Socket socket, final boolean secure) { mSocket = socket; mSecure = secure; }
+    public void serve() { HttpServer.this.serve(mSocket, mSecure); }
   }
 
-  protected void dispatch(final Dispatcher dispatcher, final Socket socket) {
+  private void dispatch(final Dispatcher dispatcher, final Socket socket, final boolean secure) {
     if (!Thread.currentThread().isInterrupted()) {
-      dispatcher.dispatch(new Request(socket));
+      dispatcher.dispatch(new Request(socket, secure));
     }
   }
 
@@ -244,7 +322,7 @@ public class HttpServer {
     return new Dispatcher.Default();
   }
 
-  private void serve(final Socket socket) {
+  private void serve(final Socket socket, final boolean secure) {
     try {
       final BufferedSource in = Okio.buffer(Okio.source(socket));
       final BufferedSink out = Okio.buffer(Okio.sink(socket));
@@ -279,7 +357,7 @@ public class HttpServer {
             }
             else {
               if (length == 0) {
-                response = handle(method, path, headersBuilder.build(), null);
+                response = handle(secure, method, path, headersBuilder.build(), null);
               }
               else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
                 if (useBody) {
@@ -312,11 +390,11 @@ public class HttpServer {
                       statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
                   }
                   else {
-                    response = handle(method, path, headersBuilder.build(), body);
+                    response = handle(secure, method, path, headersBuilder.build(), body);
                   }
                 }
                 else {
-                  response = handle(method, path, headersBuilder.build(), null);
+                  response = handle(secure, method, path, headersBuilder.build(), null);
                 }
               }
               else { // length > 0
@@ -324,10 +402,10 @@ public class HttpServer {
                   final Buffer body = new Buffer();
                   if (!socket.isClosed()) in.readFully(body, length);
                   body.flush();
-                  response = handle(method, path, headersBuilder.build(), body);
+                  response = handle(secure, method, path, headersBuilder.build(), body);
                 }
                 else {
-                  response = handle(method, path, headersBuilder.build(), null);
+                  response = handle(secure, method, path, headersBuilder.build(), null);
                 }
               }
             }
@@ -369,18 +447,18 @@ public class HttpServer {
     }
   }
 
-  protected Response handle(final String method, final String path,
+  private Response handle(final boolean secure, final String method, final String path,
                             final Headers requestHeaders, final Buffer requestBody) {
     final HttpUrl url = new HttpUrl.Builder().
-      scheme(getSSLContext() == null ? "http" : "https").
+      scheme(secure ? "https" : "http").
       host(mHostname == null ? "0.0.0.0" : mHostname).
       port(mPort).
       addEncodedPathSegments(path.indexOf('/') == 0 ? path.substring(1) : path).
       build();
-    return handle(method, url, requestHeaders, requestBody);
+    return handle(secure, method, url, requestHeaders, requestBody);
   }
 
-  protected Response handle(final String method, final HttpUrl url,
+  protected Response handle(final boolean secure, final String method, final HttpUrl url,
                             final Headers requestHeaders, final Buffer requestBody) {
     final Response.Builder builder = new Response.Builder();
     if ("/test".equals(url.encodedPath())) {

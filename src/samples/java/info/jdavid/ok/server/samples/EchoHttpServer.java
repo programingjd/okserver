@@ -1,6 +1,7 @@
 package info.jdavid.ok.server.samples;
 
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
 import info.jdavid.ok.server.HttpServer;
@@ -21,10 +22,10 @@ public class EchoHttpServer {
 
   public EchoHttpServer(final int port) {
     mServer = new HttpServer() {
-      @Override protected Response handle(final String method, final String path,
+      @Override protected Response handle(final boolean secure, final String method, final HttpUrl url,
                                           final Headers requestHeaders, final Buffer requestBody) {
         if (!"POST".equals(method)) return unsupported();
-        if (!"/echo".equals(path)) return notFound();
+        if (!"/echo".equals(url.encodedPath())) return notFound();
         final MediaType mime = MediaType.parse(requestHeaders.get("Content-Type"));
         return echo(requestBody, mime);
       }
