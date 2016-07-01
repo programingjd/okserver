@@ -3,12 +3,14 @@ package info.jdavid.ok.server;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.Protocol;
 import okhttp3.ResponseBody;
@@ -98,6 +100,16 @@ public abstract class Response {
 
     private static final String CONTENT_LENGTH = "Content-Length";
     private static final String CONTENT_TYPE = "Content-Type";
+    private static final String LOCATION = "Location";
+    private static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
+    private static final String CACHE_CONTROL = "Cache-Control";
+    private static final String ETAG = "Etag";
+    private static final String CORS_ALLOW_ORIGIN = "Acces-Control-Allow-Origin";
+    private static final String CORS_ALLOW_METHODS = "Access-Control-Allow-Methods";
+    private static final String CORS_ALLOW_HEADERS = "Access-Control-Allow-Headers";
+    private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
+    private static final String CORS_EXPOSE_HEADERS = "Access-Control-Expose-Headers";
+
     private Protocol protocol = null;
     private int code = -1;
     private String message = null;
@@ -124,33 +136,90 @@ public abstract class Response {
     }
 
     public Builder noCache(final String etag) {
-      if (etag != null) headers.set("ETag", etag);
-      headers.set("Cache-Control", "no-cache");
+      if (etag != null) headers.set(ETAG, etag);
+      headers.set(CACHE_CONTROL, "no-cache");
       return this;
     }
 
     public Builder noStore() {
-      headers.removeAll("ETag").set("Cache-Control", "no-store");
+      headers.removeAll(ETAG).set(CACHE_CONTROL, "no-store");
       return this;
     }
 
     public Builder etag(final String etag) {
       if (etag == null) {
-        headers.removeAll("ETag");
+        headers.removeAll(ETAG);
       }
       else {
-        headers.set("ETag", etag);
+        headers.set(ETAG, etag);
       }
       return this;
     }
 
     public Builder priv() {
-      headers.add("Cache-Control", "private");
+      headers.add(CACHE_CONTROL, "private");
       return this;
     }
 
     public Builder maxAge(final long secs) {
-      headers.add("Cache-Control", "max-age=" + secs);
+      headers.add(CACHE_CONTROL, "max-age=" + secs);
+      return this;
+    }
+
+    public Builder cors(final String origin, final List<String> methods, final List<String> headers,
+                        final long secs) {
+      this.headers.set(CORS_ALLOW_ORIGIN, origin == null ? "null" : origin);
+      if (methods != null) {
+        this.headers.set(CORS_ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
+      }
+      if (headers != null) {
+        this.headers.set(CORS_ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
+      }
+      this.headers.set(CORS_EXPOSE_HEADERS, join(Arrays.asList(ETAG, STRICT_TRANSPORT_SECURITY)));
+      this.headers.set(CORS_MAX_AGE, String.valueOf(secs));
+      return this;
+    }
+
+    public Builder cors(final String origin, final List<String> methods, final List<String> headers) {
+      return cors(origin, methods, headers, 31536000);
+    }
+
+    public Builder cors(final String origin, final List<String> methods, final long secs) {
+      return cors(origin, methods, null, secs);
+    }
+
+    public Builder cors(final String origin, final List<String> methods) {
+      return cors(origin, methods, null, 31536000);
+    }
+
+    public Builder cors(final String origin, final long secs) {
+      return cors(origin, Collections.singletonList("GET"), null, secs);
+    }
+
+    public Builder cors(final String origin) {
+      return cors(origin, Collections.singletonList("GET"), null, 31536000);
+    }
+
+    public Builder cors() {
+      return cors("*", Collections.singletonList("GET"), null, 31536000);
+    }
+
+    public Builder hsts(final long secs) {
+      headers.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
+      return this;
+    }
+
+    public Builder hsts() {
+      return hsts(31536000);
+    }
+
+    public Builder location(final HttpUrl url) {
+      headers.set(LOCATION, url.toString());
+      return this;
+    }
+
+    public Builder location(final String path) {
+      headers.set(LOCATION, path);
       return this;
     }
 
@@ -226,6 +295,21 @@ public abstract class Response {
         throw new IllegalStateException("message == null");
       }
       return new SyncResponse(this);
+    }
+
+    private static String join(final List<String> list) {
+      final StringBuilder str = new StringBuilder();
+      boolean first = true;
+      for (final String value: list) {
+        if (first) {
+          first = false;
+        }
+        else {
+          str.append(", ");
+        }
+        str.append(value);
+      }
+      return str.toString();
     }
   }
 
