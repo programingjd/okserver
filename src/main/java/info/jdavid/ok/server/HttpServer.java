@@ -448,13 +448,17 @@ public class HttpServer {
 
   private Response handle(final boolean secure, final String method, final String path,
                             final Headers requestHeaders, final Buffer requestBody) {
-    final HttpUrl url = new HttpUrl.Builder().
+    final String h = requestHeaders.get("Host");
+    final int i = h.indexOf(':');
+    final String host = i == -1 ? h : h.substring(0, i);
+    final int port = i == -1 ? 0 : Integer.valueOf(h.substring(i+1));
+
+    final HttpUrl.Builder url = new HttpUrl.Builder().
       scheme(secure ? "https" : "http").
-      host(mHostname == null ? "0.0.0.0" : mHostname).
-      port(mPort).
-      addEncodedPathSegments(path.indexOf('/') == 0 ? path.substring(1) : path).
-      build();
-    return handle(secure, method, url, requestHeaders, requestBody);
+      host(host).
+      addEncodedPathSegments(path.indexOf('/') == 0 ? path.substring(1) : path);
+    if (port > 0) url.port(port);
+    return handle(secure, method, url.build(), requestHeaders, requestBody);
   }
 
   protected Response handle(final boolean secure, final String method, final HttpUrl url,
