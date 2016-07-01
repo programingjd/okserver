@@ -104,7 +104,7 @@ public abstract class Response {
     private static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
     private static final String CACHE_CONTROL = "Cache-Control";
     private static final String ETAG = "Etag";
-    private static final String CORS_ALLOW_ORIGIN = "Acces-Control-Allow-Origin";
+    private static final String CORS_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
     private static final String CORS_ALLOW_METHODS = "Access-Control-Allow-Methods";
     private static final String CORS_ALLOW_HEADERS = "Access-Control-Allow-Headers";
     private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
