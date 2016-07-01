@@ -102,14 +102,13 @@ public class MediaTypes {
     if (last < 0) return null;
     final String path = segments.get(last);
     int i = path.length();
+    if (i == 0) return DIRECTORY;
     int n = 0;
     while (i-- > 0 && ++n < 8) {
       switch (path.charAt(i)) {
         case '.':
           final String ext = path.substring(i+1).toLowerCase();
           return EXTENSIONS.get(ext);
-        case '/':
-          if (n == 1) return DIRECTORY;
       }
     }
     if (url.encodedPath().startsWith("/.well-known/acme-challenge/")) {
