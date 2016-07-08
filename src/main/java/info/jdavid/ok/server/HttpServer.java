@@ -10,14 +10,22 @@ import okio.BufferedSource;
 import okio.Okio;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.TrustManagerFactory;
 
 
 @SuppressWarnings({ "unused", "WeakerAccess" })
@@ -60,7 +68,7 @@ public class HttpServer {
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
   private ServerSocket mServerSocket = null;
-  private ServerSocket mSecureServerSocket = null;
+  private SSLServerSocket mSecureServerSocket = null;
   private Dispatcher mDispatcher = null;
 
   /**
@@ -211,12 +219,47 @@ public class HttpServer {
     return mStarted.get();
   }
 
+  protected InputStream getSSLCertificate() {
+    return null;
+//    try {
+//      return new java.io.FileInputStream(...);
+//    }
+//    catch (final Exception ignore) {
+//      return null;
+//    }
+  }
+
   /**
    * Returns the SSL Context for https connections.
    * @return the ssl context, null if https is not supported by the server.
    */
   protected SSLContext getSSLContext() {
-    return null;
+    final InputStream cert = getSSLCertificate();
+    if (cert == null) return null;
+    try {
+      final KeyStore keyStore = KeyStore.getInstance("PKCS12");
+      keyStore.load(cert, new char[0]);
+      cert.close();
+      final KeyManagerFactory kmf =
+        KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(keyStore, new char[0]);
+      final KeyStore trustStore = KeyStore.getInstance("JKS");
+      trustStore.load(null, null);
+      final TrustManagerFactory tmf =
+        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(trustStore);
+      final SSLContext context = SSLContext.getInstance("TLS");
+      context.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+      return context;
+    }
+    catch (final GeneralSecurityException e) {
+      log(e);
+      return null;
+    }
+    catch (final IOException e) {
+      log(e);
+      return null;
+    }
   }
 
   /**
@@ -242,9 +285,28 @@ public class HttpServer {
       serverSocket.setReuseAddress(true);
 
       final SSLContext ssl = getSSLContext();
-      final ServerSocket secureServerSocket = mSecureServerSocket =
-        ssl == null ? null : ssl.getServerSocketFactory().createServerSocket(mSecurePort, -1, address);
-      if (secureServerSocket != null) secureServerSocket.setReuseAddress(true);
+      final SSLServerSocket secureServerSocket = mSecureServerSocket =
+        ssl == null ?
+          null :
+          (SSLServerSocket)ssl.getServerSocketFactory().createServerSocket(mSecurePort, -1, address);
+      if (secureServerSocket != null) {
+        secureServerSocket.setReuseAddress(true);
+        try {
+          final SSLParameters parameters = new SSLParameters();
+          parameters.setProtocols( new String[] {
+            "TLSv1.2"
+          });
+          parameters.setCipherSuites(new String[] {
+            "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+            "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+          });
+          secureServerSocket.setSSLParameters(new SSLParameters());
+        }
+        catch (final Exception e) {
+          log(e);
+        }
+      }
 
       new Thread(new Runnable() {
         @Override public void run() {
@@ -308,7 +370,9 @@ public class HttpServer {
     private final Socket mSocket;
     private final boolean mSecure;
     private Request(final Socket socket, final boolean secure) { mSocket = socket; mSecure = secure; }
-    public void serve() { HttpServer.this.serve(mSocket, mSecure); }
+    public void serve() {
+      HttpServer.this.serve(mSocket, mSecure);
+    }
   }
 
   private void dispatch(final Dispatcher dispatcher, final Socket socket, final boolean secure) {

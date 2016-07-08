@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.3.1l'
+version '3.3.2'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -26,8 +26,6 @@ repositories {
 
 configurations {
   provided
-  letsencryptCompile.extendsFrom compile
-  letsencryptRuntime.extendsFrom runtime
   samplesCompile.extendsFrom compile
   samplesRuntime.extendsFrom runtime
 }
@@ -43,17 +41,8 @@ sourceSets {
       srcDir file('src/samples/resources')
     }
   }
-  letsencrypt {
-    java {
-      compileClasspath += configurations.provided
-      compileClasspath += main.output
-      runtimeClasspath += main.output
-    }
-  }
   test {
     java {
-      compileClasspath += letsencrypt.output
-      runtimeClasspath += letsencrypt.output
       compileClasspath += samples.output
       runtimeClasspath += samples.output
     }
