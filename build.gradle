@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.3.2'
+version '3.4.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -56,9 +56,8 @@ idea {
 }
 
 dependencies {
-  compile 'com.squareup.okio:okio:1.8.0'
-  compile 'com.squareup.okhttp3:okhttp:3.3.1'
-  provided  files("$projectDir/libs/android.util.base64.mock.jar")
+  compile 'com.squareup.okio:okio:1.9.0'
+  compile 'com.squareup.okhttp3:okhttp:3.4.1'
   testCompile 'junit:junit:4.12'
 }
 
