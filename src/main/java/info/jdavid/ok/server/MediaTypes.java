@@ -104,7 +104,7 @@ public class MediaTypes {
     int i = path.length();
     if (i == 0) return DIRECTORY;
     int n = 0;
-    while (i-- > 0 && ++n < 12) {
+    while (i-- > 0 && ++n < 16) {
       switch (path.charAt(i)) {
         case '.':
           final String ext = path.substring(i+1).toLowerCase();
