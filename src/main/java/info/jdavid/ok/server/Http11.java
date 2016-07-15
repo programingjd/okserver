@@ -2,6 +2,7 @@ package info.jdavid.ok.server;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.Locale;
 
 import okhttp3.Headers;
@@ -133,6 +134,7 @@ class Http11 {
         r.writeBody(in, out, socket);
       }
     }
+    catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
       throw new RuntimeException(e);
     }

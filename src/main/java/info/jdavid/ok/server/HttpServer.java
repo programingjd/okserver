@@ -479,6 +479,9 @@ public class HttpServer {
   protected final Response handle(final boolean secure, final String method, final String path,
                                   final Headers requestHeaders, final Buffer requestBody) {
     final String h = requestHeaders.get("Host");
+    if (h == null) {
+      return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
+    }
     final int i = h.indexOf(':');
     final String host = i == -1 ? h : h.substring(0, i);
     final int port = i == -1 ? 0 : Integer.valueOf(h.substring(i+1));
