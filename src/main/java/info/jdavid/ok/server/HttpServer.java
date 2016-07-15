@@ -3,9 +3,7 @@ package info.jdavid.ok.server;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
-import okhttp3.internal.http.HttpMethod;
 import okio.Buffer;
-import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.Okio;
 
@@ -15,10 +13,10 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -61,10 +59,6 @@ public class HttpServer {
 
   static void log(final Throwable t) {
     t.printStackTrace();
-  }
-
-  private static String trim(final String s) {
-    return s == null ? null : s.trim();
   }
 
   private final AtomicBoolean mStarted = new AtomicBoolean();
@@ -285,11 +279,68 @@ public class HttpServer {
     return parameters;
   }
 
+  private void assertThat(final boolean assertion) {
+    if (!assertion) throw new RuntimeException();
+  }
+
+  private static int int24(final byte[] bytes) {
+    return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
+  }
+
   private SSLSocket createSSLSocket(final SSLContext context, final SSLParameters parameters,
                                     final Socket socket) throws IOException {
     if (context == null) return null;
     final SSLSocketFactory sslFactory = context.getSocketFactory();
+    final BufferedSource source = Okio.buffer(Okio.source(socket));
     final Buffer buffer = new Buffer();
+    final byte handshake = source.readByte();
+    buffer.writeByte(handshake);
+    assertThat(handshake == 0x16);
+    final byte major = source.readByte();
+    final byte minor = source.readByte();
+    buffer.writeByte(major);
+    buffer.writeByte(minor);
+    final short recordLength = source.readShort();
+    buffer.writeShort(recordLength);
+    final byte hello = source.readByte();
+    buffer.writeByte(hello);
+    assertThat(hello == 0x01);
+    final byte[] lengthBytes = source.readByteArray(3);
+    buffer.write(lengthBytes);
+    final int handshakeLength = int24(lengthBytes);
+    assertThat(handshakeLength <= recordLength - 4);
+    final byte helloMajor = source.readByte();
+    final byte helloMinor = source.readByte();
+    buffer.writeByte(helloMajor);
+    buffer.writeByte(helloMinor);
+    final byte[] random = source.readByteArray(32);
+    buffer.write(random);
+    final byte sessionIdLength = source.readByte();
+    buffer.writeByte(sessionIdLength);
+    final byte[] sessionId = source.readByteArray(sessionIdLength);
+    buffer.write(sessionId);
+    final short cipherSuiteLength = source.readShort();
+    buffer.writeShort(cipherSuiteLength);
+    final byte[] cipherSuite = source.readByteArray(cipherSuiteLength);
+    buffer.write(cipherSuite);
+    final byte compressionMethodsLength = source.readByte();
+    buffer.writeByte(compressionMethodsLength);
+    final byte[] compressionMethods = source.readByteArray(compressionMethodsLength);
+    buffer.write(compressionMethods);
+    if (buffer.size() < handshakeLength + 9) {
+      final short extensionsLength = source.readShort();
+      buffer.writeShort(extensionsLength);
+      int len = extensionsLength;
+      while (len > 0) {
+        final short extensionType = source.readShort();
+        buffer.writeShort(extensionType);
+        final short extensionLength = source.readShort();
+        buffer.writeShort(extensionLength);
+        final byte[] extension = source.readByteArray(extensionLength);
+        buffer.write(extension);
+        len -= extensionLength + 4;
+      }
+    }
     final ByteArrayInputStream consumed = new ByteArrayInputStream(buffer.readByteArray());
     final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
     sslSocket.setSSLParameters(parameters);
@@ -417,136 +468,16 @@ public class HttpServer {
 
   private void serve(final Socket socket, final boolean secure) {
     try {
-      final BufferedSource in = Okio.buffer(Okio.source(socket));
-      final BufferedSink out = Okio.buffer(Okio.sink(socket));
-      try {
-        int reuseCounter = 0;
-        while (use(in, reuseCounter++)) {
-          final String request = trim(in.readUtf8LineStrict());
-          if (request == null || request.length() == 0) return;
-          final int index1 = request.indexOf(' ');
-          final String method = index1 == -1 ? null : request.substring(0, index1);
-          final int index2 = method == null ? -1 : request.indexOf(' ', index1 + 1);
-          final String path = index2 == -1 ? null : request.substring(index1 + 1, index2);
-          final Response response;
-          if (method == null || path == null) {
-            response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
-          }
-          else {
-            final boolean useBody = HttpMethod.permitsRequestBody(method);
-            final Headers.Builder headersBuilder = new Headers.Builder();
-            String header;
-            while ((header = in.readUtf8LineStrict()).length() != 0) {
-              headersBuilder.add(header);
-            }
-            if ("100-continue".equals(headersBuilder.get("Expect"))) {
-              response = new Response.Builder().
-                statusLine(StatusLines.CONTINUE).noBody().build();
-            }
-            else {
-              final String contentLength = headersBuilder.get("Content-Length");
-              final long length = contentLength == null ? -1 : Long.parseLong(contentLength);
-              if (length > mMaxRequestSize) {
-                response = new Response.Builder().
-                  statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
-              }
-              else {
-                if (length == 0) {
-                  response = handle(secure, method, path, headersBuilder.build(), null);
-                }
-                else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
-                  if (useBody) {
-                    final Buffer body = new Buffer();
-                    long total = 0L;
-                    boolean invalid = false;
-                    while (true) {
-                      final long chunkSize = Long.parseLong(in.readUtf8LineStrict().trim(), 16);
-                      total += chunkSize;
-                      if (chunkSize == 0) {
-                        if (in.readUtf8LineStrict().length() != 0) invalid = true;
-                        break;
-                      }
-                      if (total > mMaxRequestSize) {
-                        break;
-                      }
-                      if (!socket.isClosed()) in.read(body, chunkSize);
-                      body.flush();
-                      if (in.readUtf8LineStrict().length() != 0) {
-                        invalid = true;
-                        break;
-                      }
-                    }
-                    if (invalid) {
-                      response = new Response.Builder().
-                        statusLine(StatusLines.BAD_REQUEST).noBody().build();
-                    }
-                    else if (total > mMaxRequestSize) {
-                      response = new Response.Builder().
-                        statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
-                    }
-                    else {
-                      response = handle(secure, method, path, headersBuilder.build(), body);
-                    }
-                  }
-                  else {
-                    response = handle(secure, method, path, headersBuilder.build(), null);
-                  }
-                }
-                else { // length > 0
-                  if (useBody) {
-                    final Buffer body = new Buffer();
-                    if (!socket.isClosed()) in.readFully(body, length);
-                    body.flush();
-                    response = handle(secure, method, path, headersBuilder.build(), body);
-                  }
-                  else {
-                    response = handle(secure, method, path, headersBuilder.build(), null);
-                  }
-                }
-              }
-            }
-          }
-          final Response r =
-            response == null ?
-            new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build() :
-            response;
-
-          out.writeUtf8(r.protocol().toString().toUpperCase(Locale.US));
-          out.writeUtf8(" ");
-          out.writeUtf8(String.valueOf(r.code()));
-          out.writeUtf8(" ");
-          out.writeUtf8(r.message());
-          out.writeUtf8("\r\n");
-          final Headers headers = r.headers();
-          final int headersSize = headers.size();
-          for (int i=0; i<headersSize; ++i) {
-            out.writeUtf8(headers.name(i));
-            out.writeUtf8(": ");
-            out.writeUtf8(headers.value(i));
-            out.writeUtf8("\r\n");
-          }
-          out.writeUtf8("\r\n");
-          out.flush();
-
-          r.writeBody(in, out, socket);
-        }
-      }
-      catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-      finally {
-        try { in.close(); } catch (final IOException ignore) {}
-        try { out.close(); } catch (final IOException ignore) {}
-        try { socket.close(); } catch (final IOException ignore) {}
-      }
+      Http11.serve(this, socket, secure, mMaxRequestSize);
     }
+    catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
       log(e);
     }
   }
 
-  private Response handle(final boolean secure, final String method, final String path,
-                            final Headers requestHeaders, final Buffer requestBody) {
+  protected final Response handle(final boolean secure, final String method, final String path,
+                                  final Headers requestHeaders, final Buffer requestBody) {
     final String h = requestHeaders.get("Host");
     final int i = h.indexOf(':');
     final String host = i == -1 ? h : h.substring(0, i);
