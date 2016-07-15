@@ -61,6 +61,10 @@ public class HttpServer {
     t.printStackTrace();
   }
 
+  private static String trim(final String s) {
+    return s == null ? null : s.trim();
+  }
+
   private final AtomicBoolean mStarted = new AtomicBoolean();
   private final AtomicBoolean mSetup = new AtomicBoolean();
   private int mPort = 8080; // 80
@@ -389,14 +393,19 @@ public class HttpServer {
     return new Dispatcher.Default();
   }
 
+  protected boolean use(final BufferedSource in, final int reuse) {
+    in.timeout().timeout(reuse == 0 ? 30 : 5, TimeUnit.SECONDS);
+    return true;
+  }
+
   private void serve(final Socket socket, final boolean secure) {
     try {
       final BufferedSource in = Okio.buffer(Okio.source(socket));
       final BufferedSink out = Okio.buffer(Okio.sink(socket));
       try {
-        while (true) {
-          in.timeout().timeout(5, TimeUnit.SECONDS);
-          final String request = in.readUtf8LineStrict().trim();
+        int reuseCounter = 0;
+        while (use(in, reuseCounter++)) {
+          final String request = trim(in.readUtf8LineStrict());
           if (request == null || request.length() == 0) return;
           final int index1 = request.indexOf(' ');
           final String method = index1 == -1 ? null : request.substring(0, index1);
