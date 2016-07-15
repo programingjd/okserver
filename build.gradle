@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.4.1b'
+version '3.4.1d'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -74,6 +74,9 @@ jacocoTestReport {
 }
 
 test {
+//  testLogging {
+//    showStandardStreams = true
+//  }
   jacoco {
     append = false
     destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
@@ -109,6 +112,7 @@ test {
     }.join('\n').with { readme.text = it }
   }
   finalizedBy tasks.jacocoTestReport
+//  outputs.upToDateWhen { false }
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {

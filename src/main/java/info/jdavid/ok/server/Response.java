@@ -514,6 +514,7 @@ public abstract class Response {
       }
 
     }
+
   }
 
   private static class SyncResponse extends Response {
@@ -543,9 +544,9 @@ public abstract class Response {
         }
       }
       finally {
-        try { in.close(); } catch (final IOException ignore) {}
-        try { out.close(); } catch (final IOException ignore) {}
-        try { socket.close(); } catch (final IOException ignore) {}
+//        try { in.close(); } catch (final IOException ignore) {}
+//        try { out.close(); } catch (final IOException ignore) {}
+//        try { socket.close(); } catch (final IOException ignore) {}
       }
     }
     @Override

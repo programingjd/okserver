@@ -9,8 +9,10 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.BlockJUnit4ClassRunner;
 
+import static org.junit.Assert.*;
 
 public class StartStopTest {
 
@@ -35,11 +37,12 @@ public class StartStopTest {
   }
 
   @Test
-  public void testStartAndStop() throws IOException {
+  public void testStartAndStop() throws IOException, InterruptedException {
     final HttpServer server = new HttpServer().port(8085);
     server.start();
     assertEquals(404, client().newCall(request(8085).build()).execute().code());
     server.shutdown();
+    Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8085).build()).execute().code());
       fail("Server should have stopped");
@@ -49,7 +52,7 @@ public class StartStopTest {
   }
 
   @Test
-  public void testMultipleStartAndStop() throws IOException {
+  public void testMultipleStartAndStop() throws IOException, InterruptedException {
     final HttpServer server1 = new HttpServer().port(8086);
     server1.start();
     assertEquals(404, client().newCall(request(8086).build()).execute().code());
@@ -57,6 +60,7 @@ public class StartStopTest {
     server2.start();
     assertEquals(404, client().newCall(request(8087).build()).execute().code());
     server1.shutdown();
+    Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8086).build()).execute().code());
       fail("Server should have stopped");
@@ -65,6 +69,7 @@ public class StartStopTest {
     catch (final InterruptedIOException ignored) {}
     assertEquals(404, client().newCall(request(8087).build()).execute().code());
     server2.shutdown();
+    Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8087).build()).execute().code());
       fail("Server should have stopped");

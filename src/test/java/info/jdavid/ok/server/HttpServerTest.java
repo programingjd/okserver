@@ -22,7 +22,7 @@ import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 
 
-//@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+//@org.junit.FixMethodOrder(org.junit.runners.MethodSorters.NAME_ASCENDING)
 public class HttpServerTest {
 
   private static Request.Builder request(final String... segments) {
@@ -38,10 +38,14 @@ public class HttpServerTest {
   private static OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
-    return client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
+    return client.
+      newBuilder().
+      readTimeout(0, TimeUnit.SECONDS).
+      /*connectionPool(new ConnectionPool(3, 30, TimeUnit.SECONDS)).*/
+      build();
   }
 
-  private static final HttpServer SERVER = new HttpServer();
+  private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
 
   @BeforeClass
   public static void startServer() {
@@ -126,6 +130,7 @@ public class HttpServerTest {
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(413, r.code());
     assertEquals("Payload Too Large", r.message());
+    r.close();
   }
 
   @Test
@@ -137,6 +142,7 @@ public class HttpServerTest {
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(404, r.code());
     assertEquals("Not Found", r.message());
+    r.close();
   }
 
   @Test
@@ -149,6 +155,7 @@ public class HttpServerTest {
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(405, r.code());
     assertEquals("Method Not Allowed", r.message());
+    r.close();
   }
 
 
@@ -265,6 +272,7 @@ public class HttpServerTest {
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
     assertEquals("chunked_request_data_1", r.body().source().readUtf8());
+    r.close();
   }
 
   @Test
