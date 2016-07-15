@@ -1,5 +1,6 @@
 package info.jdavid.ok.server;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -10,12 +11,24 @@ import okhttp3.internal.http.HttpMethod;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
+import okio.ByteString;
 import okio.Okio;
 
 class Http11 {
 
-  private static String trim(final String s) {
-    return s == null ? null : s.trim();
+  private static String readRequest(final BufferedSource in) throws IOException {
+    final long index = in.indexOf((byte)'\n');
+    if (index == -1) {
+      final ByteString byteString = in.readByteString();
+      if (byteString.size() > 0) {
+        HttpServer.log(byteString.utf8());
+      }
+      return null;
+    }
+    else {
+      final String line = in.readUtf8Line();
+      return line == null ? null : line.trim();
+    }
   }
 
   static void serve(final HttpServer server, final Socket socket,
@@ -25,7 +38,7 @@ class Http11 {
     try {
       int reuseCounter = 0;
       while (server.use(in, reuseCounter++)) {
-        final String request = trim(in.readUtf8LineStrict());
+        final String request = readRequest(in);
         if (request == null || request.length() == 0) return;
         final int index1 = request.indexOf(' ');
         final String method = index1 == -1 ? null : request.substring(0, index1);
