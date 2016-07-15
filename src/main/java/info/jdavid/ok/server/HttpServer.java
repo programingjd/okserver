@@ -9,6 +9,7 @@ import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.Okio;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
@@ -24,7 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
-import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 
@@ -72,7 +74,7 @@ public class HttpServer {
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
   private ServerSocket mServerSocket = null;
-  private SSLServerSocket mSecureServerSocket = null;
+  private ServerSocket mSecureServerSocket = null;
   private Dispatcher mDispatcher = null;
 
   /**
@@ -270,6 +272,30 @@ public class HttpServer {
     }
   }
 
+  protected SSLParameters getSSLParameters() {
+    final SSLParameters parameters = new SSLParameters();
+    parameters.setProtocols( new String[] {
+      "TLSv1.2"
+    });
+    parameters.setCipherSuites(new String[] {
+      "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+      "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+      "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+    });
+    return parameters;
+  }
+
+  private SSLSocket createSSLSocket(final SSLContext context, final SSLParameters parameters,
+                                    final Socket socket) throws IOException {
+    if (context == null) return null;
+    final SSLSocketFactory sslFactory = context.getSocketFactory();
+    final Buffer buffer = new Buffer();
+    final ByteArrayInputStream consumed = new ByteArrayInputStream(buffer.readByteArray());
+    final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
+    sslSocket.setSSLParameters(parameters);
+    return sslSocket;
+  }
+
   /**
    * Starts the server.
    */
@@ -293,27 +319,16 @@ public class HttpServer {
       serverSocket.setReuseAddress(true);
 
       final SSLContext ssl = getSSLContext();
-      final SSLServerSocket secureServerSocket = mSecureServerSocket =
-        ssl == null ?
-          null :
-          (SSLServerSocket)ssl.getServerSocketFactory().createServerSocket(mSecurePort, -1, address);
-      if (secureServerSocket != null) {
+      final SSLParameters parameters;
+      final ServerSocket secureServerSocket;
+      if (ssl == null) {
+        parameters = null;
+        secureServerSocket = mSecureServerSocket = null;
+      }
+      else {
+        parameters = getSSLParameters();
+        secureServerSocket = mSecureServerSocket = new ServerSocket(mSecurePort, -1, address);
         secureServerSocket.setReuseAddress(true);
-        try {
-          final SSLParameters parameters = new SSLParameters();
-          parameters.setProtocols( new String[] {
-            "TLSv1.2"
-          });
-          parameters.setCipherSuites(new String[] {
-            "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-            "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
-          });
-          secureServerSocket.setSSLParameters(new SSLParameters());
-        }
-        catch (final Exception e) {
-          log(e);
-        }
       }
 
       new Thread(new Runnable() {
@@ -348,7 +363,9 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  dispatch(dispatcher, secureServerSocket.accept(), true);
+                  final Socket socket = secureServerSocket.accept();
+                  final SSLSocket sslSocket = createSSLSocket(ssl, parameters, socket);
+                  dispatch(dispatcher, sslSocket, true);
                 }
                 catch (final IOException e) {
                   if (secureServerSocket.isClosed()) break;
