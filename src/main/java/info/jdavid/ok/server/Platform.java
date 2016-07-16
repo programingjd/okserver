@@ -140,8 +140,8 @@ abstract class Platform {
 
     @Override public Object createSSLSocketParameters(final Https https) {
       final SSLParameters parameters = new SSLParameters();
-      parameters.setProtocols((String[])https.protocols.toArray());
-      parameters.setCipherSuites((String[])https.cipherSuites.toArray());
+      parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
+      parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
       return parameters;
     }
 

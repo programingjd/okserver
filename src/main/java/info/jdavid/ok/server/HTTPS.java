@@ -111,7 +111,7 @@ public final class Https {
    * Builder for the Https class.
    */
   @SuppressWarnings("unused")
-  public final class Builder {
+  public static final class Builder {
 
     private List<String> protocols = null;
     private List<String> cipherSuites = null;
