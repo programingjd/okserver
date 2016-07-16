@@ -224,13 +224,17 @@ abstract class Platform {
       catch (final ClassNotFoundException ignore) {
         return null;
       }
+      final int version = android.os.Build.VERSION.SDK_INT;
       //noinspection ConstantConditions
-      return android.os.Build.VERSION.SDK_INT < 16 ? null : new Android16Platform();
+      return version < 16 ? null : new Android16Platform(version);
     }
 
-    private Android16Platform() {
+    private final int version;
+
+    private Android16Platform(final int version) {
       super();
       log("Android Platform");
+      this.version = version;
     }
 
     @Override public List<String> defaultProtocols() {
@@ -238,11 +242,17 @@ abstract class Platform {
     }
 
     @Override public List<String> defaultCipherSuites() {
-      return Arrays.asList(
-        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
-      );
+      return version < 20 ?
+         Arrays.asList(
+           "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+           "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+           "TLS_DHE_RSA_WITH_AES_128_CBC_SHA"
+         ) :
+         Arrays.asList(
+          "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+          "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+          "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+         );
     }
 
     @Override public Object createSSLSocketParameters(final Https https) {
