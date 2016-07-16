@@ -13,7 +13,6 @@ version '3.4.1h'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
-apply plugin: 'idea'
 apply plugin: 'maven-publish'
 apply plugin: 'com.jfrog.bintray'
 
@@ -25,7 +24,6 @@ repositories {
 }
 
 configurations {
-  provided
   samplesCompile.extendsFrom compile
   samplesRuntime.extendsFrom runtime
 }
@@ -49,15 +47,11 @@ sourceSets {
   }
 }
 
-idea {
-  module {
-    scopes.PROVIDED.plus += [ configurations.provided ]
-  }
-}
-
 dependencies {
   compile 'com.squareup.okio:okio:1.9.0'
   compile 'com.squareup.okhttp3:okhttp:3.4.1'
+  compileOnly 'org.mortbay.jetty.alpn:alpn-boot:8.1.8+'
+  compileOnly files("$projectDir/libs/android.os.build.mock.jar")
   testCompile 'junit:junit:4.12'
 }
 
@@ -74,9 +68,9 @@ jacocoTestReport {
 }
 
 test {
-//  testLogging {
-//    showStandardStreams = true
-//  }
+  testLogging {
+    showStandardStreams = true
+  }
   jacoco {
     append = false
     destinationFile = file("$buildDir/jacoco/jacocoTest.exec")

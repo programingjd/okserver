@@ -1,10 +1,10 @@
 package info.jdavid.ok.server;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Headers;
 import okhttp3.internal.http.HttpMethod;
@@ -21,7 +21,7 @@ class Http11 {
     if (index == -1) {
       final ByteString byteString = in.readByteString();
       if (byteString.size() > 0) {
-        HttpServer.log(byteString.utf8());
+        Logger.log(byteString.utf8());
       }
       return null;
     }
@@ -31,13 +31,27 @@ class Http11 {
     }
   }
 
-  static void serve(final HttpServer server, final Socket socket,
-                    final boolean secure, final long maxRequestSize) throws IOException {
+  private static boolean useSocket(final BufferedSource in, final int reuse,
+                                   final KeepAliveStrategy strategy) {
+    final int timeout = strategy.timeout(reuse);
+    if (timeout <= 0) {
+      return reuse == 0;
+    }
+    else {
+      in.timeout().timeout(timeout, TimeUnit.SECONDS);
+      return true;
+    }
+  }
+
+  static void serve(final Socket socket, final boolean secure,
+                    final long maxRequestSize,
+                    final KeepAliveStrategy keepAliveStrategy,
+                    final RequestHandler requestHandler) throws IOException {
     final BufferedSource in = Okio.buffer(Okio.source(socket));
     final BufferedSink out = Okio.buffer(Okio.sink(socket));
     try {
       int reuseCounter = 0;
-      while (server.use(in, reuseCounter++)) {
+      while (useSocket(in, reuseCounter++, keepAliveStrategy)) {
         final String request = readRequest(in);
         if (request == null || request.length() == 0) return;
         final int index1 = request.indexOf(' ');
@@ -68,7 +82,8 @@ class Http11 {
             }
             else {
               if (length == 0) {
-                response = server.handle(secure, method, path, headersBuilder.build(), null);
+                response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
+                                                        headersBuilder.build(), null);
               }
               else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
                 if (useBody) {
@@ -101,11 +116,13 @@ class Http11 {
                       statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
                   }
                   else {
-                    response = server.handle(secure, method, path, headersBuilder.build(), body);
+                    response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
+                                                            headersBuilder.build(), body);
                   }
                 }
                 else {
-                  response = server.handle(secure, method, path, headersBuilder.build(), null);
+                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
+                                                          headersBuilder.build(), null);
                 }
               }
               else { // length > 0
@@ -113,10 +130,12 @@ class Http11 {
                   final Buffer body = new Buffer();
                   if (!socket.isClosed()) in.readFully(body, length);
                   body.flush();
-                  response = server.handle(secure, method, path, headersBuilder.build(), body);
+                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
+                                                          headersBuilder.build(), body);
                 }
                 else {
-                  response = server.handle(secure, method, path, headersBuilder.build(), null);
+                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
+                                                          headersBuilder.build(), null);
                 }
               }
             }

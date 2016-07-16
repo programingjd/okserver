@@ -1,5 +1,6 @@
 package info.jdavid.ok.server.samples;
 
+import info.jdavid.ok.server.RequestHandler;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -21,15 +22,15 @@ public class EchoHttpServer {
   }
 
   public EchoHttpServer(final int port) {
-    mServer = new HttpServer() {
-      @Override protected Response handle(final boolean secure, final String method, final HttpUrl url,
-                                          final Headers requestHeaders, final Buffer requestBody) {
+    mServer = new HttpServer().requestHandler(new RequestHandler() {
+      @Override public Response handle(final boolean secure, final String method, final HttpUrl url,
+                                       final Headers requestHeaders, final Buffer requestBody) {
         if (!"POST".equals(method)) return unsupported();
         if (!"/echo".equals(url.encodedPath())) return notFound();
         final MediaType mime = MediaType.parse(requestHeaders.get("Content-Type"));
         return echo(requestBody, mime);
       }
-    }.port(port);
+    }).port(port);
   }
 
   private Response notFound() {

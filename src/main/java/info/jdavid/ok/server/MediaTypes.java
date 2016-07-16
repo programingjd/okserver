@@ -7,7 +7,9 @@ import java.util.Map;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 
-
+/**
+ * List of predefined media types.
+ */
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public class MediaTypes {
   public static final MediaType CSS = MediaType.parse("text/css");

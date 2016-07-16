@@ -19,7 +19,9 @@ import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
 
-
+/**
+ * HTTP 1.x Response object.
+ */
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public abstract class Response {
 
@@ -42,30 +44,62 @@ public abstract class Response {
     this.body = body;
   }
 
+  /**
+   * Returns the protocol (HTTP 1.0 or 1.1).
+   * @return the protocol.
+   */
   public Protocol protocol() {
     return protocol;
   }
 
+  /**
+   * Resturns the response code.
+   * @return the code.
+   */
   public int code() {
     return code;
   }
 
+  /**
+   * Returns whether the request was successful or not.
+   * @return true for success, false for failure.
+   */
   public boolean isSuccessful() {
     return code >= 200 && code < 300;
   }
 
+  /**
+   * Returns the response message.
+   * @return the message.
+   */
   public String message() {
     return message;
   }
 
-  List<String> headers(String name) {
+  /**
+   * Returns the values for the specified header name.
+   * @param name the header name.
+   * @return the list of values.
+   */
+  public List<String> headers(String name) {
     return headers.values(name);
   }
 
+  /**
+   * Returns the value for the specified header name.
+   * @param name the header name.
+   * @return the header value.
+   */
   public String header(String name) {
     return header(name, null);
   }
 
+  /**
+   * Returns the value for the specified header name, or the specified default value is the header isn't set.
+   * @param name the header name.
+   * @param defaultValue the default value.
+   * @return the header name.
+   */
   public String header(String name, String defaultValue) {
     String result = headers.get(name);
     return result != null ? result : defaultValue;
@@ -77,10 +111,6 @@ public abstract class Response {
 
   ResponseBody body() {
     return body;
-  }
-
-  public Builder newBuilder() {
-    throw new UnsupportedOperationException();
   }
 
   abstract void writeBody(final BufferedSource in, final BufferedSink out,
@@ -96,6 +126,9 @@ public abstract class Response {
            + '}';
   }
 
+  /**
+   * Builder for the Response class.
+   */
   public static final class Builder {
 
     private static final String CONTENT_LENGTH = "Content-Length";
@@ -116,10 +149,17 @@ public abstract class Response {
     private ResponseBody body = null;
     private Headers.Builder headers;
 
+    /**
+     * Creates a new Builder.
+     */
     public Builder() {
       headers = new Headers.Builder();
     }
 
+    /**
+     * Creates a new Builder, using an existing response as a template.
+     * @param response the response template.
+     */
     private Builder(final Response response) {
       this.protocol = response.protocol;
       this.code = response.code;
@@ -128,6 +168,11 @@ public abstract class Response {
       this.headers = response.headers.newBuilder();
     }
 
+    /**
+     * Sets the status line.
+     * @param statusLine the status line.
+     * @return this
+     */
     public Builder statusLine(final StatusLine statusLine) {
       this.protocol = statusLine.protocol;
       this.code = statusLine.code;
@@ -135,17 +180,31 @@ public abstract class Response {
       return this;
     }
 
+    /**
+     * Sets the etag (optional) and the cache control header to no-cache.
+     * @param etag the etag (optional).
+     * @return this
+     */
     public Builder noCache(final String etag) {
       if (etag != null) headers.set(ETAG, etag);
       headers.set(CACHE_CONTROL, "no-cache");
       return this;
     }
 
+    /**
+     * Sets the cache control header to no-store and removes the etag.
+     * @return this
+     */
     public Builder noStore() {
       headers.removeAll(ETAG).set(CACHE_CONTROL, "no-store");
       return this;
     }
 
+    /**
+     * Sets the etag.
+     * @param etag the etag.
+     * @return this
+     */
     public Builder etag(final String etag) {
       if (etag == null) {
         headers.removeAll(ETAG);
@@ -156,16 +215,33 @@ public abstract class Response {
       return this;
     }
 
+    /**
+     * Sets the cache control header to private.
+     * @return this
+     */
     public Builder priv() {
       headers.add(CACHE_CONTROL, "private");
       return this;
     }
 
+    /**
+     * Sets the cache control max-age value.
+     * @param secs the max-age value in seconds.
+     * @return this
+     */
     public Builder maxAge(final long secs) {
       headers.add(CACHE_CONTROL, "max-age=" + secs);
       return this;
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @param methods the methods.
+     * @param headers the headers.
+     * @param secs the max-age for the cors headers.
+     * @return this
+     */
     public Builder cors(final String origin, final List<String> methods, final List<String> headers,
                         final long secs) {
       this.headers.set(CORS_ALLOW_ORIGIN, origin == null ? "null" : origin);
@@ -180,85 +256,182 @@ public abstract class Response {
       return this;
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @param methods the methods.
+     * @param headers the headers.
+     * @return this
+     */
     public Builder cors(final String origin, final List<String> methods, final List<String> headers) {
       return cors(origin, methods, headers, 31536000);
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @param methods the methods.
+     * @param secs the max-age for the cors headers.
+     * @return this
+     */
     public Builder cors(final String origin, final List<String> methods, final long secs) {
       return cors(origin, methods, null, secs);
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @param methods the methods.
+     * @return this
+     */
     public Builder cors(final String origin, final List<String> methods) {
       return cors(origin, methods, null, 31536000);
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @param secs the max-age for the cors headers.
+     * @return this
+     */
     public Builder cors(final String origin, final long secs) {
       return cors(origin, Collections.singletonList("GET"), null, secs);
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @param origin the origin.
+     * @return this
+     */
     public Builder cors(final String origin) {
       return cors(origin, Collections.singletonList("GET"), null, 31536000);
     }
 
+    /**
+     * Sets the CORS headers for allowing cross domain requests.
+     * @return this
+     */
     public Builder cors() {
       return cors("*", Collections.singletonList("GET"), null, 31536000);
     }
 
+    /**
+     * Sets the strict transport security header, with the specified max-age.
+     * @param secs the max-age in seconds.
+     * @return this
+     */
     public Builder hsts(final long secs) {
       headers.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
       return this;
     }
 
+    /**
+     * Sets the strict transport security header.
+     * @return this
+     */
     public Builder hsts() {
       return hsts(31536000);
     }
 
+    /**
+     * Sets the location header.
+     * @param url the location.
+     * @return this
+     */
     public Builder location(final HttpUrl url) {
       headers.set(LOCATION, url.toString());
       return this;
     }
 
+    /**
+     * Sets the location header.
+     * @param path the location path.
+     * @return this
+     */
     public Builder location(final String path) {
       headers.set(LOCATION, path);
       return this;
     }
 
+    /**
+     * Sets the value for the header with the specified name. It replaces any previous value set for the same
+     * header name.
+     * @param name the header name.
+     * @param value the header value.
+     * @return this
+     */
     public Builder header(final String name, final String value) {
       headers.set(name, value);
       return this;
     }
 
+    /**
+     * Adds the value for the header with the specified name. It doesn't replaces any previous value set for
+     * the same header name.
+     * @param name the header name.
+     * @param value the header value.
+     * @return this
+     */
     public Builder addHeader(final String name, final String value) {
       headers.add(name, value);
       return this;
     }
 
+    /**
+     * Removes all values for the specified header name.
+     * @param name the header name.
+     * @return this
+     */
     public Builder removeHeader(final String name) {
       headers.removeAll(name);
       return this;
     }
 
+    /**
+     * Sets the headers from a template. All previous headers set are removed.
+     * @param headers the headers template.
+     * @return this
+     */
     public Builder headers(final Headers headers) {
       this.headers = headers.newBuilder();
       return this;
     }
 
+    /**
+     * Sets the content length header to the specified length.
+     * @param length the content length.
+     * @return this
+     */
     public Builder contentLength(final long length) {
       headers.set(CONTENT_LENGTH, String.valueOf(length));
       return this;
     }
 
+    /**
+     * Sets the content type header to the specified media type.
+     * @param contentType the media type.
+     * @return this
+     */
     public Builder contentType(final MediaType contentType) {
       headers.set(CONTENT_TYPE, contentType.toString());
       return this;
     }
 
+    /**
+     * Sets an empty body.
+     * @return this
+     */
     public Builder noBody() {
       this.body = null;
       contentLength(0);
       return this;
     }
 
+    /**
+     * Sets the response body.
+     * @param body the response body.
+     * @return this
+     */
     public Builder body(final ResponseBody body) {
       this.body = body;
       if (body == null) {
@@ -271,10 +444,21 @@ public abstract class Response {
       return this;
     }
 
+    /**
+     * Sets a response body built from the specified text.
+     * @param text the plain/text string value.
+     * @return this
+     */
     public Builder body(final String text) {
       return body(text, MediaTypes.TEXT);
     }
 
+    /**
+     * Sets a response body built from the specified text.
+     * @param text the string value.
+     * @param contentType the media type.
+     * @return this
+     */
     public Builder body(final String text, final MediaType contentType) {
       if (text == null) return body((ResponseBody)null);
       final Buffer buffer = new Buffer().writeUtf8(text);
@@ -284,6 +468,10 @@ public abstract class Response {
       return this;
     }
 
+    /**
+     * Builds the response.
+     * @return the response.
+     */
     public Response build() {
       if (protocol == null) {
         throw new IllegalStateException("protocol == null");
@@ -313,6 +501,9 @@ public abstract class Response {
     }
   }
 
+  /**
+   * SSE Response.
+   */
   public static class SSE extends Response {
 
     /**
@@ -390,6 +581,7 @@ public abstract class Response {
 
     private final int mRetrySecs;
     private final EventSource mEventSource;
+
     /**
      * Creates an SSE response with the default retry delay and the specified event loop.
      * @param eventLoop the event loop.
@@ -549,10 +741,6 @@ public abstract class Response {
 //        try { socket.close(); } catch (final IOException ignore) {}
       }
     }
-    @Override
-    public Builder newBuilder() {
-      return new Builder(this);
-    }
   }
 
   static final class BufferResponse extends ResponseBody {
@@ -566,4 +754,5 @@ public abstract class Response {
     @Override public long contentLength() { return buffer.size(); }
     @Override public BufferedSource source() { return buffer; }
   }
+
 }

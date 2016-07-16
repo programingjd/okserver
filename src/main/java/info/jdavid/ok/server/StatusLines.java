@@ -6,7 +6,9 @@ import java.net.HttpURLConnection;
 import okhttp3.Protocol;
 import okhttp3.internal.http.StatusLine;
 
-
+/**
+ * List of predefined status lines for HTTP 1.1.
+ */
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public class StatusLines {
   public static final StatusLine CONTINUE = // 100
@@ -124,6 +126,11 @@ public class StatusLines {
     return new StatusLine(Protocol.HTTP_1_1, code, message);
   }
 
+  /**
+   * Get the status line for a specific code.
+   * @param code the http code.
+   * @return the status line.
+   */
   public static StatusLine get(final int code) {
     for (final Field field: StatusLines.class.getDeclaredFields()) {
       if (field.getType() == StatusLine.class) {
