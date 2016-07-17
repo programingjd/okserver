@@ -7,49 +7,59 @@ import okio.Buffer;
 import okio.BufferedSource;
 import okio.Okio;
 
+import static info.jdavid.ok.server.Logger.log;
+
 final class Handshake {
 
-  public final byte[] bytes;
+  final String host;
+  final byte[] bytes;
 
-  private Handshake(final Buffer buffer) {
+  private Handshake(final Buffer buffer, final String host) {
     this.bytes = buffer.readByteArray();
-  }
-
-
-  private static void assertThat(final boolean assertion, final String message) {
-    if (!assertion) throw new RuntimeException(message);
+    this.host = host;
   }
 
   private static int int24(final byte[] bytes) {
     return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
   }
 
-  public static Handshake read(final Socket socket) throws IOException {
+  static Handshake read(final Socket socket) throws IOException {
     final BufferedSource source = Okio.buffer(Okio.source(socket));
     final Buffer buffer = new Buffer();
+
     final byte handshake = source.readByte();
     buffer.writeByte(handshake);
-    assertThat(handshake == 0x16,
-               "Invalid TLS record type: " + handshake + " (expected 22 for 'handshake').");
+    if (handshake != 0x16) return new Handshake(buffer, null);
+
     final byte major = source.readByte();
     final byte minor = source.readByte();
     buffer.writeByte(major);
     buffer.writeByte(minor);
+
     final short recordLength = source.readShort();
     buffer.writeShort(recordLength);
+
+
     final byte hello = source.readByte();
     buffer.writeByte(hello);
-    assertThat(hello == 0x01, "Invalid handshake type: " + hello + " (expected 1 for 'client_hello').");
+    if (hello != 0x01) return new Handshake(buffer, null);
+
     final byte[] lengthBytes = source.readByteArray(3);
     buffer.write(lengthBytes);
     final int handshakeLength = int24(lengthBytes);
-    assertThat(handshakeLength <= recordLength - 4, "Handshake record is longer than TLS record.");
+    if (handshakeLength <= recordLength - 4) {
+      log("Handshake record is longer than TLS record.");
+      return new Handshake(buffer, null);
+    }
+    else if (handshakeLength < 40) return new Handshake(buffer, null);
+
     final byte helloMajor = source.readByte();
     final byte helloMinor = source.readByte();
     buffer.writeByte(helloMajor);
     buffer.writeByte(helloMinor);
     final byte[] random = source.readByteArray(32);
     buffer.write(random);
+
     final byte sessionIdLength = source.readByte();
     buffer.writeByte(sessionIdLength);
     final byte[] sessionId = source.readByteArray(sessionIdLength);
@@ -74,11 +84,23 @@ final class Handshake {
         final byte[] extension = source.readByteArray(extensionLength);
         buffer.write(extension);
         len -= extensionLength + 4;
+        if (extensionType == 0x00) { // server_name RFC6066
+          if (extensionLength > 3) {
+            final Buffer b = new Buffer();
+            b.write(extension);
+            while (buffer.size() > 0) {
+              final int nameType = b.readByte();
+              final short nameLength = b.readShort();
+              final String name = b.readUtf8(nameLength);
+              if (nameType == 0x00) { // host_name
+                return new Handshake(buffer, name);
+              }
+            }
+          }
+        }
       }
     }
-    return new Handshake(buffer);
+    return new Handshake(buffer, null);
   }
-
-
 
 }

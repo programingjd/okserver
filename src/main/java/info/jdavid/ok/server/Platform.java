@@ -7,9 +7,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+
+import org.eclipse.jetty.alpn.ALPN;
 
 import static info.jdavid.ok.server.Logger.log;
 
@@ -106,11 +109,27 @@ abstract class Platform {
     }
 
     @Override public Object createSSLSocketParameters(final Https https) {
-      throw new UnsupportedOperationException("Not implemented.");
+      final SSLParameters parameters = new SSLParameters();
+      parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
+      parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
+      return parameters;
     }
 
-    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) {
-      throw new UnsupportedOperationException("Not implemented.");
+    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
+      final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
+      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
+      sslSocket.setSSLParameters((SSLParameters)https.parameters);
+      final ALPN.ServerProvider provider = new ALPN.ServerProvider() {
+        @Override public void unsupported() {
+          ALPN.remove(sslSocket);
+        }
+        @Override public String select(final List<String> list) throws SSLException {
+          ALPN.remove(sslSocket);
+          return list.contains("h2") ? "h2" : "http/1.1";
+        }
+      };
+      ALPN.put(sslSocket, provider);
+      return sslSocket;
     }
 
   }
@@ -149,7 +168,7 @@ abstract class Platform {
       if (https == null) return null;
       final Handshake handshake = Handshake.read(socket);
       final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.bytes);
-      final SSLSocketFactory sslFactory = https.context.getSocketFactory();
+      final SSLSocketFactory sslFactory = https.getContext(handshake.host).getSocketFactory();
       final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
       sslSocket.startHandshake();
@@ -172,12 +191,12 @@ abstract class Platform {
       return version < 16 ? null : new Android16Platform(version);
     }
 
-    private final int version;
+    private final int mVersion;
 
     private Android16Platform(final int version) {
       super();
       log("Android Platform");
-      this.version = version;
+      this.mVersion = version;
     }
 
     @Override public List<String> defaultProtocols() {
@@ -185,13 +204,13 @@ abstract class Platform {
     }
 
     @Override public List<String> defaultCipherSuites() {
-      return version < 20 ?
-         Arrays.asList(
+      return mVersion < 20 ?
+             Arrays.asList(
            "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
            "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
            "TLS_DHE_RSA_WITH_AES_128_CBC_SHA"
          ) :
-         Arrays.asList(
+             Arrays.asList(
           "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
           "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
           "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"

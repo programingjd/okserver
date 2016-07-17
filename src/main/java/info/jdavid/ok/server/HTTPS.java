@@ -30,24 +30,30 @@ import static info.jdavid.ok.server.Logger.log;
 @SuppressWarnings("WeakerAccess")
 public final class Https {
 
-  final SSLContext context;
-  final Map<String, SSLContext> additionalContexts;
+  private final SSLContext mContext;
+  private final Map<String, SSLContext> mAdditionalContexts;
   final List<String> protocols;
   final List<String> cipherSuites;
   final Object parameters;
 
   private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
                 final List<String> protocols, final List<String> cipherSuites) {
-    context = createSSLContext(cert);
-    additionalContexts = new HashMap<String, SSLContext>(additionalCerts.size());
+    mContext = createSSLContext(cert);
+    mAdditionalContexts = new HashMap<String, SSLContext>(additionalCerts.size());
     for (final Map.Entry<String, byte[]> entry: additionalCerts.entrySet()) {
       final SSLContext additionalContext = createSSLContext(entry.getValue());
-      if (additionalContext != null) additionalContexts.put(entry.getKey(), additionalContext);
+      if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
     }
     final Platform platform = Platform.get();
     this.protocols = protocols == null ? platform.defaultProtocols() : protocols;
     this.cipherSuites = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
     this.parameters = this.protocols.isEmpty() ? null : Platform.get().createSSLSocketParameters(this);
+  }
+
+  SSLContext getContext(final String host) {
+    if (host == null) return mContext;
+    final SSLContext additionalContext = mAdditionalContexts.get(host);
+    return additionalContext == null ? mContext : additionalContext;
   }
 
   SSLSocket createSSLSocket(final Socket socket) throws IOException {
@@ -113,10 +119,10 @@ public final class Https {
   @SuppressWarnings("unused")
   public static final class Builder {
 
-    private List<String> protocols = null;
-    private List<String> cipherSuites = null;
-    private byte[] certificate = null;
-    private final Map<String, byte[]> additionalCertificates = new HashMap<String, byte[]>(4);
+    private List<String> mProtocols = null;
+    private List<String> mCipherSuites = null;
+    private byte[] mCertificate = null;
+    private final Map<String, byte[]> mAdditionalCertificates = new HashMap<String, byte[]>(4);
 
     public Builder() {}
 
@@ -127,8 +133,8 @@ public final class Https {
      */
     public Builder certificate(final byte[] bytes) {
       if (bytes == null) throw new NullPointerException();
-      if (certificate != null) throw new IllegalStateException("Main certificate already set.");
-      certificate = bytes;
+      if (mCertificate != null) throw new IllegalStateException("Main certificate already set.");
+      mCertificate = bytes;
       return this;
     }
 
@@ -141,10 +147,10 @@ public final class Https {
     public Builder addCertificate(final String hostname, final byte[] bytes) {
       if (hostname == null) throw new NullPointerException();
       if (bytes == null) throw new NullPointerException();
-      if (additionalCertificates.containsKey(hostname)) {
+      if (mAdditionalCertificates.containsKey(hostname)) {
         throw new IllegalStateException("Certificate for host \"" + hostname + "\" has already been set.");
       }
-      additionalCertificates.put(hostname, bytes);
+      mAdditionalCertificates.put(hostname, bytes);
       return this;
     }
 
@@ -154,7 +160,7 @@ public final class Https {
      * @return this.
      */
     public Builder protocol(final Protocol protocol) {
-      protocols = Collections.singletonList(protocol.name);
+      mProtocols = Collections.singletonList(protocol.name);
       return this;
     }
 
@@ -168,7 +174,7 @@ public final class Https {
       for (final Protocol protocol: protocols) {
         list.add(protocol.name);
       }
-      this.protocols = list;
+      this.mProtocols = list;
       return this;
     }
 
@@ -178,7 +184,7 @@ public final class Https {
      * @return this.
      */
     public Builder cipherSuites(final String[] cipherSuites) {
-      this.cipherSuites = Arrays.asList(cipherSuites);
+      this.mCipherSuites = Arrays.asList(cipherSuites);
       return this;
     }
 
@@ -187,7 +193,7 @@ public final class Https {
      * @return the Https instance.
      */
     public Https build() {
-      return new Https(certificate, additionalCertificates, protocols, cipherSuites);
+      return new Https(mCertificate, mAdditionalCertificates, mProtocols, mCipherSuites);
     }
 
   }

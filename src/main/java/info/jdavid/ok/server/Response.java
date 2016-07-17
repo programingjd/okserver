@@ -32,7 +32,7 @@ public abstract class Response {
   private final ResponseBody body;
 
   private Response(final Builder builder) {
-    this(builder.protocol, builder.code, builder.message, builder.headers.build(), builder.body);
+    this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody);
   }
 
   private Response(final Protocol protocol, final int code, final String message,
@@ -143,17 +143,17 @@ public abstract class Response {
     private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
     private static final String CORS_EXPOSE_HEADERS = "Access-Control-Expose-Headers";
 
-    private Protocol protocol = null;
-    private int code = -1;
-    private String message = null;
-    private ResponseBody body = null;
-    private Headers.Builder headers;
+    private Protocol mProtocol = null;
+    private int mCode = -1;
+    private String mMessage = null;
+    private ResponseBody mBody = null;
+    private Headers.Builder mHeaders;
 
     /**
      * Creates a new Builder.
      */
     public Builder() {
-      headers = new Headers.Builder();
+      mHeaders = new Headers.Builder();
     }
 
     /**
@@ -161,11 +161,11 @@ public abstract class Response {
      * @param response the response template.
      */
     private Builder(final Response response) {
-      this.protocol = response.protocol;
-      this.code = response.code;
-      this.message = response.message;
-      this.body = response.body;
-      this.headers = response.headers.newBuilder();
+      this.mProtocol = response.protocol;
+      this.mCode = response.code;
+      this.mMessage = response.message;
+      this.mBody = response.body;
+      this.mHeaders = response.headers.newBuilder();
     }
 
     /**
@@ -174,9 +174,9 @@ public abstract class Response {
      * @return this
      */
     public Builder statusLine(final StatusLine statusLine) {
-      this.protocol = statusLine.protocol;
-      this.code = statusLine.code;
-      this.message = statusLine.message;
+      this.mProtocol = statusLine.protocol;
+      this.mCode = statusLine.code;
+      this.mMessage = statusLine.message;
       return this;
     }
 
@@ -186,8 +186,8 @@ public abstract class Response {
      * @return this
      */
     public Builder noCache(final String etag) {
-      if (etag != null) headers.set(ETAG, etag);
-      headers.set(CACHE_CONTROL, "no-cache");
+      if (etag != null) mHeaders.set(ETAG, etag);
+      mHeaders.set(CACHE_CONTROL, "no-cache");
       return this;
     }
 
@@ -196,7 +196,7 @@ public abstract class Response {
      * @return this
      */
     public Builder noStore() {
-      headers.removeAll(ETAG).set(CACHE_CONTROL, "no-store");
+      mHeaders.removeAll(ETAG).set(CACHE_CONTROL, "no-store");
       return this;
     }
 
@@ -207,10 +207,10 @@ public abstract class Response {
      */
     public Builder etag(final String etag) {
       if (etag == null) {
-        headers.removeAll(ETAG);
+        mHeaders.removeAll(ETAG);
       }
       else {
-        headers.set(ETAG, etag);
+        mHeaders.set(ETAG, etag);
       }
       return this;
     }
@@ -220,7 +220,7 @@ public abstract class Response {
      * @return this
      */
     public Builder priv() {
-      headers.add(CACHE_CONTROL, "private");
+      mHeaders.add(CACHE_CONTROL, "private");
       return this;
     }
 
@@ -230,7 +230,7 @@ public abstract class Response {
      * @return this
      */
     public Builder maxAge(final long secs) {
-      headers.add(CACHE_CONTROL, "max-age=" + secs);
+      mHeaders.add(CACHE_CONTROL, "max-age=" + secs);
       return this;
     }
 
@@ -244,15 +244,15 @@ public abstract class Response {
      */
     public Builder cors(final String origin, final List<String> methods, final List<String> headers,
                         final long secs) {
-      this.headers.set(CORS_ALLOW_ORIGIN, origin == null ? "null" : origin);
+      this.mHeaders.set(CORS_ALLOW_ORIGIN, origin == null ? "null" : origin);
       if (methods != null) {
-        this.headers.set(CORS_ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
+        this.mHeaders.set(CORS_ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
       }
       if (headers != null) {
-        this.headers.set(CORS_ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
+        this.mHeaders.set(CORS_ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
       }
-      this.headers.set(CORS_EXPOSE_HEADERS, join(Arrays.asList(ETAG, STRICT_TRANSPORT_SECURITY)));
-      this.headers.set(CORS_MAX_AGE, String.valueOf(secs));
+      this.mHeaders.set(CORS_EXPOSE_HEADERS, join(Arrays.asList(ETAG, STRICT_TRANSPORT_SECURITY)));
+      this.mHeaders.set(CORS_MAX_AGE, String.valueOf(secs));
       return this;
     }
 
@@ -321,7 +321,7 @@ public abstract class Response {
      * @return this
      */
     public Builder hsts(final long secs) {
-      headers.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
+      mHeaders.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
       return this;
     }
 
@@ -339,7 +339,7 @@ public abstract class Response {
      * @return this
      */
     public Builder location(final HttpUrl url) {
-      headers.set(LOCATION, url.toString());
+      mHeaders.set(LOCATION, url.toString());
       return this;
     }
 
@@ -349,7 +349,7 @@ public abstract class Response {
      * @return this
      */
     public Builder location(final String path) {
-      headers.set(LOCATION, path);
+      mHeaders.set(LOCATION, path);
       return this;
     }
 
@@ -361,7 +361,7 @@ public abstract class Response {
      * @return this
      */
     public Builder header(final String name, final String value) {
-      headers.set(name, value);
+      mHeaders.set(name, value);
       return this;
     }
 
@@ -373,7 +373,7 @@ public abstract class Response {
      * @return this
      */
     public Builder addHeader(final String name, final String value) {
-      headers.add(name, value);
+      mHeaders.add(name, value);
       return this;
     }
 
@@ -383,7 +383,7 @@ public abstract class Response {
      * @return this
      */
     public Builder removeHeader(final String name) {
-      headers.removeAll(name);
+      mHeaders.removeAll(name);
       return this;
     }
 
@@ -393,7 +393,7 @@ public abstract class Response {
      * @return this
      */
     public Builder headers(final Headers headers) {
-      this.headers = headers.newBuilder();
+      this.mHeaders = headers.newBuilder();
       return this;
     }
 
@@ -403,7 +403,7 @@ public abstract class Response {
      * @return this
      */
     public Builder contentLength(final long length) {
-      headers.set(CONTENT_LENGTH, String.valueOf(length));
+      mHeaders.set(CONTENT_LENGTH, String.valueOf(length));
       return this;
     }
 
@@ -413,7 +413,7 @@ public abstract class Response {
      * @return this
      */
     public Builder contentType(final MediaType contentType) {
-      headers.set(CONTENT_TYPE, contentType.toString());
+      mHeaders.set(CONTENT_TYPE, contentType.toString());
       return this;
     }
 
@@ -422,7 +422,7 @@ public abstract class Response {
      * @return this
      */
     public Builder noBody() {
-      this.body = null;
+      this.mBody = null;
       contentLength(0);
       return this;
     }
@@ -433,7 +433,7 @@ public abstract class Response {
      * @return this
      */
     public Builder body(final ResponseBody body) {
-      this.body = body;
+      this.mBody = body;
       if (body == null) {
         contentLength(0);
       }
@@ -462,7 +462,7 @@ public abstract class Response {
     public Builder body(final String text, final MediaType contentType) {
       if (text == null) return body((ResponseBody)null);
       final Buffer buffer = new Buffer().writeUtf8(text);
-      this.body = new BufferResponse(contentType, buffer);
+      this.mBody = new BufferResponse(contentType, buffer);
       contentLength(buffer.size());
       contentType(contentType);
       return this;
@@ -473,13 +473,13 @@ public abstract class Response {
      * @return the response.
      */
     public Response build() {
-      if (protocol == null) {
+      if (mProtocol == null) {
         throw new IllegalStateException("protocol == null");
       }
-      if (code < 0) {
-        throw new IllegalStateException("code < 0: " + code);
+      if (mCode < 0) {
+        throw new IllegalStateException("code < 0: " + mCode);
       }
-      if (message == null) {
+      if (mMessage == null) {
         throw new IllegalStateException("message == null");
       }
       return new SyncResponse(this);
