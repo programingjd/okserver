@@ -84,12 +84,13 @@ final class Handshake {
         final byte[] extension = source.readByteArray(extensionLength);
         buffer.write(extension);
         len -= extensionLength + 4;
-        if (extensionType == 0x00) { // server_name RFC6066
+        if (extensionType == 0x0000) { // server_name RFC6066
           if (extensionLength > 3) {
             final Buffer b = new Buffer();
             b.write(extension);
             while (b.size() > 0) {
-              final int nameType = b.readByte();
+              b.readShort(); // list_length, ignore since list always has one element.
+              final int nameType = b.readShort();
               final short nameLength = b.readShort();
               final String name = b.readUtf8(nameLength);
               if (nameType == 0x00) { // host_name
