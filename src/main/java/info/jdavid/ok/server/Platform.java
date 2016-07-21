@@ -1,18 +1,14 @@
 package info.jdavid.ok.server;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-
-import org.eclipse.jetty.alpn.ALPN;
 
 import static info.jdavid.ok.server.Logger.log;
 
@@ -88,6 +84,7 @@ abstract class Platform {
       catch (final ClassNotFoundException ignore) {
         return null;
       }
+      System.out.println("Jetty");
       return new JdkJettyBootPlatform();
     }
 
@@ -119,16 +116,17 @@ abstract class Platform {
       final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
       final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
-      final ALPN.ServerProvider provider = new ALPN.ServerProvider() {
-        @Override public void unsupported() {
-          ALPN.remove(sslSocket);
-        }
-        @Override public String select(final List<String> list) throws SSLException {
-          ALPN.remove(sslSocket);
-          return list.contains("h2") ? "h2" : "http/1.1";
-        }
-      };
-      ALPN.put(sslSocket, provider);
+//      final org.eclipse.jetty.alpn.ALPN.ServerProvider provider =
+//        new org.eclipse.jetty.alpn.ALPN.ServerProvider() {
+//        @Override public void unsupported() {
+//          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
+//        }
+//        @Override public String select(final List<String> list) throws SSLException {
+//          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
+//          return list.contains("h2") ? "h2" : "http/1.1";
+//        }
+//      };
+//      org.eclipse.jetty.alpn.ALPN.put(sslSocket, provider);
       return sslSocket;
     }
 
@@ -167,9 +165,11 @@ abstract class Platform {
     @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
       if (https == null) return null;
       final Handshake handshake = Handshake.read(socket);
-      final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.bytes);
+//      final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.buffer.readByteArray());
       final SSLSocketFactory sslFactory = https.getContext(handshake.host).getSocketFactory();
-      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
+//      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
+      final SSLSocket sslSocket =
+        (SSLSocket)sslFactory.createSocket(new SocketWrapper(socket, handshake.buffer), null, 0, true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
       sslSocket.startHandshake();
       return sslSocket;

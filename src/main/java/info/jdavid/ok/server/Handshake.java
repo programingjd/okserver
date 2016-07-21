@@ -12,10 +12,10 @@ import static info.jdavid.ok.server.Logger.log;
 final class Handshake {
 
   final String host;
-  final byte[] bytes;
+  final Buffer buffer;
 
   private Handshake(final Buffer buffer, final String host) {
-    this.bytes = buffer.readByteArray();
+    this.buffer = buffer;
     this.host = host;
   }
 
@@ -47,7 +47,7 @@ final class Handshake {
     final byte[] lengthBytes = source.readByteArray(3);
     buffer.write(lengthBytes);
     final int handshakeLength = int24(lengthBytes);
-    if (handshakeLength <= recordLength - 4) {
+    if (handshakeLength < recordLength - 4) {
       log("Handshake record is longer than TLS record.");
       return new Handshake(buffer, null);
     }
@@ -88,7 +88,7 @@ final class Handshake {
           if (extensionLength > 3) {
             final Buffer b = new Buffer();
             b.write(extension);
-            while (buffer.size() > 0) {
+            while (b.size() > 0) {
               final int nameType = b.readByte();
               final short nameLength = b.readShort();
               final String name = b.readUtf8(nameLength);

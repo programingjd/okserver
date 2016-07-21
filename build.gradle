@@ -9,19 +9,20 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.4.1k'
+version '3.4.1n'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
 apply plugin: 'maven-publish'
 apply plugin: 'com.jfrog.bintray'
-
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+apply plugin: 'idea'
 
 repositories {
   jcenter()
 }
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
 
 configurations {
   samplesCompile.extendsFrom compile
