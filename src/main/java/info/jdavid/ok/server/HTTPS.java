@@ -3,7 +3,6 @@ package info.jdavid.ok.server;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -56,7 +55,7 @@ public final class Https {
     return additionalContext == null ? mContext : additionalContext;
   }
 
-  SSLSocket createSSLSocket(final Socket socket) throws IOException {
+  SSLSocket createSSLSocket(final SecureSocket socket) throws IOException {
     return Platform.get().createSSLSocket(socket, this);
   }
 

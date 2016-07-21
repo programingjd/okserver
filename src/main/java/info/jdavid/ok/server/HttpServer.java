@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,7 +24,7 @@ public class HttpServer {
   private String mHostname = null;
   private long mMaxRequestSize = 65536;
   private ServerSocket mServerSocket = null;
-  private ServerSocket mSecureServerSocket = null;
+  private SecureServerSocket mSecureServerSocket = null;
   private Dispatcher mDispatcher = null;
   private KeepAliveStrategy mKeepAliveStrategy = KeepAliveStrategy.DEFAULT;
   private RequestHandler mRequestHandler = RequestHandler.DEFAULT;
@@ -247,12 +248,12 @@ public class HttpServer {
       serverSocket.setReuseAddress(true);
 
       final Https https = mHttps;
-      final ServerSocket secureServerSocket;
+      final SecureServerSocket secureServerSocket;
       if (https == Https.DISABLED) {
         secureServerSocket = mSecureServerSocket = null;
       }
       else {
-        secureServerSocket = mSecureServerSocket = new ServerSocket(mSecurePort, -1, address);
+        secureServerSocket = mSecureServerSocket = new SecureServerSocket(mSecurePort, address);
         secureServerSocket.setReuseAddress(true);
       }
 
@@ -288,7 +289,7 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  final Socket socket = secureServerSocket.accept();
+                  final SecureSocket socket = secureServerSocket.accept();
                   final SSLSocket sslSocket = https.createSSLSocket(socket);
                   dispatch(dispatcher, sslSocket, true);
                 }
@@ -338,6 +339,19 @@ public class HttpServer {
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
       Logger.log(e);
+    }
+  }
+
+  private static class SecureServerSocket extends ServerSocket {
+    SecureServerSocket(final int port, final InetAddress address) throws IOException {
+      super(port, -1, address);
+    }
+    @Override public SecureSocket accept() throws IOException {
+      if (isClosed()) throw new SocketException("Socket is closed");
+      if (!isBound()) throw new SocketException("Socket is not bound yet");
+      final SecureSocket s = new SecureSocket();
+      implAccept(s);
+      return s;
     }
   }
 

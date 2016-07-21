@@ -1,8 +1,6 @@
 package info.jdavid.ok.server;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +26,8 @@ abstract class Platform {
 
   public abstract Object createSSLSocketParameters(final Https https);
 
-  public abstract SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException;
+  public abstract SSLSocket createSSLSocket(final SecureSocket socket,
+                                            final Https https) throws IOException;
 
 
   private static Platform findPlatform() {
@@ -70,7 +69,7 @@ abstract class Platform {
       throw new UnsupportedOperationException("Not implemented.");
     }
 
-    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) {
+    @Override public SSLSocket createSSLSocket(final SecureSocket socket, final Https https) {
       throw new UnsupportedOperationException("Not implemented.");
     }
 
@@ -113,7 +112,8 @@ abstract class Platform {
       return parameters;
     }
 
-    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
+    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
+                                               final Https https) throws IOException {
       final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
       final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
@@ -163,15 +163,22 @@ abstract class Platform {
       return parameters;
     }
 
-    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
+    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
+                                               final Https https) throws IOException {
       if (https == null) return null;
-      final Handshake handshake = Handshake.read(socket);
-      final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.buffer.readByteArray());
+      final SecureSocket.ReplayableInputStream inputStream = socket.getInputStream();
+      final Handshake handshake = Handshake.read(inputStream);
+      inputStream.reset();
+      //final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.buffer.readByteArray());
       final SSLSocketFactory sslFactory = https.getContext(handshake.host).getSocketFactory();
-      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
+//      final byte[] bytes = new byte[128];
+//      final int length = socket.getInputStream().read(bytes);
+//      final ByteArrayInputStream consumed = new ByteArrayInputStream(bytes, 0, length);
+//      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
 //      final SSLSocket sslSocket =
 //        (SSLSocket)sslFactory.createSocket(
 //          new SocketWrapper(socket, handshake.buffer), null, socket.getPort(), true);
+      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
       sslSocket.startHandshake();
       return sslSocket;
@@ -223,7 +230,7 @@ abstract class Platform {
       throw new UnsupportedOperationException("Not implemented.");
     }
 
-    @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) {
+    @Override public SSLSocket createSSLSocket(final SecureSocket socket, final Https https) {
       throw new UnsupportedOperationException("Not implemented.");
     }
 

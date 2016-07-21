@@ -1,7 +1,7 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.io.InputStream;
 
 import okio.Buffer;
 import okio.BufferedSource;
@@ -23,13 +23,15 @@ final class Handshake {
     return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
   }
 
-  static Handshake read(final Socket socket) throws IOException {
-    final BufferedSource source = Okio.buffer(Okio.source(socket));
+  static Handshake read(final InputStream inputStream) throws IOException {
+    final BufferedSource source = Okio.buffer(Okio.source(inputStream));
     final Buffer buffer = new Buffer();
 
     final byte handshake = source.readByte();
     buffer.writeByte(handshake);
-    if (handshake != 0x16) return new Handshake(buffer, null);
+    if (handshake != 0x16) {
+      return new Handshake(buffer, null);
+    }
 
     final byte major = source.readByte();
     final byte minor = source.readByte();
@@ -42,7 +44,9 @@ final class Handshake {
 
     final byte hello = source.readByte();
     buffer.writeByte(hello);
-    if (hello != 0x01) return new Handshake(buffer, null);
+    if (hello != 0x01) {
+      return new Handshake(buffer, null);
+    }
 
     final byte[] lengthBytes = source.readByteArray(3);
     buffer.write(lengthBytes);
@@ -51,7 +55,9 @@ final class Handshake {
       log("Handshake record is longer than TLS record.");
       return new Handshake(buffer, null);
     }
-    else if (handshakeLength < 40) return new Handshake(buffer, null);
+    else if (handshakeLength < 40) {
+      return new Handshake(buffer, null);
+    }
 
     final byte helloMajor = source.readByte();
     final byte helloMinor = source.readByte();
