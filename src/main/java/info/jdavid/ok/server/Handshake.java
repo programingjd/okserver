@@ -90,7 +90,7 @@ final class Handshake {
             b.write(extension);
             while (b.size() > 0) {
               b.readShort(); // list_length, ignore since list always has one element.
-              final int nameType = b.readShort();
+              final byte nameType = b.readByte();
               final short nameLength = b.readShort();
               final String name = b.readUtf8(nameLength);
               if (nameType == 0x00) { // host_name
