@@ -1,5 +1,6 @@
 package info.jdavid.ok.server;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
@@ -165,11 +166,12 @@ abstract class Platform {
     @Override public SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
       if (https == null) return null;
       final Handshake handshake = Handshake.read(socket);
-//      final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.buffer.readByteArray());
+      final ByteArrayInputStream consumed = new ByteArrayInputStream(handshake.buffer.readByteArray());
       final SSLSocketFactory sslFactory = https.getContext(handshake.host).getSocketFactory();
-//      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
-      final SSLSocket sslSocket =
-        (SSLSocket)sslFactory.createSocket(new SocketWrapper(socket, handshake.buffer), null, 0, true);
+      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, consumed, true);
+//      final SSLSocket sslSocket =
+//        (SSLSocket)sslFactory.createSocket(
+//          new SocketWrapper(socket, handshake.buffer), null, socket.getPort(), true);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
       sslSocket.startHandshake();
       return sslSocket;
