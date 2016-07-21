@@ -2,6 +2,7 @@ package info.jdavid.ok.server;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -167,6 +168,7 @@ class Http11 {
       }
     }
     catch (final SocketTimeoutException ignore) {}
+    catch (final SocketException ignored) {}
     catch (final Exception e) {
       throw new RuntimeException(e);
     }

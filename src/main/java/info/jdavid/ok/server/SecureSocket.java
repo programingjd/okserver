@@ -69,7 +69,6 @@ class SecureSocket extends Socket {
           final int n = Math.min(len, buf.length - size);
           System.arraycopy(buf, pos, b, off, n);
           pos += n;
-          size += n;
           return n;
         }
       }
@@ -106,6 +105,7 @@ class SecureSocket extends Socket {
 
     @Override public synchronized void reset() throws IOException {
       if (reset) throw new IOException();
+      pos = 0;
       reset = true;
     }
 

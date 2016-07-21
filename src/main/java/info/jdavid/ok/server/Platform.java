@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -99,9 +100,12 @@ abstract class Platform {
 
     @Override public List<String> defaultCipherSuites() {
       return Arrays.asList(
-        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+        "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+        "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
       );
     }
 
@@ -152,7 +156,11 @@ abstract class Platform {
       return Arrays.asList(
         "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+        "TLS_RSA_WITH_AES_128_GCM_SHA256",
+        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
+        "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+        "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
       );
     }
 
@@ -179,8 +187,14 @@ abstract class Platform {
 //        (SSLSocket)sslFactory.createSocket(
 //          new SocketWrapper(socket, handshake.buffer), null, socket.getPort(), true);
       final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
+      sslSocket.setUseClientMode(false);
       sslSocket.setSSLParameters((SSLParameters)https.parameters);
-      sslSocket.startHandshake();
+      try {
+        sslSocket.startHandshake();
+      }
+      catch (final SSLHandshakeException e) {
+        throw new RuntimeException(e);
+      }
       return sslSocket;
     }
 
