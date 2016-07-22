@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLSocket;
 
+import static info.jdavid.ok.server.Logger.log;
+
 
 /**
  * Http Server class.
@@ -266,15 +268,18 @@ public class HttpServer {
                 dispatch(dispatcher, serverSocket.accept(), false);
               }
               catch (final IOException e) {
-                if (serverSocket.isClosed()) break;
-                Logger.log(e);
+                if (serverSocket.isClosed()) {
+                  log("Server socket is closed.");
+                  break;
+                }
+                log(e);
               }
             }
           }
           finally {
             try { serverSocket.close(); } catch (final IOException ignore) {}
             try { if (secureServerSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
-            try { dispatcher.shutdown(); } catch (final Exception e) { Logger.log(e); }
+            try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
             mServerSocket = null;
             mSecureServerSocket = null;
             mStarted.set(false);
@@ -294,15 +299,18 @@ public class HttpServer {
                   dispatch(dispatcher, sslSocket, true);
                 }
                 catch (final IOException e) {
-                  if (secureServerSocket.isClosed()) break;
-                  Logger.log(e);
+                  if (secureServerSocket.isClosed()) {
+                    log("Server socket is closed.");
+                    break;
+                  }
+                  log(e);
                 }
               }
             }
             finally {
               try { serverSocket.close(); } catch (final IOException ignore) {}
               try { secureServerSocket.close(); } catch (final IOException ignore) {}
-              try { dispatcher.shutdown(); } catch (final Exception e) { Logger.log(e); }
+              try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
               mServerSocket = null;
               mSecureServerSocket = null;
               mStarted.set(false);
@@ -313,7 +321,7 @@ public class HttpServer {
 
     }
     catch (final IOException e) {
-      Logger.log(e);
+      log(e);
     }
   }
 
@@ -338,7 +346,7 @@ public class HttpServer {
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
-      Logger.log(e);
+      log(e);
     }
   }
 

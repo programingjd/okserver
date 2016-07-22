@@ -170,7 +170,7 @@ class Http11 {
     catch (final SocketTimeoutException ignore) {}
     catch (final SocketException ignored) {}
     catch (final Exception e) {
-      throw new RuntimeException(e);
+      throw new IOException(e);
     }
     finally {
       try { in.close(); } catch (final IOException ignore) {}

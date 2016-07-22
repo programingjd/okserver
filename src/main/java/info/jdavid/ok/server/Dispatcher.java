@@ -3,6 +3,7 @@ package info.jdavid.ok.server;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static info.jdavid.ok.server.Logger.log;
@@ -34,7 +35,10 @@ public interface Dispatcher {
    */
   public static class Default implements Dispatcher {
     private ExecutorService mExecutors = null;
-    @Override public void start() { mExecutors = Executors.newCachedThreadPool(); }
+    private AtomicBoolean mShutdown = new AtomicBoolean();
+    @Override public void start() {
+      mShutdown.set(false);
+      mExecutors = Executors.newCachedThreadPool(); }
     @Override public void dispatch(final HttpServer.Request request) {
       mExecutors.execute(
         new Runnable() {
@@ -45,6 +49,7 @@ public interface Dispatcher {
       );
     }
     @Override public void shutdown() {
+      if (mShutdown.getAndSet(true)) return;
       mExecutors.shutdownNow();
       try {
         mExecutors.awaitTermination(5, TimeUnit.SECONDS);
@@ -63,6 +68,7 @@ public interface Dispatcher {
     private ExecutorService mExecutor = null;
     private final AtomicInteger mConnections = new AtomicInteger();
     @Override public void start() {
+      mConnections.set(0);
       mExecutors = Executors.newCachedThreadPool();
       mExecutor = Executors.newSingleThreadExecutor();
       mExecutor.execute(new Runnable() {
@@ -93,6 +99,7 @@ public interface Dispatcher {
       );
     }
     @Override public void shutdown() {
+      if (mConnections.getAndSet(-9999) < 0) return;
       mExecutors.shutdownNow();
       try {
         mExecutors.awaitTermination(5, TimeUnit.SECONDS);

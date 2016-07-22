@@ -68,7 +68,7 @@ abstract class Platform {
     }
     catch (final SSLHandshakeException e) {
       if (handshake != null)  { log(handshake.getCipherSuites()); }
-      throw new RuntimeException(e);
+      throw new IOException(e);
     }
     return sslSocket;
   }
