@@ -60,8 +60,23 @@ public interface Dispatcher {
   @SuppressWarnings("unused")
   public static class Logged implements Dispatcher {
     private ExecutorService mExecutors = null;
+    private ExecutorService mExecutor = null;
     private final AtomicInteger mConnections = new AtomicInteger();
-    @Override public void start() { mExecutors = Executors.newCachedThreadPool(); }
+    @Override public void start() {
+      mExecutors = Executors.newCachedThreadPool();
+      mExecutor = Executors.newSingleThreadExecutor();
+      mExecutor.execute(new Runnable() {
+        @Override public void run() {
+          while (!Thread.interrupted()) {
+            try { Thread.sleep(60000L); } catch (final InterruptedException ignore) { break; }
+            System.gc();
+            final float used =
+              Math.round(((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().totalMemory()) / 1024f));
+            log(used + "k");
+          }
+        }
+      });
+    }
     @Override public void dispatch(final HttpServer.Request request) {
       mExecutors.execute(
         new Runnable() {
@@ -84,6 +99,8 @@ public interface Dispatcher {
       }
       catch (final InterruptedException ignore) {}
       mExecutors = null;
+      mExecutor.shutdownNow();
+      mExecutor = null;
     }
   }
 

@@ -25,33 +25,33 @@ class SecureSocket extends Socket {
 
   static class ReplayableInputStream extends InputStream {
 
-    private final InputStream delegate;
-    private final byte buf[] = new byte[4096];
-    private int pos = 0;
-    private int size = 0;
-    private boolean reset = false;
+    private final InputStream mDelegate;
+    private final byte mBuffer[] = new byte[4096];
+    private int mBufferPosition = 0;
+    private int mBufferSize = 0;
+    private boolean mReset = false;
 
     ReplayableInputStream(final InputStream inputStream) {
       super();
-      this.delegate = inputStream;
+      this.mDelegate = inputStream;
     }
 
     @Override public int read() throws IOException {
-      if (reset) {
-        if (pos == size) {
-          return delegate.read();
+      if (mReset) {
+        if (mBufferPosition == mBufferSize) {
+          return mDelegate.read();
         }
         else {
-          return buf[pos++] & 0xff;
+          return mBuffer[mBufferPosition++] & 0xff;
         }
       }
       else {
-        if (buf.length == size) throw new IOException();
-        final int n = delegate.read(buf, size, 1);
+        if (mBuffer.length == mBufferSize) throw new IOException();
+        final int n = mDelegate.read(mBuffer, mBufferSize, 1);
         if (n == -1) return -1;
-        final byte b = buf[pos];
-        pos += n;
-        size += n;
+        final byte b = mBuffer[mBufferPosition];
+        mBufferPosition += n;
+        mBufferSize += n;
         return b & 0xff;
       }
     }
@@ -61,52 +61,52 @@ class SecureSocket extends Socket {
     }
 
     @Override public int read(final byte[] b, final int off, final int len) throws IOException {
-      if (reset) {
-        if (pos == size) {
-          return delegate.read(b, off, len);
+      if (mReset) {
+        if (mBufferPosition == mBufferSize) {
+          return mDelegate.read(b, off, len);
         }
         else {
-          final int n = Math.min(len, buf.length - size);
-          System.arraycopy(buf, pos, b, off, n);
-          pos += n;
+          final int n = Math.min(len, mBuffer.length - mBufferSize);
+          System.arraycopy(mBuffer, mBufferPosition, b, off, n);
+          mBufferPosition += n;
           return n;
         }
       }
       else {
-        if (buf.length == size) throw new IOException();
-        final int n = delegate.read(buf, pos, Math.min(len, buf.length - size));
+        if (mBuffer.length == mBufferSize) throw new IOException();
+        final int n = mDelegate.read(mBuffer, mBufferPosition, Math.min(len, mBuffer.length - mBufferSize));
         if (n == -1) return -1;
-        System.arraycopy(buf, pos, b, off, n);
-        pos += n;
-        size += n;
+        System.arraycopy(mBuffer, mBufferPosition, b, off, n);
+        mBufferPosition += n;
+        mBufferSize += n;
         return n;
       }
     }
 
     @Override public int available() throws IOException {
-      if (reset) {
-        if (pos == size) {
-          return delegate.available();
+      if (mReset) {
+        if (mBufferPosition == mBufferSize) {
+          return mDelegate.available();
         }
         else {
-          return size - pos;
+          return mBufferSize - mBufferPosition;
         }
       }
       else {
-        return delegate.available();
+        return mDelegate.available();
       }
     }
 
     @Override public void close() throws IOException {
-      delegate.close();
+      mDelegate.close();
     }
 
     @Override public synchronized void mark(final int readlimit) {}
 
     @Override public synchronized void reset() throws IOException {
-      if (reset) throw new IOException();
-      pos = 0;
-      reset = true;
+      if (mReset) throw new IOException();
+      mBufferPosition = 0;
+      mReset = true;
     }
 
     @Override public boolean markSupported() {

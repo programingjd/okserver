@@ -1,5 +1,9 @@
 package info.jdavid.ok.server;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 class Logger {
 
   @SuppressWarnings("unused")
@@ -28,7 +32,14 @@ class Logger {
     }
   }
 
+  private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd-hh:mm:ss");
+
   static void log(final Throwable t) {
+    System.err.print('[');
+    System.err.print(DATE_FORMAT.format(new Date()));
+    System.err.print(']');
+    System.err.print(' ');
+    System.err.println(t.getMessage());
     t.printStackTrace();
   }
 
