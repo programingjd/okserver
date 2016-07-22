@@ -160,7 +160,7 @@ final class Handshake {
           case 0x000f: // heartbeat
             break;
 
-          case 0x00a0: // application_layer_protocol_negotiation (alpn)
+          case 0x0010: // application_layer_protocol_negotiation (alpn)
             if (extensionLength > 3) {
               final Buffer b = new Buffer();
               b.write(extension);
@@ -173,31 +173,31 @@ final class Handshake {
             }
             break;
 
-          case 0x00a1: // status_request_v2
+          case 0x0011: // status_request_v2
             break;
 
-          case 0x00a2: // signed_certificate_timestamp
+          case 0x0012: // signed_certificate_timestamp
             break;
 
-          case 0x00a3: // client_certificate_type
+          case 0x0013: // client_certificate_type
             break;
 
-          case 0x00a4: // server_certificate_type
+          case 0x0014: // server_certificate_type
             break;
 
-          case 0x00a5: // padding
+          case 0x0015: // padding
             break;
 
-          case 0x00a6: // encrypt_then_mac
+          case 0x0016: // encrypt_then_mac
             break;
 
-          case 0x00a7: // extended_master_secret
+          case 0x0017: // extended_master_secret
             break;
 
-          case 0x00a8: // token_binding
+          case 0x0018: // token_binding
             break;
 
-          case 0x00a9: // cached_info
+          case 0x0019: // cached_info
             break;
 
           case 0x0023: // SessionTicket TLS

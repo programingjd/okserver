@@ -77,7 +77,7 @@ public interface Dispatcher {
             try { Thread.sleep(60000L); } catch (final InterruptedException ignore) { break; }
             System.gc();
             final float used =
-              Math.round(((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().totalMemory()) / 1024f));
+              Math.round((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024f);
             log(used + "k");
           }
         }
