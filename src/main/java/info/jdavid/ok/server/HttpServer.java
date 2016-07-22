@@ -8,6 +8,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.log;
@@ -294,9 +295,7 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  final Handshake.HandshakeSocket socket = secureServerSocket.accept();
-                  final SSLSocket sslSocket = https.createSSLSocket(socket);
-                  dispatch(dispatcher, sslSocket, true);
+                  dispatch(dispatcher, secureServerSocket.accept(), true);
                 }
                 catch (final IOException e) {
                   if (secureServerSocket.isClosed()) {
@@ -330,7 +329,41 @@ public class HttpServer {
     private final boolean mSecure;
     private Request(final Socket socket, final boolean secure) { mSocket = socket; mSecure = secure; }
     public void serve() {
-      HttpServer.this.serve(mSocket, mSecure);
+      final Socket socket = mSocket;
+      if (mSecure) {
+        boolean http2 = false;
+        SSLSocket sslSocket = null;
+        try {
+          final Handshake handshake = Handshake.read(socket);
+          if (handshake != null) {
+            final Https https = mHttps;
+            final String hostname = handshake.hostname;
+            http2 = handshake.http2 && https.http2;
+            try {
+              sslSocket = https.createSSLSocket(socket, hostname, http2);
+            }
+            catch (final SSLHandshakeException e) {
+              log(handshake.getCipherSuites());
+              throw new IOException(e);
+            }
+          }
+        }
+        catch (final SocketTimeoutException ignore) {}
+        catch (final Exception e) {
+          log(e);
+        }
+        if (sslSocket != null) {
+          if (http2) {
+            HttpServer.this.serveHttp2(sslSocket);
+          }
+          else {
+            HttpServer.this.serveHttp1(sslSocket, true);
+          }
+        }
+      }
+      else {
+        HttpServer.this.serveHttp1(socket, false);
+      }
     }
   }
 
@@ -340,9 +373,19 @@ public class HttpServer {
     }
   }
 
-  private void serve(final Socket socket, final boolean secure) {
+  private void serveHttp1(final Socket socket, final boolean secure) {
     try {
       Http11.serve(socket, secure, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
+    }
+    catch (final SocketTimeoutException ignore) {}
+    catch (final Exception e) {
+      log(e);
+    }
+  }
+
+  private void serveHttp2(final SSLSocket socket) {
+    try {
+      Http2.serve(socket, mMaxRequestSize, mRequestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
@@ -354,7 +397,7 @@ public class HttpServer {
     SecureServerSocket(final int port, final InetAddress address) throws IOException {
       super(port, -1, address);
     }
-    @Override public Handshake.HandshakeSocket accept() throws IOException {
+    @Override public Socket accept() throws IOException {
       if (isClosed()) throw new SocketException("Socket is closed");
       if (!isBound()) throw new SocketException("Socket is not bound yet");
       final Handshake.HandshakeSocket s = new Handshake.HandshakeSocket();

@@ -1,43 +1,29 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.net.ssl.SSLHandshakeException;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 
 import static info.jdavid.ok.server.Logger.log;
 
 abstract class Platform {
 
   private static final String JAVA_SPEC_VERSION = Runtime.class.getPackage().getSpecificationVersion();
-  private static final Platform PLATFORM = findPlatform();
-
-  public static Platform get() {
-    return PLATFORM;
-  }
 
   abstract List<String> defaultProtocols();
 
   abstract List<String> defaultCipherSuites();
 
-  abstract Object createSSLSocketParameters(final Https https);
+  abstract boolean supportsHttp2();
 
-  abstract SSLSocket createSSLSocket(final Socket socket,
-                                     final Https https) throws IOException;
+  abstract void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException;
 
-
-  private static Platform findPlatform() {
+  static Platform findPlatform() {
     final Platform jdk9 = Jdk9Platform.buildIfSupported();
     if (jdk9 != null) return jdk9;
-//    final Platform jdkJettyBoot = JdkJettyBootPlatform.buildIfSupported();
-//    if (jdkJettyBoot != null) return jdkJettyBoot;
     final Platform jdk8 = Jdk8Platform.buildIfSupported();
     if (jdk8 != null) return jdk8;
     final Platform jdk7 = Jdk7Platform.buildIfSupported();
@@ -45,35 +31,6 @@ abstract class Platform {
     final Platform android = Android16Platform.buildIfSupported();
     if (android != null) return android;
     throw new RuntimeException("Unsupported platform.");
-  }
-
-  private static SSLParameters defaultCreateSSLSocketParameters(final Https https) {
-    final SSLParameters parameters = new SSLParameters();
-    parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
-    parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
-    return parameters;
-  }
-
-  private static SSLSocket defaultCreateSSLSocket(final Socket socket, final Https https) throws IOException {
-    if (https == null) return null;
-    final InputStream inputStream = socket.getInputStream();
-    if (!inputStream.markSupported()) throw new IOException();
-    inputStream.mark(4096);
-    final Handshake handshake = Handshake.read(inputStream);
-    final String hostname = handshake == null ? null : handshake.hostname;
-    inputStream.reset();
-    final SSLSocketFactory sslFactory = https.getContext(hostname).getSocketFactory();
-    final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
-    sslSocket.setUseClientMode(false);
-    sslSocket.setSSLParameters((SSLParameters)https.parameters);
-    try {
-      sslSocket.startHandshake();
-    }
-    catch (final SSLHandshakeException e) {
-      if (handshake != null)  { log(handshake.getCipherSuites()); }
-      throw new IOException(e);
-    }
-    return sslSocket;
   }
 
   private static class Jdk9Platform extends Platform {
@@ -104,76 +61,13 @@ abstract class Platform {
       );
     }
 
-    @Override Object createSSLSocketParameters(final Https https) {
-      return Platform.defaultCreateSSLSocketParameters(https);
-    }
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
 
-    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
-      return Platform.defaultCreateSSLSocket(socket, https);
+    @Override boolean supportsHttp2() {
+      return false;
     }
 
   }
-
-//  private static class JdkJettyBootPlatform extends Platform {
-//
-//    static Platform buildIfSupported() {
-//      try {
-//        Class.forName("org.eclipse.jetty.alpn.ALPN");
-//      }
-//      catch (final ClassNotFoundException ignore) {
-//        return null;
-//      }
-//      System.out.println("Jetty");
-//      return new JdkJettyBootPlatform();
-//    }
-//
-//    private JdkJettyBootPlatform() {
-//      super();
-//      log("Jetty Boot Platform");
-//    }
-//
-//    @Override List<String> defaultProtocols() {
-//      return Collections.singletonList("TLSv1.2");
-//    }
-//
-//    @Override List<String> defaultCipherSuites() {
-//      return Arrays.asList(
-//        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-//        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-//        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-//        "TLS_RSA_WITH_AES_128_GCM_SHA256",
-//        "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
-//        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-//        "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
-//      );
-//    }
-//
-//    @Override Object createSSLSocketParameters(final Https https) {
-//      final SSLParameters parameters = new SSLParameters();
-//      parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
-//      parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
-//      return parameters;
-//    }
-//
-//    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
-//      final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
-//      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
-//      sslSocket.setSSLParameters((SSLParameters)https.parameters);
-////      final org.eclipse.jetty.alpn.ALPN.ServerProvider provider =
-////        new org.eclipse.jetty.alpn.ALPN.ServerProvider() {
-////        @Override public void unsupported() {
-////          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
-////        }
-////        @Override public String select(final List<String> list) throws SSLException {
-////          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
-////          return list.contains("h2") ? "h2" : "http/1.1";
-////        }
-////      };
-////      org.eclipse.jetty.alpn.ALPN.put(sslSocket, provider);
-//      return sslSocket;
-//    }
-//
-//  }
 
   private static class Jdk8Platform extends Platform {
 
@@ -203,12 +97,10 @@ abstract class Platform {
       );
     }
 
-    @Override Object createSSLSocketParameters(final Https https) {
-      return Platform.defaultCreateSSLSocketParameters(https);
-    }
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
 
-    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
-      return Platform.defaultCreateSSLSocket(socket, https);
+    @Override boolean supportsHttp2() {
+      return false;
     }
 
   }
@@ -237,12 +129,10 @@ abstract class Platform {
       );
     }
 
-    @Override Object createSSLSocketParameters(final Https https) {
-      return Platform.defaultCreateSSLSocketParameters(https);
-    }
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
 
-    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
-      return Platform.defaultCreateSSLSocket(socket, https);
+    @Override boolean supportsHttp2() {
+      return false;
     }
 
   }
@@ -266,7 +156,7 @@ abstract class Platform {
     private Android16Platform(final int version) {
       super();
       log("Android Platform");
-      this.mVersion = version;
+      mVersion = version;
     }
 
     @Override List<String> defaultProtocols() {
@@ -294,12 +184,10 @@ abstract class Platform {
          );
     }
 
-    @Override Object createSSLSocketParameters(final Https https) {
-      throw new UnsupportedOperationException("Not implemented.");
-    }
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
 
-    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) {
-      throw new UnsupportedOperationException("Not implemented.");
+    @Override boolean supportsHttp2() {
+      return false;
     }
 
   }

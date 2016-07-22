@@ -44,176 +44,202 @@ final class Handshake {
   }
 
   @SuppressWarnings("unused")
-  static Handshake read(final InputStream inputStream) throws IOException {
-    final BufferedSource source = Okio.buffer(Okio.source(inputStream));
+  static Handshake read(final Socket socket) throws IOException {
+    final InputStream inputStream = socket.getInputStream();
+    if (!inputStream.markSupported()) throw new IOException();
+    inputStream.mark(4096);
+    try {
+      final BufferedSource source = Okio.buffer(Okio.source(inputStream));
 
-    int size = 0;
+      int size = 0;
 
-    final byte recordType = source.readByte(); ++size;
-    if (recordType != 0x16) return null; // handshake
+      final byte recordType = source.readByte();
+      ++size;
+      if (recordType != 0x16) return null; // handshake
 
-    final byte major = source.readByte(); ++size;
-    final byte minor = source.readByte(); ++size;
+      final byte major = source.readByte();
+      ++size;
+      final byte minor = source.readByte();
+      ++size;
 
-    final short recordLength = source.readShort(); size += 2;
+      final short recordLength = source.readShort();
+      size += 2;
 
-    final byte hello = source.readByte(); size += 2;
-    if (hello != 0x01) return null;
+      final byte hello = source.readByte();
+      size += 2;
+      if (hello != 0x01) return null;
 
-    final byte[] lengthBytes = source.readByteArray(3); size += 3;
-    final int handshakeLength = int24(lengthBytes);
-    if (handshakeLength < recordLength - 4) return null; // Handshake record is longer than TLS record
-    if (handshakeLength < 40) return null;
+      final byte[] lengthBytes = source.readByteArray(3);
+      size += 3;
+      final int handshakeLength = int24(lengthBytes);
+      if (handshakeLength < recordLength - 4) return null; // Handshake record is longer than TLS record
+      if (handshakeLength < 40) return null;
 
-    final byte helloMajor = source.readByte(); ++size;
-    final byte helloMinor = source.readByte(); ++size;
+      final byte helloMajor = source.readByte();
+      ++size;
+      final byte helloMinor = source.readByte();
+      ++size;
 
-    final byte[] random = source.readByteArray(32); size += 32;
+      final byte[] random = source.readByteArray(32);
+      size += 32;
 
-    final byte sessionIdLength = source.readByte(); size += 1;
-    final byte[] sessionId = source.readByteArray(sessionIdLength); size += sessionIdLength;
+      final byte sessionIdLength = source.readByte();
+      size += 1;
+      final byte[] sessionId = source.readByteArray(sessionIdLength);
+      size += sessionIdLength;
 
-    final short cipherSuitesLength = source.readShort(); size += 2;
-    final byte[] cipherSuites = source.readByteArray(cipherSuitesLength); size += cipherSuitesLength;
+      final short cipherSuitesLength = source.readShort();
+      size += 2;
+      final byte[] cipherSuites = source.readByteArray(cipherSuitesLength);
+      size += cipherSuitesLength;
 
-    final byte compressionMethodsLength = source.readByte(); size += 1;
-    final byte[] compressionMethods = source.readByteArray(compressionMethodsLength);
-    size += compressionMethodsLength;
+      final byte compressionMethodsLength = source.readByte();
+      size += 1;
+      final byte[] compressionMethods = source.readByteArray(compressionMethodsLength);
+      size += compressionMethodsLength;
 
-    final Handshake handshake = new Handshake(cipherSuites);
+      final Handshake handshake = new Handshake(cipherSuites);
 
-    if (size < handshakeLength + 9) {
+      if (size < handshakeLength + 9) {
 
-      final short extensionsLength = source.readShort(); size += 2;
-      int len = extensionsLength;
+        final short extensionsLength = source.readShort();
+        size += 2;
+        int len = extensionsLength;
 
-      while (len > 0) {
+        while (len > 0) {
 
-        final short extensionType = source.readShort(); size += 2;
-        final short extensionLength = source.readShort(); size += 2;
+          final short extensionType = source.readShort();
+          size += 2;
+          final short extensionLength = source.readShort();
+          size += 2;
 
-        final byte[] extension = source.readByteArray(extensionLength); size += extensionLength;
+          final byte[] extension = source.readByteArray(extensionLength);
+          size += extensionLength;
 
-        len -= extensionLength + 4;
+          len -= extensionLength + 4;
 
-        switch (extensionType) {
+          switch (extensionType) {
 
-          case 0x0000: // server_name RFC6066
-            if (extensionLength > 3) {
-              final Buffer b = new Buffer();
-              b.write(extension);
-              while (b.size() > 0) {
-                b.readShort(); // list_length, ignored since list always has one element.
-                final byte nameType = b.readByte();
-                final short nameLength = b.readShort();
-                final String name = b.readUtf8(nameLength);
-                if (nameType == 0x00) { // host_name
-                  handshake.hostname = name;
-                  break;
+            case 0x0000: // server_name RFC6066
+              if (extensionLength > 3) {
+                final Buffer b = new Buffer();
+                b.write(extension);
+                while (b.size() > 0) {
+                  b.readShort(); // list_length, ignored since list always has one element.
+                  final byte nameType = b.readByte();
+                  final short nameLength = b.readShort();
+                  final String name = b.readUtf8(nameLength);
+                  if (nameType == 0x00) { // host_name
+                    handshake.hostname = name;
+                    break;
+                  }
                 }
               }
-            }
-            break;
+              break;
 
-          case 0x0001: // max_fragment_length
-            break;
+            case 0x0001: // max_fragment_length
+              break;
 
-          case 0x0002: // client_certificate_url
-            break;
+            case 0x0002: // client_certificate_url
+              break;
 
-          case 0x0003: // trusted_ca_keys
-            break;
+            case 0x0003: // trusted_ca_keys
+              break;
 
-          case 0x0004: // truncated_hmac
-            break;
+            case 0x0004: // truncated_hmac
+              break;
 
-          case 0x0005: // status_request
-            break;
+            case 0x0005: // status_request
+              break;
 
-          case 0x0006: // user_mapping
-            break;
+            case 0x0006: // user_mapping
+              break;
 
-          case 0x0007: // client_authz
-            break;
+            case 0x0007: // client_authz
+              break;
 
-          case 0x0008: // server_authz
-            break;
+            case 0x0008: // server_authz
+              break;
 
-          case 0x0009: // cert_type
-            break;
+            case 0x0009: // cert_type
+              break;
 
-          case 0x000a: // supported_groups (elliptic_curves)
-            break;
+            case 0x000a: // supported_groups (elliptic_curves)
+              break;
 
-          case 0x000b: // ec_point_formats
-            break;
+            case 0x000b: // ec_point_formats
+              break;
 
-          case 0x000c: // srp
-            break;
+            case 0x000c: // srp
+              break;
 
-          case 0x000d: // signature_algorithms
-            break;
+            case 0x000d: // signature_algorithms
+              break;
 
-          case 0x000e: // use_srtp
-            break;
+            case 0x000e: // use_srtp
+              break;
 
-          case 0x000f: // heartbeat
-            break;
+            case 0x000f: // heartbeat
+              break;
 
-          case 0x0010: // application_layer_protocol_negotiation (alpn)
-            if (extensionLength > 3) {
-              final Buffer b = new Buffer();
-              b.write(extension);
-              b.readShort(); // list_length, ignored
-              while (b.size() > 0) {
-                final short protocolNameLength = b.readByte();
-                final String protocolName = b.readUtf8(protocolNameLength);
-                if ("h2".equals(protocolName)) handshake.http2 = true;
+            case 0x0010: // application_layer_protocol_negotiation (alpn)
+              if (extensionLength > 3) {
+                final Buffer b = new Buffer();
+                b.write(extension);
+                b.readShort(); // list_length, ignored
+                while (b.size() > 0) {
+                  final short protocolNameLength = b.readByte();
+                  final String protocolName = b.readUtf8(protocolNameLength);
+                  if ("h2".equals(protocolName)) handshake.http2 = true;
+                }
               }
-            }
-            break;
+              break;
 
-          case 0x0011: // status_request_v2
-            break;
+            case 0x0011: // status_request_v2
+              break;
 
-          case 0x0012: // signed_certificate_timestamp
-            break;
+            case 0x0012: // signed_certificate_timestamp
+              break;
 
-          case 0x0013: // client_certificate_type
-            break;
+            case 0x0013: // client_certificate_type
+              break;
 
-          case 0x0014: // server_certificate_type
-            break;
+            case 0x0014: // server_certificate_type
+              break;
 
-          case 0x0015: // padding
-            break;
+            case 0x0015: // padding
+              break;
 
-          case 0x0016: // encrypt_then_mac
-            break;
+            case 0x0016: // encrypt_then_mac
+              break;
 
-          case 0x0017: // extended_master_secret
-            break;
+            case 0x0017: // extended_master_secret
+              break;
 
-          case 0x0018: // token_binding
-            break;
+            case 0x0018: // token_binding
+              break;
 
-          case 0x0019: // cached_info
-            break;
+            case 0x0019: // cached_info
+              break;
 
-          case 0x0023: // SessionTicket TLS
-            break;
+            case 0x0023: // SessionTicket TLS
+              break;
 
-          case -0xff: // renegotiation_info
-            break;
+            case -0xff: // renegotiation_info
+              break;
 
-          default:
-            break;
+            default:
+              break;
 
+          }
         }
       }
-    }
 
-    return handshake;
+      return handshake;
+    }
+    finally {
+      inputStream.reset();
+    }
   }
 
   static class HandshakeSocket extends Socket {
