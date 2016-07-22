@@ -30,7 +30,7 @@ public class SSEWithEventSourceTest {
     return new Request.Builder().url(url.build());
   }
 
-  private static OkHttpClient client = new OkHttpClient();
+  private static final OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
     return client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build();

@@ -35,7 +35,7 @@ public interface Dispatcher {
    */
   public static class Default implements Dispatcher {
     private ExecutorService mExecutors = null;
-    private AtomicBoolean mShutdown = new AtomicBoolean();
+    private final AtomicBoolean mShutdown = new AtomicBoolean();
     @Override public void start() {
       mShutdown.set(false);
       mExecutors = Executors.newCachedThreadPool(); }

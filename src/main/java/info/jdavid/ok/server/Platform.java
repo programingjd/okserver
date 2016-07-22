@@ -1,6 +1,8 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -21,14 +23,14 @@ abstract class Platform {
     return PLATFORM;
   }
 
-  public abstract List<String> defaultProtocols();
+  abstract List<String> defaultProtocols();
 
-  public abstract List<String> defaultCipherSuites();
+  abstract List<String> defaultCipherSuites();
 
-  public abstract Object createSSLSocketParameters(final Https https);
+  abstract Object createSSLSocketParameters(final Https https);
 
-  public abstract SSLSocket createSSLSocket(final SecureSocket socket,
-                                            final Https https) throws IOException;
+  abstract SSLSocket createSSLSocket(final Socket socket,
+                                     final Https https) throws IOException;
 
 
   private static Platform findPlatform() {
@@ -52,10 +54,11 @@ abstract class Platform {
     return parameters;
   }
 
-  private static SSLSocket defaultCreateSSLSocket(final SecureSocket socket,
-                                                  final Https https) throws IOException {
+  private static SSLSocket defaultCreateSSLSocket(final Socket socket, final Https https) throws IOException {
     if (https == null) return null;
-    final SecureSocket.ReplayableInputStream inputStream = socket.getInputStream();
+    final InputStream inputStream = socket.getInputStream();
+    if (!inputStream.markSupported()) throw new IOException();
+    inputStream.mark(4096);
     final Handshake handshake = Handshake.read(inputStream);
     final String hostname = handshake == null ? null : handshake.hostname;
     inputStream.reset();
@@ -84,11 +87,11 @@ abstract class Platform {
       log("JDK9 Platform");
     }
 
-    @Override public List<String> defaultProtocols() {
+    @Override List<String> defaultProtocols() {
       return Collections.singletonList("TLSv1.2");
     }
 
-    @Override public List<String> defaultCipherSuites() {
+    @Override List<String> defaultCipherSuites() {
       return Arrays.asList(
         "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
@@ -101,78 +104,76 @@ abstract class Platform {
       );
     }
 
-    @Override public Object createSSLSocketParameters(final Https https) {
+    @Override Object createSSLSocketParameters(final Https https) {
       return Platform.defaultCreateSSLSocketParameters(https);
     }
 
-    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
-                                               final Https https) throws IOException {
+    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
       return Platform.defaultCreateSSLSocket(socket, https);
     }
 
   }
 
-  private static class JdkJettyBootPlatform extends Platform {
-
-    static Platform buildIfSupported() {
-      try {
-        Class.forName("org.eclipse.jetty.alpn.ALPN");
-      }
-      catch (final ClassNotFoundException ignore) {
-        return null;
-      }
-      System.out.println("Jetty");
-      return new JdkJettyBootPlatform();
-    }
-
-    private JdkJettyBootPlatform() {
-      super();
-      log("Jetty Boot Platform");
-    }
-
-    @Override public List<String> defaultProtocols() {
-      return Collections.singletonList("TLSv1.2");
-    }
-
-    @Override public List<String> defaultCipherSuites() {
-      return Arrays.asList(
-        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
-        "TLS_RSA_WITH_AES_128_GCM_SHA256",
-        "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
-        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-        "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
-      );
-    }
-
-    @Override public Object createSSLSocketParameters(final Https https) {
-      final SSLParameters parameters = new SSLParameters();
-      parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
-      parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
-      return parameters;
-    }
-
-    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
-                                               final Https https) throws IOException {
-      final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
-      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
-      sslSocket.setSSLParameters((SSLParameters)https.parameters);
-//      final org.eclipse.jetty.alpn.ALPN.ServerProvider provider =
-//        new org.eclipse.jetty.alpn.ALPN.ServerProvider() {
-//        @Override public void unsupported() {
-//          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
-//        }
-//        @Override public String select(final List<String> list) throws SSLException {
-//          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
-//          return list.contains("h2") ? "h2" : "http/1.1";
-//        }
-//      };
-//      org.eclipse.jetty.alpn.ALPN.put(sslSocket, provider);
-      return sslSocket;
-    }
-
-  }
+//  private static class JdkJettyBootPlatform extends Platform {
+//
+//    static Platform buildIfSupported() {
+//      try {
+//        Class.forName("org.eclipse.jetty.alpn.ALPN");
+//      }
+//      catch (final ClassNotFoundException ignore) {
+//        return null;
+//      }
+//      System.out.println("Jetty");
+//      return new JdkJettyBootPlatform();
+//    }
+//
+//    private JdkJettyBootPlatform() {
+//      super();
+//      log("Jetty Boot Platform");
+//    }
+//
+//    @Override List<String> defaultProtocols() {
+//      return Collections.singletonList("TLSv1.2");
+//    }
+//
+//    @Override List<String> defaultCipherSuites() {
+//      return Arrays.asList(
+//        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+//        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+//        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", // NOT FOR JDK 7
+//        "TLS_RSA_WITH_AES_128_GCM_SHA256",
+//        "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+//        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+//        "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
+//      );
+//    }
+//
+//    @Override Object createSSLSocketParameters(final Https https) {
+//      final SSLParameters parameters = new SSLParameters();
+//      parameters.setProtocols(https.protocols.toArray(new String[https.protocols.size()]));
+//      parameters.setCipherSuites(https.cipherSuites.toArray(new String[https.cipherSuites.size()]));
+//      return parameters;
+//    }
+//
+//    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
+//      final SSLSocketFactory sslFactory = https.getContext(null).getSocketFactory();
+//      final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
+//      sslSocket.setSSLParameters((SSLParameters)https.parameters);
+////      final org.eclipse.jetty.alpn.ALPN.ServerProvider provider =
+////        new org.eclipse.jetty.alpn.ALPN.ServerProvider() {
+////        @Override public void unsupported() {
+////          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
+////        }
+////        @Override public String select(final List<String> list) throws SSLException {
+////          org.eclipse.jetty.alpn.ALPN.remove(sslSocket);
+////          return list.contains("h2") ? "h2" : "http/1.1";
+////        }
+////      };
+////      org.eclipse.jetty.alpn.ALPN.put(sslSocket, provider);
+//      return sslSocket;
+//    }
+//
+//  }
 
   private static class Jdk8Platform extends Platform {
 
@@ -185,11 +186,11 @@ abstract class Platform {
       log("JDK8 Platform");
     }
 
-    @Override public List<String> defaultProtocols() {
+    @Override List<String> defaultProtocols() {
       return Collections.singletonList("TLSv1.2");
     }
 
-    @Override public List<String> defaultCipherSuites() {
+    @Override List<String> defaultCipherSuites() {
       return Arrays.asList(
         "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
@@ -202,12 +203,11 @@ abstract class Platform {
       );
     }
 
-    @Override public Object createSSLSocketParameters(final Https https) {
+    @Override Object createSSLSocketParameters(final Https https) {
       return Platform.defaultCreateSSLSocketParameters(https);
     }
 
-    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
-                                               final Https https) throws IOException {
+    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
       return Platform.defaultCreateSSLSocket(socket, https);
     }
 
@@ -224,11 +224,11 @@ abstract class Platform {
       log("JDK7 Platform");
     }
 
-    @Override public List<String> defaultProtocols() {
+    @Override List<String> defaultProtocols() {
       return Collections.singletonList("TLSv1.2");
     }
 
-    @Override public List<String> defaultCipherSuites() {
+    @Override List<String> defaultCipherSuites() {
       return Arrays.asList(
         "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
@@ -237,12 +237,11 @@ abstract class Platform {
       );
     }
 
-    @Override public Object createSSLSocketParameters(final Https https) {
+    @Override Object createSSLSocketParameters(final Https https) {
       return Platform.defaultCreateSSLSocketParameters(https);
     }
 
-    @Override public SSLSocket createSSLSocket(final SecureSocket socket,
-                                               final Https https) throws IOException {
+    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) throws IOException {
       return Platform.defaultCreateSSLSocket(socket, https);
     }
 
@@ -270,11 +269,11 @@ abstract class Platform {
       this.mVersion = version;
     }
 
-    @Override public List<String> defaultProtocols() {
+    @Override List<String> defaultProtocols() {
       return Collections.singletonList("TLSv1.2");
     }
 
-    @Override public List<String> defaultCipherSuites() {
+    @Override List<String> defaultCipherSuites() {
       return mVersion < 20 ?
              Arrays.asList(
            "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
@@ -295,11 +294,11 @@ abstract class Platform {
          );
     }
 
-    @Override public Object createSSLSocketParameters(final Https https) {
+    @Override Object createSSLSocketParameters(final Https https) {
       throw new UnsupportedOperationException("Not implemented.");
     }
 
-    @Override public SSLSocket createSSLSocket(final SecureSocket socket, final Https https) {
+    @Override SSLSocket createSSLSocket(final Socket socket, final Https https) {
       throw new UnsupportedOperationException("Not implemented.");
     }
 

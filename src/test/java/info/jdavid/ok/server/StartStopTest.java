@@ -9,8 +9,6 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
 
 import static org.junit.Assert.*;
 
@@ -27,7 +25,7 @@ public class StartStopTest {
   }
 
 
-  private static OkHttpClient client = new OkHttpClient();
+  private static final OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
     return client.newBuilder().

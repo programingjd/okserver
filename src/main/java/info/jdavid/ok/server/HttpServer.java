@@ -294,7 +294,7 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  final SecureSocket socket = secureServerSocket.accept();
+                  final Handshake.HandshakeSocket socket = secureServerSocket.accept();
                   final SSLSocket sslSocket = https.createSSLSocket(socket);
                   dispatch(dispatcher, sslSocket, true);
                 }
@@ -354,10 +354,10 @@ public class HttpServer {
     SecureServerSocket(final int port, final InetAddress address) throws IOException {
       super(port, -1, address);
     }
-    @Override public SecureSocket accept() throws IOException {
+    @Override public Handshake.HandshakeSocket accept() throws IOException {
       if (isClosed()) throw new SocketException("Socket is closed");
       if (!isBound()) throw new SocketException("Socket is not bound yet");
-      final SecureSocket s = new SecureSocket();
+      final Handshake.HandshakeSocket s = new Handshake.HandshakeSocket();
       implAccept(s);
       return s;
     }

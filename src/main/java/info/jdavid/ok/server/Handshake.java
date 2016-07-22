@@ -2,6 +2,8 @@ package info.jdavid.ok.server;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Socket;
+import java.net.SocketImpl;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,18 +13,15 @@ import okio.Buffer;
 import okio.BufferedSource;
 import okio.Okio;
 
+
 final class Handshake {
 
-  private final byte[] mSessionId;
   private final byte[] mCipherSuites;
-  private final byte[] mCompressionMethods;
   String hostname = null;
   boolean http2 = false;
 
-  private Handshake(final byte[] sessionId, final byte[] cipherSuites, final byte[] compressionMethods) {
-    mSessionId = sessionId;
+  private Handshake(final byte[] cipherSuites) {
     mCipherSuites = cipherSuites;
-    mCompressionMethods = compressionMethods;
   }
 
   String[] getCipherSuites() {
@@ -38,12 +37,13 @@ final class Handshake {
     return list.toArray(new String[list.size()]);
   }
 
-  static Map<Short, String> cipherSuites = createCipherSuitesMap();
+  private static final Map<Short, String> cipherSuites = createCipherSuitesMap();
 
   private static int int24(final byte[] bytes) {
     return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
   }
 
+  @SuppressWarnings("unused")
   static Handshake read(final InputStream inputStream) throws IOException {
     final BufferedSource source = Okio.buffer(Okio.source(inputStream));
 
@@ -80,7 +80,7 @@ final class Handshake {
     final byte[] compressionMethods = source.readByteArray(compressionMethodsLength);
     size += compressionMethodsLength;
 
-    final Handshake handshake = new Handshake(sessionId, cipherSuites, compressionMethods);
+    final Handshake handshake = new Handshake(cipherSuites);
 
     if (size < handshakeLength + 9) {
 
@@ -216,7 +216,117 @@ final class Handshake {
     return handshake;
   }
 
+  static class HandshakeSocket extends Socket {
 
+    private InputStream mBuffered = null;
+
+    HandshakeSocket() throws IOException {
+      super((SocketImpl)null);
+    }
+
+    @Override public InputStream getInputStream() throws IOException {
+      return mBuffered == null ? mBuffered = new InputStream(super.getInputStream()) : mBuffered;
+    }
+
+    @Override
+    public synchronized void close() throws IOException {
+      mBuffered = null;
+      super.close();
+    }
+
+    static class InputStream extends java.io.InputStream {
+
+      private final java.io.InputStream mDelegate;
+      private final byte mBuffer[] = new byte[4096];
+      private int mBufferPosition = 0;
+      private int mBufferSize = 0;
+      private boolean mReset = false;
+
+      InputStream(final java.io.InputStream inputStream) {
+        super();
+        this.mDelegate = inputStream;
+      }
+
+      @Override public int read() throws IOException {
+        if (mReset) {
+          if (mBufferPosition == mBufferSize) {
+            return mDelegate.read();
+          }
+          else {
+            return mBuffer[mBufferPosition++] & 0xff;
+          }
+        }
+        else {
+          if (mBuffer.length == mBufferSize) throw new IOException();
+          final int n = mDelegate.read(mBuffer, mBufferSize, 1);
+          if (n == -1) return -1;
+          final byte b = mBuffer[mBufferPosition];
+          mBufferPosition += n;
+          mBufferSize += n;
+          return b & 0xff;
+        }
+      }
+
+      @Override public int read(final byte[] b) throws IOException {
+        return read(b, 0, b.length);
+      }
+
+      @Override public int read(final byte[] b, final int off, final int len) throws IOException {
+        if (mReset) {
+          if (mBufferPosition == mBufferSize) {
+            return mDelegate.read(b, off, len);
+          }
+          else {
+            final int n = Math.min(len, mBuffer.length - mBufferSize);
+            System.arraycopy(mBuffer, mBufferPosition, b, off, n);
+            mBufferPosition += n;
+            return n;
+          }
+        }
+        else {
+          if (mBuffer.length == mBufferSize) throw new IOException();
+          final int n = mDelegate.read(mBuffer, mBufferPosition, Math.min(len, mBuffer.length - mBufferSize));
+          if (n == -1) return -1;
+          System.arraycopy(mBuffer, mBufferPosition, b, off, n);
+          mBufferPosition += n;
+          mBufferSize += n;
+          return n;
+        }
+      }
+
+      @Override public int available() throws IOException {
+        if (mReset) {
+          if (mBufferPosition == mBufferSize) {
+            return mDelegate.available();
+          }
+          else {
+            return mBufferSize - mBufferPosition;
+          }
+        }
+        else {
+          return mDelegate.available();
+        }
+      }
+
+      @Override public void close() throws IOException {
+        mDelegate.close();
+      }
+
+      @Override public synchronized void mark(final int readlimit) {}
+
+      @Override public synchronized void reset() throws IOException {
+        if (mReset) throw new IOException();
+        mBufferPosition = 0;
+        mReset = true;
+      }
+
+      @Override public boolean markSupported() {
+        return true;
+      }
+
+    }
+
+  }
 
   private static Map<Short, String> createCipherSuitesMap() {
     // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml

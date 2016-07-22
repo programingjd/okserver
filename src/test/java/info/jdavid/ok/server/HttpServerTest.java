@@ -35,7 +35,7 @@ public class HttpServerTest {
     return new Request.Builder().url(url.build());
   }
 
-  private static OkHttpClient client = new OkHttpClient();
+  private static final OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
     return client.
