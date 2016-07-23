@@ -17,6 +17,7 @@ import java.util.Map;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import static info.jdavid.ok.server.Logger.log;
@@ -32,22 +33,35 @@ public final class Https {
 
   private final SSLContext mContext;
   private final Map<String, SSLContext> mAdditionalContexts;
-  final List<String> protocols;
-  final List<String> cipherSuites;
-  final Object parameters;
+  private final Platform mPlatform;
+  final String[] protocols;
+  final String[] cipherSuites;
+  final boolean http2;
 
   private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
                 final List<String> protocols, final List<String> cipherSuites) {
-    mContext = createSSLContext(cert);
-    mAdditionalContexts = new HashMap<String, SSLContext>(additionalCerts.size());
-    for (final Map.Entry<String, byte[]> entry: additionalCerts.entrySet()) {
-      final SSLContext additionalContext = createSSLContext(entry.getValue());
-      if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
+    if (cert == null && additionalCerts == null && protocols == null && cipherSuites == null) {
+      mContext = null;
+      mAdditionalContexts = null;
+      mPlatform = null;
+      this.protocols = null;
+      this.cipherSuites = null;
+      http2 = false;
     }
-    final Platform platform = Platform.get();
-    this.protocols = protocols == null ? platform.defaultProtocols() : protocols;
-    this.cipherSuites = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
-    this.parameters = this.protocols.isEmpty() ? null : Platform.get().createSSLSocketParameters(this);
+    else {
+      mContext = createSSLContext(cert);
+      final Platform platform = mPlatform = Platform.findPlatform();
+      mAdditionalContexts = new HashMap<String, SSLContext>(additionalCerts.size());
+      for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
+        final SSLContext additionalContext = createSSLContext(entry.getValue());
+        if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
+      }
+      final List<String> protos = protocols == null ? platform.defaultProtocols() : protocols;
+      this.protocols = protos.toArray(new String[protos.size()]);
+      final List<String> ciphers = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
+      this.cipherSuites = ciphers.toArray(new String[ciphers.size()]);
+      this.http2 = platform.supportsHttp2();
+    }
   }
 
   SSLContext getContext(final String host) {
@@ -56,8 +70,16 @@ public final class Https {
     return additionalContext == null ? mContext : additionalContext;
   }
 
-  SSLSocket createSSLSocket(final Socket socket) throws IOException {
-    return Platform.get().createSSLSocket(socket, this);
+  SSLSocket createSSLSocket(final Socket socket,
+                            final String hostname, final boolean http2) throws IOException {
+    final SSLSocketFactory sslFactory = getContext(hostname).getSocketFactory();
+    final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
+    sslSocket.setUseClientMode(false);
+    sslSocket.setEnabledProtocols(protocols);
+    sslSocket.setEnabledCipherSuites(cipherSuites);
+    mPlatform.setupSSLSocket(sslSocket, http2);
+    sslSocket.startHandshake();
+    return sslSocket;
   }
 
   private static SSLContext createSSLContext(final byte[] certificate) {
@@ -98,8 +120,7 @@ public final class Https {
    * Instance used for servers that don't use HTTPS.
    */
   public static final Https DISABLED =
-    new Https(null, Collections.<String, byte[]>emptyMap(),
-              Collections.<String>emptyList(), Collections.<String>emptyList());
+    new Https(null, null, null, null);
 
   @SuppressWarnings({ "WeakerAccess", "unused" })
   public enum Protocol {

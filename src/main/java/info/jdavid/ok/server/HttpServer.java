@@ -270,7 +270,6 @@ public class HttpServer {
               }
               catch (final IOException e) {
                 if (serverSocket.isClosed()) {
-                  log("Server socket is closed.");
                   break;
                 }
                 log(e);
@@ -299,7 +298,6 @@ public class HttpServer {
                 }
                 catch (final IOException e) {
                   if (secureServerSocket.isClosed()) {
-                    log("Server socket is closed.");
                     break;
                   }
                   log(e);
