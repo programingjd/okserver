@@ -113,8 +113,7 @@ public abstract class Response {
     return body;
   }
 
-  abstract void writeBody(final BufferedSource in, final BufferedSink out,
-                          final Socket socket) throws IOException;
+  abstract void writeBody(final BufferedSource in, final BufferedSink out) throws IOException;
 
   @Override public String toString() {
     return "Response{protocol="
@@ -654,21 +653,20 @@ public abstract class Response {
     }
 
     @Override
-    void writeBody(final BufferedSource in, final BufferedSink out, final Socket socket) throws IOException {
+    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
       out.writeUtf8("retry: " + mRetrySecs + "\n").flush();
-      mEventSource.connect(new Body(in, out, socket));
+      mEventSource.connect(new Body(in, out));
     }
 
     public final class Body extends ResponseBody {
 
       private final BufferedSource in;
       private final BufferedSink out;
-      private final Socket socket;
+      private boolean mClosed = false;
 
-      private Body(final BufferedSource in, final BufferedSink out, final Socket socket) {
+      private Body(final BufferedSource in, final BufferedSink out) {
         this.in = in;
         this.out = out;
-        this.socket = socket;
       }
       @Override public MediaType contentType() { return MediaTypes.SSE; }
       @Override public long contentLength() { return -1; }
@@ -692,9 +690,10 @@ public abstract class Response {
        * Stops the SSE stream.
        */
       public void stop() {
-        try { in.close(); } catch (final IOException ignore) {}
+        mClosed = true;
+        try { if (in != null) in.close(); } catch (final IOException ignore) {}
         try { out.close(); } catch (final IOException ignore) {}
-        try { socket.close(); } catch (final IOException ignore) {}
+        //try { if (socket != null) socket.close(); } catch (final IOException ignore) {}
       }
 
       /**
@@ -702,7 +701,7 @@ public abstract class Response {
        * @return true if the stream has been stopped, false if it is still running.
        */
       public boolean isStopped() {
-        return socket.isClosed();
+        return mClosed; // || (socket != null && socket.isClosed());
       }
 
     }
@@ -714,7 +713,7 @@ public abstract class Response {
       super(builder);
     }
     @Override
-    void writeBody(final BufferedSource in, final BufferedSink out, final Socket socket) throws IOException {
+    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
       try {
         final ResponseBody data = body();
         if (data != null) {

@@ -330,12 +330,13 @@ public class HttpServer {
       final Socket socket = mSocket;
       if (mSecure) {
         boolean http2 = false;
+        String hostname = null;
         SSLSocket sslSocket = null;
         try {
           final Handshake handshake = Handshake.read(socket);
           if (handshake != null) {
             final Https https = mHttps;
-            final String hostname = handshake.hostname;
+            hostname = handshake.hostname;
             http2 = handshake.http2 && https.http2;
             try {
               sslSocket = https.createSSLSocket(socket, hostname, http2);
@@ -350,9 +351,23 @@ public class HttpServer {
         catch (final Exception e) {
           log(e);
         }
-        if (sslSocket != null) {
+        if (sslSocket == null) {
+          try {
+            socket.close();
+          }
+          catch (final IOException ignore) {}
+        }
+        else {
           if (http2) {
-            HttpServer.this.serveHttp2(sslSocket);
+            if (hostname == null) {
+              if (mHostname == null) {
+                hostname = "localhost";
+              }
+              else {
+                hostname = mHostname;
+              }
+            }
+            HttpServer.this.serveHttp2(sslSocket, hostname);
           }
           else {
             HttpServer.this.serveHttp1(sslSocket, true);
@@ -381,9 +396,9 @@ public class HttpServer {
     }
   }
 
-  private void serveHttp2(final SSLSocket socket) {
+  private void serveHttp2(final SSLSocket socket, final String hostname) {
     try {
-      Http2.serve(socket, mMaxRequestSize, mRequestHandler);
+      Http2.serve(socket, hostname, mMaxRequestSize, mRequestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {

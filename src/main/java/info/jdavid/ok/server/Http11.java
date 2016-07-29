@@ -164,7 +164,7 @@ class Http11 {
         out.writeUtf8("\r\n");
         out.flush();
 
-        r.writeBody(in, out, socket);
+        r.writeBody(in, out);
       }
     }
     catch (final SocketTimeoutException ignore) {}

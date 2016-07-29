@@ -1,10 +1,12 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.log;
@@ -33,15 +35,36 @@ abstract class Platform {
     throw new RuntimeException("Unsupported platform.");
   }
 
+  private static Method findSetApplicationProtocolsMethod() {
+    try {
+      return SSLParameters.class.getDeclaredMethod("setApplicationProtocols", String[].class);
+    }
+    catch (final NoSuchMethodException e) {
+      return null;
+    }
+  }
+
+  private static final String[] protocols = new String[] { "h2", "http/1.1" };
+
+  private static void setHttp2Protocol(final SSLParameters p, final Method m) {
+    try {
+      m.invoke(p, (Object)protocols);
+    }
+    catch (final Exception ignore) {}
+  }
+
   private static class Jdk9Platform extends Platform {
 
     static Platform buildIfSupported() {
       return JAVA_SPEC_VERSION.startsWith("1.9") ? new Jdk9Platform() : null;
     }
 
+    private final Method mSetApplicationProtocols;
+
     private Jdk9Platform() {
       super();
       log("JDK9 Platform");
+      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
     }
 
     @Override List<String> defaultProtocols() {
@@ -61,10 +84,14 @@ abstract class Platform {
       );
     }
 
-    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
+      final SSLParameters parameters = socket.getSSLParameters();
+      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
+      socket.setSSLParameters(parameters);
+    }
 
     @Override boolean supportsHttp2() {
-      return false;
+      return true;
     }
 
   }
@@ -75,9 +102,12 @@ abstract class Platform {
       return JAVA_SPEC_VERSION.startsWith("1.8") ? new Jdk8Platform() : null;
     }
 
+    private final Method mSetApplicationProtocols;
+
     private Jdk8Platform() {
       super();
       log("JDK8 Platform");
+      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
     }
 
     @Override List<String> defaultProtocols() {
@@ -97,10 +127,14 @@ abstract class Platform {
       );
     }
 
-    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
+      final SSLParameters parameters = socket.getSSLParameters();
+      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
+      socket.setSSLParameters(parameters);
+    }
 
     @Override boolean supportsHttp2() {
-      return false;
+      return mSetApplicationProtocols != null;
     }
 
   }
@@ -111,9 +145,12 @@ abstract class Platform {
       return JAVA_SPEC_VERSION.startsWith("1.7") ? new Jdk8Platform() : null;
     }
 
+    private final Method mSetApplicationProtocols;
+
     private Jdk7Platform() {
       super();
       log("JDK7 Platform");
+      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
     }
 
     @Override List<String> defaultProtocols() {
@@ -129,10 +166,14 @@ abstract class Platform {
       );
     }
 
-    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {}
+    @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
+      final SSLParameters parameters = socket.getSSLParameters();
+      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
+      socket.setSSLParameters(parameters);
+    }
 
     @Override boolean supportsHttp2() {
-      return false;
+      return mSetApplicationProtocols != null;
     }
 
   }
@@ -141,14 +182,14 @@ abstract class Platform {
 
     static Platform buildIfSupported() {
       try {
-        Class.forName("android.os.Build");
+        final int version =
+          Class.forName("android.os.Build$VERSION").getDeclaredField("SDK_INT").getInt(null);
+        //noinspection ConstantConditions
+        return version < 16 ? null : new Android16Platform(version);
       }
-      catch (final ClassNotFoundException ignore) {
+      catch (final Exception ignore) {
         return null;
       }
-      final int version = android.os.Build.VERSION.SDK_INT;
-      //noinspection ConstantConditions
-      return version < 16 ? null : new Android16Platform(version);
     }
 
     private final int mVersion;
