@@ -1,7 +1,7 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -35,22 +35,24 @@ abstract class Platform {
     throw new RuntimeException("Unsupported platform.");
   }
 
-  private static Method findSetApplicationProtocolsMethod() {
+  private static Field findApplicationProtocolsField() {
     try {
-      return SSLParameters.class.getDeclaredMethod("setApplicationProtocols", String[].class);
+      return SSLParameters.class.getDeclaredField("applicationProtocols");
     }
-    catch (final NoSuchMethodException e) {
+    catch (final NoSuchFieldException e) {
       return null;
     }
   }
 
   private static final String[] protocols = new String[] { "h2", "http/1.1" };
 
-  private static void setHttp2Protocol(final SSLParameters p, final Method m) {
+  private static void setHttp2Protocol(final SSLSocket socket, final Field field) {
     try {
-      m.invoke(p, (Object)protocols);
+      field.set(socket, protocols);
     }
-    catch (final Exception ignore) {}
+    catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private static class Jdk9Platform extends Platform {
@@ -59,12 +61,12 @@ abstract class Platform {
       return JAVA_SPEC_VERSION.startsWith("1.9") ? new Jdk9Platform() : null;
     }
 
-    private final Method mSetApplicationProtocols;
+    private final Field mApplicationProtocols;
 
     private Jdk9Platform() {
       super();
       log("JDK9 Platform");
-      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
+      mApplicationProtocols = findApplicationProtocolsField();
     }
 
     @Override List<String> defaultProtocols() {
@@ -86,7 +88,7 @@ abstract class Platform {
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
       final SSLParameters parameters = socket.getSSLParameters();
-      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
+      Platform.setHttp2Protocol(socket, mApplicationProtocols);
       socket.setSSLParameters(parameters);
     }
 
@@ -102,12 +104,12 @@ abstract class Platform {
       return JAVA_SPEC_VERSION.startsWith("1.8") ? new Jdk8Platform() : null;
     }
 
-    private final Method mSetApplicationProtocols;
+    private final Field mApplicationProtocols;
 
     private Jdk8Platform() {
       super();
       log("JDK8 Platform");
-      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
+      mApplicationProtocols = findApplicationProtocolsField();
     }
 
     @Override List<String> defaultProtocols() {
@@ -129,12 +131,12 @@ abstract class Platform {
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
       final SSLParameters parameters = socket.getSSLParameters();
-      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
+      Platform.setHttp2Protocol(socket, mApplicationProtocols);
       socket.setSSLParameters(parameters);
     }
 
     @Override boolean supportsHttp2() {
-      return mSetApplicationProtocols != null;
+      return mApplicationProtocols != null;
     }
 
   }
@@ -145,12 +147,12 @@ abstract class Platform {
       return JAVA_SPEC_VERSION.startsWith("1.7") ? new Jdk8Platform() : null;
     }
 
-    private final Method mSetApplicationProtocols;
+    private final Field mApplicationProtocols;
 
     private Jdk7Platform() {
       super();
       log("JDK7 Platform");
-      mSetApplicationProtocols = findSetApplicationProtocolsMethod();
+      mApplicationProtocols = findApplicationProtocolsField();
     }
 
     @Override List<String> defaultProtocols() {
@@ -167,13 +169,11 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      final SSLParameters parameters = socket.getSSLParameters();
-      Platform.setHttp2Protocol(parameters, mSetApplicationProtocols);
-      socket.setSSLParameters(parameters);
+      Platform.setHttp2Protocol(socket, mApplicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
-      return mSetApplicationProtocols != null;
+      return mApplicationProtocols != null;
     }
 
   }

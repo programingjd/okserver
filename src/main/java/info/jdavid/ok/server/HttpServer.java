@@ -398,7 +398,7 @@ public class HttpServer {
 
   private void serveHttp2(final SSLSocket socket, final String hostname) {
     try {
-      Http2.serve(socket, hostname, mMaxRequestSize, mRequestHandler);
+      Http2.serve(socket, hostname, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {

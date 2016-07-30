@@ -6,6 +6,7 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocket;
 
@@ -19,11 +20,14 @@ import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
+import okio.Timeout;
 
 
 class Http2 {
 
-  static void serve(final SSLSocket socket, final String hostname, final long maxRequestSize,
+  static void serve(final SSLSocket socket, final String hostname,
+                    final long maxRequestSize,
+                    final KeepAliveStrategy keepAliveStrategy,
                     final RequestHandler requestHandler) throws IOException {
     final FramedConnectionListener listener =
       new FramedConnectionListener(requestHandler, maxRequestSize);
@@ -36,17 +40,28 @@ class Http2 {
       build();
     try {
       connection.start();
+      Timeout timeout = null;
+      int counter = 0;
+      while (!socket.isClosed()) {
+        if (connection.openStreamCount() == 0) {
+          if (timeout == null) {
+            timeout = in.timeout().timeout(keepAliveStrategy.timeout(counter++), TimeUnit.SECONDS);
+          }
+        }
+        else {
+          if (timeout != null) timeout.clearTimeout();
+        }
+        Thread.sleep(1000L);
+      }
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final SocketException ignored) {}
     catch (final Exception e) {
-      throw new IOException(e);
-    }
-    finally {
       try { connection.close(); } catch (final Exception ignore) {}
       try { in.close(); } catch (final IOException ignore) {}
       try { out.close(); } catch (final IOException ignore) {}
       try { socket.close(); } catch (final IOException ignore) {}
+      throw new IOException(e);
     }
   }
 
