@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.log;
@@ -37,11 +36,14 @@ abstract class Platform {
 
   private static Field findApplicationProtocolsField() {
     try {
-      return SSLParameters.class.getDeclaredField("applicationProtocols");
+      final Class<?> socketImplClass = Class.forName("sun.security.ssl.SSLSocketImpl");
+      final Field field = socketImplClass.getDeclaredField("applicationProtocols");
+      field.setAccessible(true);
+      return field;
     }
-    catch (final NoSuchFieldException e) {
-      return null;
-    }
+    catch (final ClassNotFoundException ignore) {}
+    catch (final NoSuchFieldException ignored) {}
+    return null;
   }
 
   private static final String[] protocols = new String[] { "h2", "http/1.1" };
@@ -87,9 +89,7 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      final SSLParameters parameters = socket.getSSLParameters();
       Platform.setHttp2Protocol(socket, mApplicationProtocols);
-      socket.setSSLParameters(parameters);
     }
 
     @Override boolean supportsHttp2() {
@@ -130,9 +130,7 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      final SSLParameters parameters = socket.getSSLParameters();
       Platform.setHttp2Protocol(socket, mApplicationProtocols);
-      socket.setSSLParameters(parameters);
     }
 
     @Override boolean supportsHttp2() {
