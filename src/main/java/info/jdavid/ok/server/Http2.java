@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocket;
 
 import okhttp3.*;
+import okhttp3.internal.framed.ErrorCode;
 import okhttp3.internal.framed.FramedConnection;
 import okhttp3.internal.framed.FramedStream;
 import okhttp3.internal.framed.Header;
@@ -21,6 +22,8 @@ import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 import okio.Timeout;
+
+import static info.jdavid.ok.server.Logger.log;
 
 
 class Http2 {
@@ -162,6 +165,16 @@ class Http2 {
         responseHeaders.add(new Header(name, value));
       }
 
+      source.close();
+      stream.reply(responseHeaders, true);
+      final BufferedSink sink = Okio.buffer(stream.getSink());
+      try {
+        response.writeBody(source, sink);
+      }
+      finally {
+        sink.close();
+      }
+
       for (final HttpUrl push: response.pushUrls()) {
         final List<Header> pushHeaders = new ArrayList<Header>(headerBlock.size());
         for (final Header header: headerBlock) {
@@ -187,17 +200,9 @@ class Http2 {
             pushHeaders.add(new Header(name, header.value));
           }
         }
-        stream.getConnection().pushStream(stream.getId(), pushHeaders, true);
-      }
-
-      source.close();
-      stream.reply(responseHeaders, true);
-      final BufferedSink sink = Okio.buffer(stream.getSink());
-      try {
-        response.writeBody(source, sink);
-      }
-      finally {
-        sink.close();
+        final FramedConnection connection = stream.getConnection();
+        final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaders, true);
+        onStream(pushStream);
       }
     }
   }
