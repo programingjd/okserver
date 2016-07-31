@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -20,7 +19,7 @@ import okio.BufferedSink;
 import okio.BufferedSource;
 
 /**
- * HTTP 1.x Response object.
+ * HTTP Response object.
  */
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public abstract class Response {
@@ -30,7 +29,7 @@ public abstract class Response {
   private final String message;
   private final Headers headers;
   private final ResponseBody body;
-  private final List<Callable<Response>> push;
+  private final List<HttpUrl> push;
 
   private Response(final Builder builder) {
     this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody,
@@ -38,7 +37,7 @@ public abstract class Response {
   }
 
   private Response(final Protocol protocol, final int code, final String message,
-                   final Headers headers, final ResponseBody body, final List<Callable<Response>> push) {
+                   final Headers headers, final ResponseBody body, final List<HttpUrl> push) {
     this.protocol = protocol;
     this.code = code;
     this.message = message;
@@ -116,7 +115,7 @@ public abstract class Response {
     return body;
   }
 
-  List<Callable<Response>> pushResponses() {
+  List<HttpUrl> pushUrls() {
     return push;
   }
 
@@ -154,14 +153,14 @@ public abstract class Response {
     private String mMessage = null;
     private ResponseBody mBody = null;
     private Headers.Builder mHeaders;
-    private List<Callable<Response>> mPush;
+    private List<HttpUrl> mPush;
 
     /**
      * Creates a new Builder.
      */
     public Builder() {
       mHeaders = new Headers.Builder();
-      mPush = new ArrayList<Callable<Response>>(4);
+      mPush = new ArrayList<HttpUrl>(4);
     }
 
     /**
@@ -174,7 +173,7 @@ public abstract class Response {
       this.mMessage = response.message;
       this.mBody = response.body;
       this.mHeaders = response.headers.newBuilder();
-      this.mPush = new ArrayList<Callable<Response>>(response.push);
+      this.mPush = new ArrayList<HttpUrl>(response.push);
     }
 
     /**
@@ -478,12 +477,12 @@ public abstract class Response {
     }
 
     /**
-     * Adds a push response for HTTP 2.
-     * @param push a method that can be used to create the response to push on the HTTP 2 stream.
+     * Adds an url to send as a push stream on an HTTP 2 connection.
+     * @param url the url of the content to push.
      * @return this
      */
-    public Builder push(final Callable<Response> push) {
-      this.mPush.add(push);
+    public Builder push(final HttpUrl url) {
+      this.mPush.add(url);
       return this;
     }
 

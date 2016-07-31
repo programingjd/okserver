@@ -66,6 +66,7 @@ class Http2 {
   }
 
   private static final byte PSEUDO_HEADER_PREFIX = ByteString.encodeUtf8(":").getByte(0);
+  private static final ByteString IF_NONE_MATCH = ByteString.encodeUtf8("If-None-Match");
 
   private static class FramedConnectionListener extends FramedConnection.Listener {
 
@@ -160,6 +161,35 @@ class Http2 {
         final ByteString value = ByteString.encodeUtf8(headers.value(i));
         responseHeaders.add(new Header(name, value));
       }
+
+      for (final HttpUrl push: response.pushUrls()) {
+        final List<Header> pushHeaders = new ArrayList<Header>(headerBlock.size());
+        for (final Header header: headerBlock) {
+          final ByteString name = header.name;
+          if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
+            if (Header.TARGET_METHOD.equals(name)) {
+              pushHeaders.add(new Header(name, ByteString.encodeUtf8("get")));
+            }
+            else if (Header.TARGET_SCHEME.equals(name)) {
+              pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.scheme())));
+            }
+            else if (Header.TARGET_AUTHORITY.equals(name)) {
+              final int port = push.port();
+              final String host = push.host();
+              pushHeaders.add(new Header(name, ByteString.encodeUtf8(port == -1 ? host: host + ":" + port)));
+            }
+            else if (Header.TARGET_PATH.equals(name)) {
+              pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.encodedPath())));
+            }
+          }
+          else {
+            if (IF_NONE_MATCH.equals(name)) continue;
+            pushHeaders.add(new Header(name, header.value));
+          }
+        }
+        stream.getConnection().pushStream(stream.getId(), pushHeaders, true);
+      }
+
       source.close();
       stream.reply(responseHeaders, true);
       final BufferedSink sink = Okio.buffer(stream.getSink());
