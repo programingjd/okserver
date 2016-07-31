@@ -193,9 +193,11 @@ class Http2 {
         response.writeBody(source, sink);
         requestHeaders.removeAll(IF_NONE_MATCH);
 
+        final FramedConnection connection = stream.getConnection();
+        // TODO, check that Push is enabled by the SETTINGS frame.
         for (final HttpUrl push: response.pushUrls()) {
           final Headers headers = requestHeaders.build();
-          final int size = responseHeaders.size();
+          final int size = headers.size();
           final List<Header> pushHeaderList = new ArrayList<Header>(size + 4);
           assert method != null;
           assert scheme != null;
@@ -208,9 +210,8 @@ class Http2 {
             pushHeaderList.add(new Header(name, headers.value(i)));
           }
           final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
-          final FramedConnection connection = stream.getConnection();
           final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
-          pushStream.reply(responseHeaders, true);
+          pushStream.reply(responseHeaders(pushResponse), true);
           final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
           try {
             pushResponse.writeBody(null, pushSink);
