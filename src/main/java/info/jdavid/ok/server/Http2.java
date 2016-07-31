@@ -11,16 +11,23 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocket;
 
 import okhttp3.*;
+import okhttp3.internal.Util;
 import okhttp3.internal.framed.FramedConnection;
 import okhttp3.internal.framed.FramedStream;
 import okhttp3.internal.framed.Header;
 import okhttp3.internal.http.HttpMethod;
+import okhttp3.internal.http.RequestLine;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 import okio.Timeout;
+
+import static okhttp3.internal.framed.Header.TARGET_AUTHORITY;
+import static okhttp3.internal.framed.Header.TARGET_METHOD;
+import static okhttp3.internal.framed.Header.TARGET_PATH;
+import static okhttp3.internal.framed.Header.TARGET_SCHEME;
 
 
 class Http2 {
@@ -66,7 +73,35 @@ class Http2 {
   }
 
   private static final byte PSEUDO_HEADER_PREFIX = ByteString.encodeUtf8(":").getByte(0);
-  private static final ByteString IF_NONE_MATCH = ByteString.encodeUtf8("If-None-Match");
+  private static final String IF_NONE_MATCH = "If-None-Match";
+
+  private static List<Header> responseHeaders(final Response response) {
+    final Headers headers = response.headers();
+    final int size = headers.size();
+    final List<Header> responseHeaders = new ArrayList<Header>(size + 1);
+    responseHeaders.add(
+      new Header(Header.RESPONSE_STATUS, ByteString.encodeUtf8(String.valueOf(response.code())))
+    );
+    for (int i=0; i<size; ++i) {
+      final ByteString name = ByteString.encodeUtf8(headers.name(i));
+      final ByteString value = ByteString.encodeUtf8(headers.value(i));
+      responseHeaders.add(new Header(name.toAsciiLowercase(), value));
+    }
+    return responseHeaders;
+  }
+
+  private static String restoreHeaderNameCase(final ByteString name) {
+    // name should be ascii lowercase
+    final int size = name.size();
+    final StringBuilder restored = new StringBuilder(size);
+    char prev = '-';
+    for (int i=0; i<size; ++i) {
+      final char c = (char)(prev == '-' ? Character.toUpperCase((int)name.getByte(i)) : name.getByte(i));
+      restored.append(c);
+      prev = c;
+    }
+    return restored.toString();
+  }
 
   private static class FramedConnectionListener extends FramedConnection.Listener {
 
@@ -79,13 +114,13 @@ class Http2 {
     }
 
     @Override public void onStream(final FramedStream stream) throws IOException {
-      final List<Header> headerBlock = stream.getRequestHeaders();
+      final List<Header> requestHeaderList = stream.getRequestHeaders();
       final Headers.Builder requestHeaders = new Headers.Builder();
       String method = null;
       String scheme = null;
       String authority = null;
       String path = null;
-      for (final Header header: headerBlock) {
+      for (final Header header: requestHeaderList) {
         final ByteString name = header.name;
         if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
           if (Header.TARGET_METHOD.equals(name)) {
@@ -102,15 +137,15 @@ class Http2 {
           }
         }
         else {
-          requestHeaders.add(name.utf8(), header.value.utf8());
+          requestHeaders.add(restoreHeaderNameCase(name), header.value.utf8());
         }
       }
 
-      final HttpUrl url = url(scheme, authority, path);
+      final HttpUrl requestUrl = url(scheme, authority, path);
       final BufferedSource source = Okio.buffer(stream.getSource());
 
       final Response response;
-      if (method == null || url == null) {
+      if (method == null || requestUrl == null) {
         response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
       }
       else if ("100-continue".equals(requestHeaders.get("Expect"))) {
@@ -126,14 +161,14 @@ class Http2 {
         }
         else {
           if (length == 0) {
-            response = handler.handle(true, method, url, requestHeaders.build(), null);
+            response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
           }
           else if (length < 0) {
             if (useBody) {
               response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
             }
             else {
-              response = handler.handle(true, method, url, requestHeaders.build(), null);
+              response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
             }
           }
           else {
@@ -141,61 +176,48 @@ class Http2 {
               final Buffer body = new Buffer();
               if (stream.isOpen()) source.readFully(body, length);
               body.flush();
-              response = handler.handle(true, method, url, requestHeaders.build(), body);
+              response = handler.handle(true, method, requestUrl, requestHeaders.build(), body);
             }
             else {
-              response = handler.handle(true, method, url, requestHeaders.build(), null);
+              response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
             }
           }
         }
       }
 
-      final Headers headers = response.headers();
-      final int size = headers.size();
-      final List<Header> responseHeaders = new ArrayList<Header>(size + 1);
-      responseHeaders.add(
-        new Header(Header.RESPONSE_STATUS, ByteString.encodeUtf8(String.valueOf(response.code())))
-      );
-      for (int i=0; i<size; ++i) {
-        final ByteString name = ByteString.encodeUtf8(headers.name(i).toLowerCase(Locale.US));
-        final ByteString value = ByteString.encodeUtf8(headers.value(i));
-        responseHeaders.add(new Header(name, value));
-      }
-
+      final List<Header> responseHeaders = responseHeaders(response);
       source.close();
       stream.reply(responseHeaders, true);
       final BufferedSink sink = Okio.buffer(stream.getSink());
       try {
         response.writeBody(source, sink);
+        requestHeaders.removeAll(IF_NONE_MATCH);
 
         for (final HttpUrl push: response.pushUrls()) {
-          final List<Header> pushHeaders = new ArrayList<Header>(headerBlock.size());
-          for (final Header header: headerBlock) {
-            final ByteString name = header.name;
-            if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
-              if (Header.TARGET_METHOD.equals(name)) {
-                pushHeaders.add(new Header(name, ByteString.encodeUtf8("get")));
-              }
-              else if (Header.TARGET_SCHEME.equals(name)) {
-                pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.scheme())));
-              }
-              else if (Header.TARGET_AUTHORITY.equals(name)) {
-                final int port = push.port();
-                final String host = push.host();
-                pushHeaders.add(new Header(name, ByteString.encodeUtf8(port == -1 ? host: host + ":" + port)));
-              }
-              else if (Header.TARGET_PATH.equals(name)) {
-                pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.encodedPath())));
-              }
-            }
-            else {
-              if (IF_NONE_MATCH.equals(name)) continue;
-              pushHeaders.add(new Header(name, header.value));
-            }
+          final Headers headers = requestHeaders.build();
+          final int size = responseHeaders.size();
+          final List<Header> pushHeaderList = new ArrayList<Header>(size + 4);
+          assert method != null;
+          assert scheme != null;
+          pushHeaderList.add(new Header(TARGET_METHOD, method));
+          pushHeaderList.add(new Header(TARGET_PATH, RequestLine.requestPath(push)));
+          pushHeaderList.add(new Header(TARGET_AUTHORITY, Util.hostHeader(push, false)));
+          pushHeaderList.add(new Header(TARGET_SCHEME, scheme));
+          for (int i=0; i<size; ++i) {
+            ByteString name = ByteString.encodeUtf8(headers.name(i).toLowerCase(Locale.US));
+            pushHeaderList.add(new Header(name, headers.value(i)));
           }
+          final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
           final FramedConnection connection = stream.getConnection();
-          final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaders, true);
-          onStream(pushStream);
+          final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
+          pushStream.reply(responseHeaders, true);
+          final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
+          try {
+            pushResponse.writeBody(null, pushSink);
+          }
+          finally {
+            pushSink.close();
+          }
         }
       }
       finally {
