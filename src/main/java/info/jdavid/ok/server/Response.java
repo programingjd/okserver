@@ -1,13 +1,13 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -30,18 +30,21 @@ public abstract class Response {
   private final String message;
   private final Headers headers;
   private final ResponseBody body;
+  private final List<Callable<Response>> push;
 
   private Response(final Builder builder) {
-    this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody);
+    this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody,
+         builder.mPush);
   }
 
   private Response(final Protocol protocol, final int code, final String message,
-                   final Headers headers, final ResponseBody body) {
+                   final Headers headers, final ResponseBody body, final List<Callable<Response>> push) {
     this.protocol = protocol;
     this.code = code;
     this.message = message;
     this.headers = headers;
     this.body = body;
+    this.push = push;
   }
 
   /**
@@ -113,6 +116,10 @@ public abstract class Response {
     return body;
   }
 
+  List<Callable<Response>> pushResponses() {
+    return push;
+  }
+
   abstract void writeBody(final BufferedSource in, final BufferedSink out) throws IOException;
 
   @Override public String toString() {
@@ -147,12 +154,14 @@ public abstract class Response {
     private String mMessage = null;
     private ResponseBody mBody = null;
     private Headers.Builder mHeaders;
+    private List<Callable<Response>> mPush;
 
     /**
      * Creates a new Builder.
      */
     public Builder() {
       mHeaders = new Headers.Builder();
+      mPush = new ArrayList<Callable<Response>>(4);
     }
 
     /**
@@ -165,6 +174,7 @@ public abstract class Response {
       this.mMessage = response.message;
       this.mBody = response.body;
       this.mHeaders = response.headers.newBuilder();
+      this.mPush = new ArrayList<Callable<Response>>(response.push);
     }
 
     /**
@@ -468,6 +478,16 @@ public abstract class Response {
     }
 
     /**
+     * Adds a push response for HTTP 2.
+     * @param push a method that can be used to create the response to push on the HTTP 2 stream.
+     * @return this
+     */
+    public Builder push(final Callable<Response> push) {
+      this.mPush.add(push);
+      return this;
+    }
+
+    /**
      * Builds the response.
      * @return the response.
      */
@@ -646,6 +666,7 @@ public abstract class Response {
           set("Access-Control-Allow-Methods", "GET").
           set("Access-Control-Allow-Headers", "Content-Type, Accept").
           build(),
+        null,
         null
       );
       mRetrySecs = retrySecs;

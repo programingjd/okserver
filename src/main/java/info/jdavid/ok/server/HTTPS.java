@@ -74,10 +74,10 @@ public final class Https {
                             final String hostname, final boolean http2) throws IOException {
     final SSLSocketFactory sslFactory = getContext(hostname).getSocketFactory();
     final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
+    mPlatform.setupSSLSocket(sslSocket, http2);
     sslSocket.setUseClientMode(false);
     sslSocket.setEnabledProtocols(protocols);
     sslSocket.setEnabledCipherSuites(cipherSuites);
-    mPlatform.setupSSLSocket(sslSocket, http2);
     sslSocket.startHandshake();
     return sslSocket;
   }

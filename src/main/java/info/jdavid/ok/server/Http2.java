@@ -107,7 +107,6 @@ class Http2 {
 
       final HttpUrl url = url(scheme, authority, path);
       final BufferedSource source = Okio.buffer(stream.getSource());
-      final BufferedSink sink = Okio.buffer(stream.getSink());
 
       final Response response;
       if (method == null || url == null) {
@@ -161,8 +160,15 @@ class Http2 {
         final ByteString value = ByteString.encodeUtf8(headers.value(i));
         responseHeaders.add(new Header(name, value));
       }
+      source.close();
       stream.reply(responseHeaders, true);
-      response.writeBody(source, sink);
+      final BufferedSink sink = Okio.buffer(stream.getSink());
+      try {
+        response.writeBody(source, sink);
+      }
+      finally {
+        sink.close();
+      }
     }
   }
 
