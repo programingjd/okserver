@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocket;
 
 import okhttp3.*;
-import okhttp3.internal.framed.ErrorCode;
 import okhttp3.internal.framed.FramedConnection;
 import okhttp3.internal.framed.FramedStream;
 import okhttp3.internal.framed.Header;
@@ -22,8 +21,6 @@ import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 import okio.Timeout;
-
-import static info.jdavid.ok.server.Logger.log;
 
 
 class Http2 {
@@ -170,39 +167,39 @@ class Http2 {
       final BufferedSink sink = Okio.buffer(stream.getSink());
       try {
         response.writeBody(source, sink);
+
+        for (final HttpUrl push: response.pushUrls()) {
+          final List<Header> pushHeaders = new ArrayList<Header>(headerBlock.size());
+          for (final Header header: headerBlock) {
+            final ByteString name = header.name;
+            if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
+              if (Header.TARGET_METHOD.equals(name)) {
+                pushHeaders.add(new Header(name, ByteString.encodeUtf8("get")));
+              }
+              else if (Header.TARGET_SCHEME.equals(name)) {
+                pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.scheme())));
+              }
+              else if (Header.TARGET_AUTHORITY.equals(name)) {
+                final int port = push.port();
+                final String host = push.host();
+                pushHeaders.add(new Header(name, ByteString.encodeUtf8(port == -1 ? host: host + ":" + port)));
+              }
+              else if (Header.TARGET_PATH.equals(name)) {
+                pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.encodedPath())));
+              }
+            }
+            else {
+              if (IF_NONE_MATCH.equals(name)) continue;
+              pushHeaders.add(new Header(name, header.value));
+            }
+          }
+          final FramedConnection connection = stream.getConnection();
+          final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaders, true);
+          onStream(pushStream);
+        }
       }
       finally {
         sink.close();
-      }
-
-      for (final HttpUrl push: response.pushUrls()) {
-        final List<Header> pushHeaders = new ArrayList<Header>(headerBlock.size());
-        for (final Header header: headerBlock) {
-          final ByteString name = header.name;
-          if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
-            if (Header.TARGET_METHOD.equals(name)) {
-              pushHeaders.add(new Header(name, ByteString.encodeUtf8("get")));
-            }
-            else if (Header.TARGET_SCHEME.equals(name)) {
-              pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.scheme())));
-            }
-            else if (Header.TARGET_AUTHORITY.equals(name)) {
-              final int port = push.port();
-              final String host = push.host();
-              pushHeaders.add(new Header(name, ByteString.encodeUtf8(port == -1 ? host: host + ":" + port)));
-            }
-            else if (Header.TARGET_PATH.equals(name)) {
-              pushHeaders.add(new Header(name, ByteString.encodeUtf8(push.encodedPath())));
-            }
-          }
-          else {
-            if (IF_NONE_MATCH.equals(name)) continue;
-            pushHeaders.add(new Header(name, header.value));
-          }
-        }
-        final FramedConnection connection = stream.getConnection();
-        final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaders, true);
-        onStream(pushStream);
       }
     }
   }
