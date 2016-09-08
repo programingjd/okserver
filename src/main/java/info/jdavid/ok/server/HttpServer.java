@@ -146,6 +146,8 @@ public class HttpServer {
     return this;
   }
 
+  protected void validateHandler() {}
+
   /**
    * Sets the request handler.
    * @param handler the request handler.
@@ -155,9 +157,12 @@ public class HttpServer {
     if (mStarted.get()) {
       throw new IllegalStateException("The request handler cannot be changed while the server is running.");
     }
+    validateHandler();
     this.mRequestHandler = handler == null ? RequestHandler.DEFAULT : handler;
     return this;
   }
+
+  protected void validateDispatcher() {}
 
   /**
    * Sets a custom dispatcher.
@@ -168,9 +173,12 @@ public class HttpServer {
     if (mStarted.get()) {
       throw new IllegalStateException("The dispatcher cannot be changed while the server is running.");
     }
+    validateDispatcher();
     this.mDispatcher = dispatcher;
     return this;
   }
+
+  protected void validateHttps() {}
 
   /**
    * Sets the Https provider.
@@ -181,6 +189,7 @@ public class HttpServer {
     if (mStarted.get()) {
       throw new IllegalStateException("The certificates cannot be changed while the server is running.");
     }
+    validateHttps();
     this.mHttps = https == null ? Https.DISABLED : https;
     return this;
   }

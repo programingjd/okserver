@@ -1,4 +1,4 @@
-![jcenter](https://img.shields.io/badge/_jcenter_-_3.4.1-8-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_22/22-green.png?style=flat)
+![jcenter](https://img.shields.io/badge/_jcenter_-_3.4.1-9-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_22/22-green.png?style=flat)
 # okserver
 A simple http server for the jvm and android, built on top of [okhttp](https://github.com/square/okhttp).
 
@@ -7,7 +7,7 @@ A simple http server for the jvm and android, built on top of [okhttp](https://g
 The maven artifacts are on [Bintray](https://bintray.com/programingjd/maven/info.jdavid.ok.server/view)
 and [jcenter](https://bintray.com/search?query=info.jdavid.ok.server).
 
-[Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/3.4.1-8/okserver-3.4.1-8.jar) the latest jar.
+[Download](https://bintray.com/artifact/download/programingjd/maven/info/jdavid/ok/server/okserver/3.4.1-9/okserver-3.4.1-9.jar) the latest jar.
 
 __Maven__
 
@@ -17,7 +17,7 @@ Include [those settings](https://bintray.com/repo/downloadMavenRepoSettingsFile/
 <dependency>
   <groupId>info.jdavid.ok.server</groupId>
   <artifactId>okserver</artifactId>
-  <version>3.4.1-8</version>
+  <version>3.4.1-9</version>
 </dependency>
 ```
 __Gradle__
@@ -30,7 +30,7 @@ repositories {
 ```
 ```
 dependencies {
-  compile 'info.jdavid.ok.server:okserver:3.4.1-8'
+  compile 'info.jdavid.ok.server:okserver:3.4.1-9'
 }
 ```
 
@@ -43,21 +43,23 @@ Here's a very simple example:
   - For any other request, we return a **404 Not Found** with no content.
 
 ```java
-new HttpServer() {
-  @Override
-  protected Response handle(final String method, final String path,
-                            final Headers requestHeaders,
-                            final Buffer requestBody) {
-    final Response.Builder builder = new Response.Builder();
-    if ("GET".equals(method) && "/ok".equals(path) {
-      builder.statusLine(StatusLines.OK).body("ok");
+new HttpServer().requestHandler(
+  new RequestHandler() {
+    @Override
+    protected Response handle(final String method, final String path,
+                              final Headers requestHeaders,
+                              final Buffer requestBody) {
+      final Response.Builder builder = new Response.Builder();
+      if ("GET".equals(method) && "/ok".equals(path) {
+        builder.statusLine(StatusLines.OK).body("ok");
+      }
+      else {
+        builder.statusLine(StatusLines.NOT_FOUND).noBody();
+      }
+      return builder.build();
     }
-    else {
-      builder.statusLine(StatusLines.NOT_FOUND).noBody();
-    }
-    return builder.build();
   }
-};
+);
 ```
 
 To start the server, you simply call `start()`. It defaults to port 8080, but you can change that easily
@@ -66,7 +68,7 @@ change that easily with the `hostname(String)` method.
 
 
 ```java
-new HttpServer() { ... }.hostname("localhost").port(80).start();
+new HttpServer().hostname("localhost").port(80).start();
 ```
 
 Requests are handled by a dispatcher. The default implementation uses a cached thread pool.
@@ -75,7 +77,7 @@ You can change the dispatcher with the `dispatcher(Dispatcher)` method.
 Here's an example that sets a dispatcher with a single thread executor rather than a cached thread pool.
 
 ```java
-final HttpServer server = new HttpServer() { ... }.dispatcher(
+final HttpServer server = new HttpServer().dispatcher(
   new Dispatcher() {
     private ExecutorService mExecutors = null;
     @Override

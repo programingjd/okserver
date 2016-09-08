@@ -1,5 +1,6 @@
 package info.jdavid.ok.server.samples;
 
+import info.jdavid.ok.server.KeepAliveStrategy;
 import info.jdavid.ok.server.RequestHandler;
 import okhttp3.Headers;
 import info.jdavid.ok.server.HttpServer;
@@ -29,14 +30,15 @@ public class SSEWithEventLoop {
     mRetry = retrySecs;
     mPeriod = periodSecs;
     //noinspection Duplicates
-    mServer = new HttpServer().requestHandler(new RequestHandler() {
-      @Override public Response handle(final boolean secure, final String method, final HttpUrl url,
-                                       final Headers requestHeaders, final Buffer requestBody) {
-        if (!"GET".equals(method)) return unsupported();
-        if (!"/sse".equals(url.encodedPath())) return notFound();
-        return sse();
-      }
-    }).port(port);
+    mServer = new HttpServer().
+      requestHandler(new RequestHandler() {
+        @Override public Response handle(final boolean secure, final String method, final HttpUrl url,
+                                         final Headers requestHeaders, final Buffer requestBody) {
+          if (!"GET".equals(method)) return unsupported();
+          if (!"/sse".equals(url.encodedPath())) return notFound();
+          return sse();
+        }
+      }).port(port);
   }
 
   private Response notFound() {
