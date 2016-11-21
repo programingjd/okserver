@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.4.1-10'
+version '3.4.2'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -50,8 +50,8 @@ sourceSets {
 
 
 dependencies {
-  compile 'com.squareup.okio:okio:1.9.0'
-  compile 'com.squareup.okhttp3:okhttp:3.4.1'
+  compile 'com.squareup.okio:okio:1.11.0'
+  compile 'com.squareup.okhttp3:okhttp:3.4.2'
 //  compileOnly ""info.jdavid.alpn:alpn-boot:${getJDKVersion()}
 //  compileOnly "org.mortbay.jetty.alpn:alpn-boot:${getJettyAlpnBootVersion()}"
 //  compileOnly files("$projectDir/libs/android.os.build.mock.jar")
