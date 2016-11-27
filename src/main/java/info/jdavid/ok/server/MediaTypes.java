@@ -38,6 +38,8 @@ public class MediaTypes {
   public static final MediaType MP3 = MediaType.parse("audio/mpeg");
 
   public static final MediaType MP4 = MediaType.parse("video/mp4");
+  public static final MediaType OGV = MediaType.parse("video/ogg");
+  public static final MediaType WEBM = MediaType.parse("video/webm");
 
   public static final MediaType EMAIL = MediaType.parse("message/rfc822");
 
@@ -87,6 +89,8 @@ public class MediaTypes {
     map.put("wav", WAV);
     map.put("mp3", MP3);
     map.put("mp4", MP4);
+    map.put("ogv", OGV);
+    map.put("webm", WEBM);
     map.put("jpg", JPG);
     map.put("png", PNG);
     map.put("gif", GIF);

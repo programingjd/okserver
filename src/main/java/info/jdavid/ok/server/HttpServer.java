@@ -331,7 +331,7 @@ public class HttpServer {
     }
   }
 
-  final class Request {
+  public final class Request {
     private final Socket mSocket;
     private final boolean mSecure;
     private Request(final Socket socket, final boolean secure) { mSocket = socket; mSecure = secure; }
