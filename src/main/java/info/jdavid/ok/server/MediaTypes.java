@@ -23,6 +23,9 @@ public class MediaTypes {
   public static final MediaType GZIP = MediaType.parse("application/gzip");
   public static final MediaType TAR = MediaType.parse("application/x-gtar");
   public static final MediaType ZIP = MediaType.parse("application/zip");
+  public static final MediaType RAR = MediaType.parse("application/vnd.rar");
+  public static final MediaType JAR = MediaType.parse("application/java-archive");
+  public static final MediaType APK = MediaType.parse("application/vnd.android.package-archive");
   public static final MediaType JAVASCRIPT = MediaType.parse("application/javascript");
   public static final MediaType JSON = MediaType.parse("application/json");
   public static final MediaType OCTET_STREAM = MediaType.parse("application/octet-stream");
@@ -33,6 +36,7 @@ public class MediaTypes {
 
   public static final MediaType OTF = MediaType.parse("application/opentype");
   public static final MediaType TTF = MediaType.parse("application/truetype");
+  public static final MediaType EOT = MediaType.parse("application/vnd.ms-fontobject");
 
   public static final MediaType WAV = MediaType.parse("audio/x-wav");
   public static final MediaType MP3 = MediaType.parse("audio/mpeg");
@@ -77,6 +81,9 @@ public class MediaTypes {
     map.put("gz", GZIP);
     map.put("tar", TAR);
     map.put("zip", ZIP);
+    map.put("rar", RAR);
+    map.put("apk", APK);
+    map.put("jar", JAR);
     map.put("js", JAVASCRIPT);
     map.put("json", JSON);
     map.put("bin", OCTET_STREAM);
@@ -86,6 +93,7 @@ public class MediaTypes {
     map.put("webmanifest", WEB_MANIFEST);
     map.put("otf", OTF);
     map.put("ttf", TTF);
+    map.put("eot", EOT);
     map.put("wav", WAV);
     map.put("mp3", MP3);
     map.put("mp4", MP4);
