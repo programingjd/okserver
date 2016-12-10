@@ -113,7 +113,7 @@ public class MediaTypes {
     if (url == null) return null;
     final List<String> segments = url.pathSegments();
     final int last = segments.size() - 1;
-    if (last < 0) return null;
+    if (last < 0) return DIRECTORY;
     final String path = segments.get(last);
     int i = path.length();
     if (i == 0) return DIRECTORY;
