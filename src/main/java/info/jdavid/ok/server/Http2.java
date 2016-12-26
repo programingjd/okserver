@@ -12,9 +12,9 @@ import javax.net.ssl.SSLSocket;
 
 import okhttp3.*;
 import okhttp3.internal.Util;
-import okhttp3.internal.framed.FramedConnection;
-import okhttp3.internal.framed.FramedStream;
-import okhttp3.internal.framed.Header;
+import okhttp3.internal.http2.Http2Connection;
+import okhttp3.internal.http2.Http2Stream;
+import okhttp3.internal.http2.Header;
 import okhttp3.internal.http.HttpMethod;
 import okhttp3.internal.http.RequestLine;
 import okio.Buffer;
@@ -24,10 +24,10 @@ import okio.ByteString;
 import okio.Okio;
 import okio.Timeout;
 
-import static okhttp3.internal.framed.Header.TARGET_AUTHORITY;
-import static okhttp3.internal.framed.Header.TARGET_METHOD;
-import static okhttp3.internal.framed.Header.TARGET_PATH;
-import static okhttp3.internal.framed.Header.TARGET_SCHEME;
+import static okhttp3.internal.http2.Header.TARGET_AUTHORITY;
+import static okhttp3.internal.http2.Header.TARGET_METHOD;
+import static okhttp3.internal.http2.Header.TARGET_PATH;
+import static okhttp3.internal.http2.Header.TARGET_SCHEME;
 
 
 class Http2 {
@@ -36,13 +36,12 @@ class Http2 {
                     final long maxRequestSize,
                     final KeepAliveStrategy keepAliveStrategy,
                     final RequestHandler requestHandler) throws IOException {
-    final FramedConnectionListener listener =
-      new FramedConnectionListener(requestHandler, maxRequestSize);
+    final Http2ConnectionListener listener =
+      new Http2ConnectionListener(requestHandler, maxRequestSize);
     final BufferedSource in = Okio.buffer(Okio.source(socket));
     final BufferedSink out = Okio.buffer(Okio.sink(socket));
-    final FramedConnection connection = new FramedConnection.Builder(false).
+    final Http2Connection connection = new Http2Connection.Builder(false).
       socket(socket, hostname, in, out).
-      protocol(Protocol.HTTP_2).
       listener(listener).
       build();
     try {
@@ -103,17 +102,17 @@ class Http2 {
     return restored.toString();
   }
 
-  private static class FramedConnectionListener extends FramedConnection.Listener {
+  private static class Http2ConnectionListener extends Http2Connection.Listener {
 
     private final RequestHandler handler;
     private final long max;
 
-    FramedConnectionListener(final RequestHandler requestHandler, final long maxRequestSize) {
+    Http2ConnectionListener(final RequestHandler requestHandler, final long maxRequestSize) {
       handler = requestHandler;
       max = maxRequestSize;
     }
 
-    @Override public void onStream(final FramedStream stream) throws IOException {
+    @Override public void onStream(final Http2Stream stream) throws IOException {
       final List<Header> requestHeaderList = stream.getRequestHeaders();
       final Headers.Builder requestHeaders = new Headers.Builder();
       String method = null;
@@ -193,7 +192,7 @@ class Http2 {
         response.writeBody(source, sink);
         requestHeaders.removeAll(IF_NONE_MATCH);
 
-        final FramedConnection connection = stream.getConnection();
+        final Http2Connection connection = stream.getConnection();
         // TODO, check that Push is enabled by the SETTINGS frame.
         for (final HttpUrl push: response.pushUrls()) {
           final Headers headers = requestHeaders.build();
@@ -210,7 +209,7 @@ class Http2 {
             pushHeaderList.add(new Header(name, headers.value(i)));
           }
           final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
-          final FramedStream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
+          final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
           pushStream.reply(responseHeaders(pushResponse), true);
           final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
           try {
