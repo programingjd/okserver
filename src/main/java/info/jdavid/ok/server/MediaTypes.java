@@ -22,15 +22,20 @@ public class MediaTypes {
   public static final MediaType ATOM = MediaType.parse("application/atom+xml");
   public static final MediaType GZIP = MediaType.parse("application/gzip");
   public static final MediaType TAR = MediaType.parse("application/x-gtar");
+  public static final MediaType XZ = MediaType.parse("application/x-xz");
+  public static final MediaType SEVENZ = MediaType.parse("application/x-7z-compressed");
   public static final MediaType ZIP = MediaType.parse("application/zip");
   public static final MediaType RAR = MediaType.parse("application/vnd.rar");
   public static final MediaType JAR = MediaType.parse("application/java-archive");
   public static final MediaType APK = MediaType.parse("application/vnd.android.package-archive");
+  public static final MediaType DMG = MediaType.parse("application/x-apple-diskimage");
+  public static final MediaType ISO = MediaType.parse("application/x-iso9660-image");
   public static final MediaType JAVASCRIPT = MediaType.parse("application/javascript");
   public static final MediaType JSON = MediaType.parse("application/json");
   public static final MediaType OCTET_STREAM = MediaType.parse("application/octet-stream");
   public static final MediaType PDF = MediaType.parse("application/pdf");
   public static final MediaType WOFF = MediaType.parse("application/font-woff");
+  public static final MediaType WOFF2 = MediaType.parse("font/woff2");
   public static final MediaType XHTML = MediaType.parse("application/xhtml+xml");
   public static final MediaType WEB_MANIFEST = MediaType.parse("application/manifest+json");
 
@@ -40,6 +45,7 @@ public class MediaTypes {
 
   public static final MediaType WAV = MediaType.parse("audio/x-wav");
   public static final MediaType MP3 = MediaType.parse("audio/mpeg");
+  public static final MediaType OGG = MediaType.parse("audio/ogg");
 
   public static final MediaType MP4 = MediaType.parse("video/mp4");
   public static final MediaType OGV = MediaType.parse("video/ogg");
@@ -80,15 +86,20 @@ public class MediaTypes {
     map.put("xsl", XML);
     map.put("gz", GZIP);
     map.put("tar", TAR);
+    map.put("xz", XZ);
+    map.put("7z", SEVENZ);
     map.put("zip", ZIP);
     map.put("rar", RAR);
-    map.put("apk", APK);
     map.put("jar", JAR);
+    map.put("apk", APK);
+    map.put("dmg", DMG);
+    map.put("iso", ISO);
     map.put("js", JAVASCRIPT);
     map.put("json", JSON);
     map.put("bin", OCTET_STREAM);
     map.put("pdf", PDF);
     map.put("woff", WOFF);
+    map.put("woff2", WOFF2);
     map.put("xhtml", XHTML);
     map.put("webmanifest", WEB_MANIFEST);
     map.put("otf", OTF);
@@ -96,6 +107,7 @@ public class MediaTypes {
     map.put("eot", EOT);
     map.put("wav", WAV);
     map.put("mp3", MP3);
+    map.put("ogg", OGG);
     map.put("mp4", MP4);
     map.put("ogv", OGV);
     map.put("webm", WEBM);
