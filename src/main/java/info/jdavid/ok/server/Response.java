@@ -174,24 +174,6 @@ public abstract class Response {
     }
 
     /**
-     * Creates a new Builder, using an existing response as a template.
-     * @param response the response template.
-     */
-    private Builder(final Response response) {
-      mProtocol = response.protocol;
-      mCode = response.code;
-      mMessage = response.message;
-      mBody = response.body;
-      mHeaders = response.headers.newBuilder();
-      if (response.push == null) {
-        mPush = null;
-      }
-      else {
-        mPush = new ArrayList<HttpUrl>(response.push);
-      }
-    }
-
-    /**
      * Sets the status line.
      * @param statusLine the status line.
      * @return this
@@ -880,12 +862,15 @@ public abstract class Response {
               out.write(chunk.source(), length);
             }
             out.writeUtf8("\r\n");
+            out.flush();
           }
           out.writeUtf8("0");
           //out.writeUtf8("chunk-ext");
           out.writeUtf8("\r\n");
+          out.flush();
           //out.writeUtf8("trailer-part");
           out.writeUtf8("\r\n");
+          out.flush();
         }
       }
       finally {
