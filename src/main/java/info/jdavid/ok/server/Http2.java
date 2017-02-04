@@ -194,29 +194,32 @@ class Http2 {
 
         final Http2Connection connection = stream.getConnection();
         // TODO, check that Push is enabled by the SETTINGS frame.
-        for (final HttpUrl push: response.pushUrls()) {
-          final Headers headers = requestHeaders.build();
-          final int size = headers.size();
-          final List<Header> pushHeaderList = new ArrayList<Header>(size + 4);
-          assert method != null;
-          assert scheme != null;
-          pushHeaderList.add(new Header(TARGET_METHOD, method));
-          pushHeaderList.add(new Header(TARGET_PATH, RequestLine.requestPath(push)));
-          pushHeaderList.add(new Header(TARGET_AUTHORITY, Util.hostHeader(push, false)));
-          pushHeaderList.add(new Header(TARGET_SCHEME, scheme));
-          for (int i=0; i<size; ++i) {
-            ByteString name = ByteString.encodeUtf8(headers.name(i).toLowerCase(Locale.US));
-            pushHeaderList.add(new Header(name, headers.value(i)));
-          }
-          final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
-          final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
-          pushStream.sendResponseHeaders(responseHeaders(pushResponse), true);
-          final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
-          try {
-            pushResponse.writeBody(null, pushSink);
-          }
-          finally {
-            pushSink.close();
+        final List<HttpUrl> pushUrls = response.pushUrls();
+        if (pushUrls != null) {
+          for (final HttpUrl push : pushUrls) {
+            final Headers headers = requestHeaders.build();
+            final int size = headers.size();
+            final List<Header> pushHeaderList = new ArrayList<Header>(size + 4);
+            assert method != null;
+            assert scheme != null;
+            pushHeaderList.add(new Header(TARGET_METHOD, method));
+            pushHeaderList.add(new Header(TARGET_PATH, RequestLine.requestPath(push)));
+            pushHeaderList.add(new Header(TARGET_AUTHORITY, Util.hostHeader(push, false)));
+            pushHeaderList.add(new Header(TARGET_SCHEME, scheme));
+            for (int i = 0; i < size; ++i) {
+              ByteString name = ByteString.encodeUtf8(headers.name(i).toLowerCase(Locale.US));
+              pushHeaderList.add(new Header(name, headers.value(i)));
+            }
+            final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
+            final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
+            pushStream.sendResponseHeaders(responseHeaders(pushResponse), true);
+            final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
+            try {
+              pushResponse.writeBody(null, pushSink);
+            }
+            finally {
+              pushSink.close();
+            }
           }
         }
       }

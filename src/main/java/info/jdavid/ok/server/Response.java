@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -29,20 +30,23 @@ public abstract class Response {
   private final String message;
   private final Headers headers;
   private final ResponseBody body;
+  private final ResponseBody[] chunks;
   private final List<HttpUrl> push;
 
   private Response(final Builder builder) {
     this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody,
-         builder.mPush);
+         builder.mChunks, builder.mPush);
   }
 
   private Response(final Protocol protocol, final int code, final String message,
-                   final Headers headers, final ResponseBody body, final List<HttpUrl> push) {
+                   final Headers headers, final ResponseBody body, final ResponseBody[] chunks,
+                   final List<HttpUrl> push) {
     this.protocol = protocol;
     this.code = code;
     this.message = message;
     this.headers = headers;
     this.body = body;
+    this.chunks = chunks;
     this.push = push;
   }
 
@@ -115,6 +119,10 @@ public abstract class Response {
     return body;
   }
 
+  ResponseBody[] chunks() {
+    return chunks;
+  }
+
   List<HttpUrl> pushUrls() {
     return push;
   }
@@ -139,6 +147,7 @@ public abstract class Response {
     private static final String CONTENT_LENGTH = "Content-Length";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String LOCATION = "Location";
+    private static final String TRANSFER_ENCODING = "Transfer-Encoding";
     private static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
     private static final String CACHE_CONTROL = "Cache-Control";
     private static final String ETAG = "Etag";
@@ -152,6 +161,7 @@ public abstract class Response {
     private int mCode = -1;
     private String mMessage = null;
     private ResponseBody mBody = null;
+    private ResponseBody[] mChunks = null;
     private Headers.Builder mHeaders;
     private List<HttpUrl> mPush;
 
@@ -160,7 +170,7 @@ public abstract class Response {
      */
     public Builder() {
       mHeaders = new Headers.Builder();
-      mPush = new ArrayList<HttpUrl>(4);
+      mPush = null;
     }
 
     /**
@@ -168,12 +178,17 @@ public abstract class Response {
      * @param response the response template.
      */
     private Builder(final Response response) {
-      this.mProtocol = response.protocol;
-      this.mCode = response.code;
-      this.mMessage = response.message;
-      this.mBody = response.body;
-      this.mHeaders = response.headers.newBuilder();
-      this.mPush = new ArrayList<HttpUrl>(response.push);
+      mProtocol = response.protocol;
+      mCode = response.code;
+      mMessage = response.message;
+      mBody = response.body;
+      mHeaders = response.headers.newBuilder();
+      if (response.push == null) {
+        mPush = null;
+      }
+      else {
+        mPush = new ArrayList<HttpUrl>(response.push);
+      }
     }
 
     /**
@@ -444,6 +459,7 @@ public abstract class Response {
       this.mBody = body;
       if (body == null) {
         contentLength(0);
+        removeHeader(CONTENT_TYPE);
       }
       else {
         contentType(body.contentType());
@@ -458,7 +474,7 @@ public abstract class Response {
      * @return this
      */
     public Builder body(final String text) {
-      return body(text, MediaTypes.TEXT);
+      return body(MediaTypes.TEXT, text);
     }
 
     /**
@@ -466,14 +482,85 @@ public abstract class Response {
      * @param text the string value.
      * @param contentType the media type.
      * @return this
+     * @deprecated
      */
     public Builder body(final String text, final MediaType contentType) {
+      return body(contentType, text);
+    }
+
+    /**
+     * Sets a response body built from the specified text.
+     * @param contentType the media type.
+     * @param text the string value.
+     * @return this
+     */
+    public Builder body(final MediaType contentType, final String text) {
       if (text == null) return body((ResponseBody)null);
       final Buffer buffer = new Buffer().writeUtf8(text);
-      this.mBody = new BufferResponse(contentType, buffer);
-      contentLength(buffer.size());
-      contentType(contentType);
+      return body(new BufferResponse(contentType, buffer));
+    }
+
+    /**
+     * Sets the response chunks.
+     * @param contentType the media type.
+     * @param chunks the response body chunks.
+     * @return this
+     */
+    public Builder chunks(final MediaType contentType, final ResponseBody... chunks) {
+      return chunks(true, contentType, chunks);
+    }
+
+    private Builder chunks(final boolean checkCommonContentType, final MediaType contentType,
+                           final ResponseBody... chunks) {
+      if (chunks == null) {
+        mChunks = null;
+        removeHeader(TRANSFER_ENCODING);
+        removeHeader(CONTENT_TYPE);
+      }
+      else {
+        if (checkCommonContentType) {
+          for (final ResponseBody chunk: chunks) {
+            if (!chunk.contentType().equals(contentType)) {
+              throw new IllegalArgumentException(
+                "All chunks should have the same Content-Type: " + contentType
+              );
+            }
+          }
+        }
+        mChunks = chunks;
+        addHeader(TRANSFER_ENCODING, "chunked");
+        removeHeader(CONTENT_LENGTH);
+        if (contentType != null) {
+          contentType(contentType);
+        }
+      }
       return this;
+    }
+
+    /**
+     * Sets the response chunks built from the specified text chunks.
+     * @param chunks the plain/text string values.
+     * @return this
+     */
+    public Builder chunks(final String... chunks) {
+      return chunks(MediaTypes.TEXT, chunks);
+    }
+
+    /**
+     * Sets the response chunks built from the specified text chunks.
+     * @param contentType the media type.
+     * @param chunks the string values.
+     * @return this
+     */
+    public Builder chunks(final MediaType contentType, final String... chunks) {
+      if (chunks == null) return chunks(false, contentType, (ResponseBody)null);
+      final int length = chunks.length;
+      final ResponseBody[] bodies = new ResponseBody[length];
+      for (int i=0; i<length; ++i) {
+        final Buffer buffer = new Buffer().writeUtf8(chunks[i]);
+        bodies[i] = new BufferResponse(contentType, buffer);
+      }
+      return chunks(false, contentType, bodies);
     }
 
     /**
@@ -482,6 +569,7 @@ public abstract class Response {
      * @return this
      */
     public Builder push(final HttpUrl url) {
+      if (this.mPush == null) this.mPush = new ArrayList<HttpUrl>(4);
       this.mPush.add(url);
       return this;
     }
@@ -492,15 +580,23 @@ public abstract class Response {
      */
     public Response build() {
       if (mProtocol == null) {
-        throw new IllegalStateException("protocol == null");
+        throw new IllegalStateException("The protocol should be specified.");
       }
       if (mCode < 0) {
-        throw new IllegalStateException("code < 0: " + mCode);
+        throw new IllegalStateException("The return code should is invalid: " + mCode + ".");
       }
       if (mMessage == null) {
-        throw new IllegalStateException("message == null");
+        throw new IllegalStateException("The http message is missing.");
       }
-      return new SyncResponse(this);
+      if (mChunks != null && mBody != null) {
+        throw new IllegalStateException("Both body and chunks were specified.");
+      }
+      if (mChunks != null) {
+        return new ChunkedResponse(this);
+      }
+      else {
+        return new SyncResponse(this);
+      }
     }
 
     private static String join(final List<String> list) {
@@ -666,6 +762,7 @@ public abstract class Response {
           set("Access-Control-Allow-Headers", "Content-Type, Accept").
           build(),
         null,
+        null,
         null
       );
       mRetrySecs = retrySecs;
@@ -734,6 +831,7 @@ public abstract class Response {
     }
     @Override
     void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
+      //noinspection EmptyFinallyBlock
       try {
         final ResponseBody data = body();
         if (data != null) {
@@ -752,6 +850,42 @@ public abstract class Response {
               out.flush();
             }
           }
+        }
+      }
+      finally {
+//        try { in.close(); } catch (final IOException ignore) {}
+//        try { out.close(); } catch (final IOException ignore) {}
+//        try { socket.close(); } catch (final IOException ignore) {}
+      }
+    }
+  }
+
+  private static class ChunkedResponse extends Response {
+    private ChunkedResponse(final Builder builder) {
+      super(builder);
+    }
+
+    @Override
+    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
+      //noinspection EmptyFinallyBlock
+      try {
+        final ResponseBody[] chunks = chunks();
+        if (chunks != null) {
+          for (final ResponseBody chunk: chunks) {
+            final long length = chunk.contentLength();
+            out.writeUtf8(Long.toHexString(length).toUpperCase(Locale.US));
+            //out.writeUtf8("chunk-ext");
+            out.writeUtf8("\r\n");
+            if (length > 0) {
+              out.write(chunk.source(), length);
+            }
+            out.writeUtf8("\r\n");
+          }
+          out.writeUtf8("0");
+          //out.writeUtf8("chunk-ext");
+          out.writeUtf8("\r\n");
+          //out.writeUtf8("trailer-part");
+          out.writeUtf8("\r\n");
         }
       }
       finally {
