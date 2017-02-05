@@ -4,12 +4,12 @@ buildscript {
   }
   dependencies {
     classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
-    classpath 'org.jsoup:jsoup:1.10.1'
+    classpath 'org.jsoup:jsoup:1.10.2'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.6.0-2'
+version '3.6.0.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
