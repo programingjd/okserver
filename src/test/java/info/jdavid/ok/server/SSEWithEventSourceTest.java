@@ -6,10 +6,12 @@ import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
 import info.jdavid.ok.server.samples.SSEWithEventSource;
+import okio.Buffer;
 import okio.BufferedSource;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 import static org.junit.Assert.*;
 
@@ -36,7 +38,7 @@ public class SSEWithEventSourceTest {
     return client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build();
   }
 
-  private static final SSEWithEventSource SERVER = new SSEWithEventSource(8082, 5, 0);
+  private static final SSEWithEventSource SERVER = new SSEWithEventSource(8082, 5, 3);
 
   @BeforeClass
   public static void startServer() {
@@ -67,14 +69,25 @@ public class SSEWithEventSourceTest {
     assertEquals("keep-alive", r.header("Connection"));
     final String contentLengthHeader = r.header("Content-Length");
     assertTrue(contentLengthHeader == null || "-1".equals(contentLengthHeader));
+    final Buffer buffer = new Buffer();
     final BufferedSource source = r.body().source();
-    assertEquals("retry: 5", source.readUtf8Line());
-    assertTrue(source.buffer().exhausted());
+    while (!source.exhausted()) {
+      source.readAll(buffer);
+    }
+    assertEquals("retry: 5", buffer.readUtf8Line());
+    assertTrue(source.exhausted());
     SERVER.startLoop();
     for (int i=0; i<5; ++i) {
-      assertEquals("data: OK", source.readUtf8Line());
-      assertEquals("", source.readUtf8Line());
+      int count = 0;
+      while (buffer.size() < 10 && ++count < 5) {
+        source.readAll(buffer);
+        try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
+      }
+      assertTrue(buffer.size() >= 10);
+      assertEquals("data: OK", buffer.readUtf8Line());
+      assertEquals("", buffer.readUtf8Line());
     }
+    assertTrue(buffer.exhausted());
     assertTrue(source.exhausted());
   }
 

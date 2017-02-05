@@ -3,6 +3,7 @@ package info.jdavid.ok.server;
 import okhttp3.internal.http.StatusLine;
 import okio.Buffer;
 import okio.BufferedSource;
+import okio.ForwardingTimeout;
 import okio.Okio;
 import okio.Source;
 import okio.Timeout;
@@ -123,7 +124,7 @@ public class ResponseBuilderTest {
     }
 
     @Override public Timeout timeout() {
-      return Timeout.NONE;
+      return new ForwardingTimeout(source.timeout());
     }
 
     @Override public long read(final Buffer sink, final long byteCount) throws IOException {

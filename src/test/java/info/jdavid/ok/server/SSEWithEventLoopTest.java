@@ -37,7 +37,7 @@ public class SSEWithEventLoopTest {
     return client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
   }
 
-  private static final SSEWithEventLoop SERVER = new SSEWithEventLoop(8081, 5, 0);
+  private static final SSEWithEventLoop SERVER = new SSEWithEventLoop(8081, 5, 3);
 
   @BeforeClass
   public static void startServer() {
@@ -74,11 +74,18 @@ public class SSEWithEventLoopTest {
       source.readAll(buffer);
     }
     assertEquals("retry: 5", buffer.readUtf8Line());
+    assert(source.exhausted());
     for (int i=0; i<5; ++i) {
+      int count = 0;
+      while (buffer.size() < 10 && ++count < 5) {
+        source.readAll(buffer);
+        try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
+      }
       assertEquals("data: OK", buffer.readUtf8Line());
       assertEquals("", buffer.readUtf8Line());
     }
     assertTrue(buffer.exhausted());
+    assertTrue(source.exhausted());
   }
 
 }
