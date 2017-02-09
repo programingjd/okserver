@@ -51,6 +51,7 @@ class Http11 {
     final BufferedSource in = Okio.buffer(Okio.source(socket));
     final BufferedSink out = Okio.buffer(Okio.sink(socket));
     try {
+      final String clientIp = socket.getInetAddress().getHostAddress();
       int reuseCounter = 0;
       while (useSocket(in, reuseCounter++, keepAliveStrategy)) {
         final String request = readRequest(in);
@@ -83,8 +84,8 @@ class Http11 {
             }
             else {
               if (length == 0) {
-                response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
-                                                        headersBuilder.build(), null);
+                response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                                                        method, path, headersBuilder.build(), null);
               }
               else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
                 if (useBody) {
@@ -117,13 +118,13 @@ class Http11 {
                       statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
                   }
                   else {
-                    response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
-                                                            headersBuilder.build(), body);
+                    response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                                                            method, path, headersBuilder.build(), body);
                   }
                 }
                 else {
-                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
-                                                          headersBuilder.build(), null);
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                                                          method, path, headersBuilder.build(), null);
                 }
               }
               else { // length > 0
@@ -131,12 +132,12 @@ class Http11 {
                   final Buffer body = new Buffer();
                   if (!socket.isClosed()) in.readFully(body, length);
                   body.flush();
-                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
-                                                          headersBuilder.build(), body);
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                                                          method, path, headersBuilder.build(), body);
                 }
                 else {
-                  response = RequestHandler.Helper.handle(requestHandler, secure, method, path,
-                                                          headersBuilder.build(), null);
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                                                          method, path, headersBuilder.build(), null);
                 }
               }
             }

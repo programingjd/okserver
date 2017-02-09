@@ -44,8 +44,9 @@ public class SSEWithEventSource {
     //noinspection Duplicates
     mServer = new HttpServer().
       requestHandler(new RequestHandler() {
-        @Override public Response handle(final boolean secure, final String method, final HttpUrl url,
-                                            final Headers requestHeaders, final Buffer requestBody) {
+        @Override public Response handle(final String clientIp, final boolean secure,
+                                         final String method, final HttpUrl url,
+                                         final Headers requestHeaders, final Buffer requestBody) {
           if (!"GET".equals(method)) return unsupported();
           if (!"/sse".equals(url.encodedPath())) return notFound();
           return sse();

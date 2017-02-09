@@ -37,7 +37,7 @@ class Http2 {
                     final KeepAliveStrategy keepAliveStrategy,
                     final RequestHandler requestHandler) throws IOException {
     final Http2ConnectionListener listener =
-      new Http2ConnectionListener(requestHandler, maxRequestSize);
+      new Http2ConnectionListener(requestHandler, maxRequestSize, socket.getInetAddress().getHostAddress());
     final BufferedSource in = Okio.buffer(Okio.source(socket));
     final BufferedSink out = Okio.buffer(Okio.sink(socket));
     final Http2Connection connection = new Http2Connection.Builder(false).
@@ -106,10 +106,13 @@ class Http2 {
 
     private final RequestHandler handler;
     private final long max;
+    private final String clientIp;
 
-    Http2ConnectionListener(final RequestHandler requestHandler, final long maxRequestSize) {
+    Http2ConnectionListener(final RequestHandler requestHandler,
+                            final long maxRequestSize, final String address) {
       handler = requestHandler;
       max = maxRequestSize;
+      clientIp = address;
     }
 
     @Override public void onStream(final Http2Stream stream) throws IOException {
@@ -160,14 +163,15 @@ class Http2 {
         }
         else {
           if (length == 0) {
-            response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
+            response = handler.handle(clientIp, true, method, requestUrl, requestHeaders.build(), null);
           }
           else if (length < 0) {
             if (useBody) {
               response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
             }
             else {
-              response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
+              response = handler.handle(clientIp, true,
+                                        method, requestUrl, requestHeaders.build(), null);
             }
           }
           else {
@@ -175,10 +179,12 @@ class Http2 {
               final Buffer body = new Buffer();
               if (stream.isOpen()) source.readFully(body, length);
               body.flush();
-              response = handler.handle(true, method, requestUrl, requestHeaders.build(), body);
+              response = handler.handle(clientIp, true,
+                                        method, requestUrl, requestHeaders.build(), body);
             }
             else {
-              response = handler.handle(true, method, requestUrl, requestHeaders.build(), null);
+              response = handler.handle(clientIp, true,
+                                        method, requestUrl, requestHeaders.build(), null);
             }
           }
         }
@@ -210,7 +216,8 @@ class Http2 {
               ByteString name = ByteString.encodeUtf8(headers.name(i).toLowerCase(Locale.US));
               pushHeaderList.add(new Header(name, headers.value(i)));
             }
-            final Response pushResponse = handler.handle(true, method, push, requestHeaders.build(), null);
+            final Response pushResponse =
+              handler.handle(clientIp, true, method, push, requestHeaders.build(), null);
             final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
             pushStream.sendResponseHeaders(responseHeaders(pushResponse), true);
             final BufferedSink pushSink = Okio.buffer(pushStream.getSink());

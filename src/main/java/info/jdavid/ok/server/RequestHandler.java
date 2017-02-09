@@ -11,7 +11,8 @@ import okio.Buffer;
 @SuppressWarnings("WeakerAccess")
 public interface RequestHandler {
 
-  public Response handle(final boolean secure, final String method, final HttpUrl url,
+  public Response handle(final String clientIp, final boolean secure,
+                         final String method, final HttpUrl url,
                          final Headers requestHeaders, final Buffer requestBody);
   /**
    * The Default request handler, used for testing.
@@ -21,9 +22,10 @@ public interface RequestHandler {
   static class Helper {
 
     static Response handle(final RequestHandler handler,
-                           final boolean secure, final String method, final String path,
+                           final String clientIp, final boolean secure,
+                           final String method, final String path,
                            final Headers requestHeaders, final Buffer requestBody) {
-      final String h = requestHeaders.get("Host");
+      final String h = requestHeaders == null ? null : requestHeaders.get("Host");
       if (h == null) {
         return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
       }
@@ -35,14 +37,15 @@ public interface RequestHandler {
         scheme(secure ? "https" : "http").
         host(host);
       if (port > 0) url.port(port);
-      return handler.handle(secure, method, url.build(), requestHeaders, requestBody);
+      return handler.handle(clientIp, secure, method, url.build(), requestHeaders, requestBody);
     }
 
   }
 
   static class DefaultRequestHandler implements RequestHandler {
 
-    @Override public Response handle(final boolean secure, final String method, final HttpUrl url,
+    @Override public Response handle(final String clientIp, final boolean secure,
+                                     final String method, final HttpUrl url,
                                      final Headers requestHeaders, final Buffer requestBody) {
       final Response.Builder builder = new Response.Builder();
       if ("/test".equals(url.encodedPath())) {
