@@ -3,11 +3,15 @@ package info.jdavid.ok.server;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -602,135 +606,76 @@ public abstract class Response {
    */
   public static class SSE extends Response {
 
-    /**
-     * SSE Event loop responsible for sending events.
-     */
-    public static interface EventLoop {
+    private final List<Message> mQueue = new LinkedList<Message>();
+    private Lock mLock = new ReentrantLock();
+    private Condition isReady = mLock.newCondition();
 
-      /**
-       * Event loop step. This method should figure out if an event should be sent, and if so, create it and
-       * write it (with Body.writeEventData), and then return how much time to wait before running this
-       * step again. If a negative delay is returned, the loop will be stopped.
-       * @param body the SSE body to write to.
-       * @return the delay before running the loop step again.
-       */
-      public int loop(final Body body);
-
+    private static class Message {
+      final String data;
+      final Map<String, String> metadata;
+      public Message(final String data, final Map<String, String> metadata) {
+        this.data = data;
+        this.metadata = metadata;
+      }
     }
 
-    /**
-     * SSE Event source responsive for sending events.
-     */
-    public static interface EventSource {
+    public final class EventSource {
 
-      /**
-       * Registers the sse body for new message notifications.
-       * The event source should not send any message after the body has been closed.
-       * @param body the see body to register.
-       */
-      public void connect(final Body body);
-
-    }
-
-    public static class DefaultEventSource implements EventSource {
-      private final Collection<Body> mBodies = Collections.synchronizedCollection(new ArrayList<Body>());
-      @Override final public void connect(Body body) {
-        mBodies.add(body);
+      public void send(final String data) {
+        send(data, null);
       }
-      public final void write(final String data) {
-        final Iterator<Body> i = mBodies.iterator();
-        while (i.hasNext()) {
-          final Body body = i.next();
-          if (body.isStopped()) {
-            i.remove();
-          }
-          else {
-            body.writeEventData(data);
+
+      public void send(final String data, final Map<String, String> metadata) {
+        if (data == null) throw new NullPointerException();
+        if (metadata != null) {
+          for (final Map.Entry<String, String> entry: metadata.entrySet()) {
+            final String key = entry.getKey();
+            if (key == null) throw new NullPointerException();
+            final int n = key.length();
+            for (int i=0; i<n; ++i) {
+              final char c = key.charAt(i);
+              if (c == ':' || c == '\n' || c == '\t') throw new IllegalArgumentException();
+            }
           }
         }
-      }
-      public final void end(final String data) {
-        final Iterator<Body> i = mBodies.iterator();
-        while (i.hasNext()) {
-          final Body body = i.next();
-          if (body.isStopped()) {
-            i.remove();
-          }
-          else {
-            body.writeEventData(data);
-            body.stop();
-            i.remove();
-          }
+        mLock.lock();
+        try {
+          mQueue.add(new Message(data, metadata));
+          isReady.signal();
+        }
+        finally {
+          mLock.unlock();
         }
       }
-      public final void end() {
-        final Iterator<Body> i = mBodies.iterator();
-        while (i.hasNext()) {
-          final Body body = i.next();
-          if (!body.isStopped()) {
-            body.stop();
-          }
-          i.remove();
+
+      public void close() {
+        mLock.lock();
+        try {
+          mQueue.add(null);
+          isReady.signal();
+        }
+        finally {
+          mLock.unlock();
         }
       }
+
     }
 
     private final int mRetrySecs;
-    private final EventSource mEventSource;
+    private final EventSource mEventSource = new EventSource();
 
     /**
-     * Creates an SSE response with the default retry delay and the specified event loop.
-     * @param eventLoop the event loop.
+     * Creates an SSE response with the default retry delay.
      */
-    public SSE(final EventLoop eventLoop) {
-      this(5, eventLoop, 0);
+    public SSE() {
+      this(5);
     }
 
     /**
-     * Creates an SSE response with the default retry delay and the specified event source.
-     * @param eventSource the event source.
-     */
-    public SSE(final EventSource eventSource) {
-      this(5, eventSource);
-    }
-
-    /**
-     * Creates an SSE response with the specified retry delay and the specified event loop.
+     * Creates an SSE response with the specified retry delay.
      * @param retrySecs the retry delay in seconds.
-     * @param eventLoop the event loop.
-     * @param initialDelay the initial delay before starting the event loop in seconds.
      */
-    public SSE(final int retrySecs, final EventLoop eventLoop, final int initialDelay) {
-      this(
-        retrySecs,
-         new EventSource() {
-          @Override public void connect(final Body body) {
-            new Thread() {
-              public void run() {
-                int delay = initialDelay;
-                while (true) {
-                  if (delay < 0) {
-                    body.stop();
-                    break;
-                  }
-                  else if (delay > 0) {
-                    try { Thread.sleep(delay * 1000); } catch (final InterruptedException ignore) {}
-                  }
-                  delay = eventLoop.loop(body);
-                }
-              }
-            }.start();
-          }
-        }
-      );
-    }
-
-    /**
-     * Creates an SSE response with the specified retry delay and the specified event source.
-     * @param retrySecs the retry delay in seconds.
-     * @param eventSource the event source.
-     */
-    public SSE(final int retrySecs, final EventSource eventSource) {
+    public SSE(final int retrySecs) {
       super(
         Protocol.HTTP_1_1,
         StatusLines.OK.code,
@@ -748,61 +693,41 @@ public abstract class Response {
         null
       );
       mRetrySecs = retrySecs;
-      mEventSource = eventSource;
+    }
+
+    public EventSource getEventSource() {
+      return mEventSource;
     }
 
     @Override
     void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
       out.writeUtf8("retry: " + mRetrySecs + "\n").flush();
-      mEventSource.connect(new Body(in, out));
-    }
-
-    public final class Body extends ResponseBody {
-
-      private final BufferedSource in;
-      private final BufferedSink out;
-      private boolean mClosed = false;
-
-      private Body(final BufferedSource in, final BufferedSink out) {
-        this.in = in;
-        this.out = out;
-      }
-      @Override public MediaType contentType() { return MediaTypes.SSE; }
-      @Override public long contentLength() { return -1; }
-      @Override public BufferedSource source() { return null; }
-
-      /**
-       * Writes an event data to the stream.
-       * @param data the event data.
-       */
-      public void writeEventData(final String data) {
-        //mBuffer.writeUtf8("data: " + data + "\n\n").flush();
+      while (true) {
+        mLock.lock();
         try {
-          out.writeUtf8("data: " + data + "\n\n").flush();
+          if (isReady.await(3000L, TimeUnit.MILLISECONDS)) {
+            final Message message = mQueue.remove(0);
+            if (message == null) break;
+            final Map<String, String> metadata = message.metadata;
+            if (metadata != null) {
+              for (final Map.Entry<String, String> entry: metadata.entrySet()) {
+                out.writeUtf8(entry.getKey() + ": " + entry.getValue() + "\n\n");
+              }
+            }
+            final String data = message.data;
+            out.writeUtf8("data: " + data + "\n\n").flush();
+          }
+          else {
+            out.writeUtf8(":\n\n").flush();
+          }
         }
-        catch (final IOException e) {
-          stop();
+        catch (final InterruptedException ignore) {
+          break;
+        }
+        finally {
+          mLock.unlock();
         }
       }
-
-      /**
-       * Stops the SSE stream.
-       */
-      public void stop() {
-        mClosed = true;
-        try { if (in != null) in.close(); } catch (final IOException ignore) {}
-        try { out.close(); } catch (final IOException ignore) {}
-        //try { if (socket != null) socket.close(); } catch (final IOException ignore) {}
-      }
-
-      /**
-       * Returns whether the SSE stream has been stopped and no more events should be sent.
-       * @return true if the stream has been stopped, false if it is still running.
-       */
-      public boolean isStopped() {
-        return mClosed; // || (socket != null && socket.isClosed());
-      }
-
     }
 
   }

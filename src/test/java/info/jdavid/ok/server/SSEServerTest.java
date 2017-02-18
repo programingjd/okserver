@@ -5,7 +5,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
-import info.jdavid.ok.server.samples.SSEWithEventLoop;
+import info.jdavid.ok.server.samples.SSEServer;
 import okio.Buffer;
 import okio.BufferedSource;
 import org.junit.AfterClass;
@@ -19,10 +19,10 @@ import java.util.concurrent.TimeUnit;
 
 
 //@FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class SSEWithEventLoopTest {
+public class SSEServerTest {
 
   private static Request.Builder request(final String... segments) {
-    HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(8081);
+    HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(8082);
     if (segments != null) {
       for (final String segment: segments) {
         url.addPathSegment(segment);
@@ -34,10 +34,10 @@ public class SSEWithEventLoopTest {
   private static final OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
-    return client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
+    return client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build();
   }
 
-  private static final SSEWithEventLoop SERVER = new SSEWithEventLoop(8081, 5, 3);
+  private static final SSEServer SERVER = new SSEServer(8082, 5, 3, 3);
 
   @BeforeClass
   public static void startServer() {
@@ -68,19 +68,20 @@ public class SSEWithEventLoopTest {
     assertEquals("keep-alive", r.header("Connection"));
     final String contentLengthHeader = r.header("Content-Length");
     assertTrue(contentLengthHeader == null || "-1".equals(contentLengthHeader));
-    final BufferedSource source = r.body().source();
     final Buffer buffer = new Buffer();
+    final BufferedSource source = r.body().source();
     while (!source.exhausted()) {
       source.readAll(buffer);
     }
     assertEquals("retry: 5", buffer.readUtf8Line());
-    assert(source.exhausted());
+    assertTrue(source.exhausted());
     for (int i=0; i<5; ++i) {
       int count = 0;
       while (buffer.size() < 10 && ++count < 5) {
         source.readAll(buffer);
         try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
       }
+      assertTrue(buffer.size() >= 10);
       assertEquals("data: OK", buffer.readUtf8Line());
       assertEquals("", buffer.readUtf8Line());
     }
