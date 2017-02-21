@@ -41,7 +41,7 @@ public class SSEServer {
               eventSource.close();
             }
           }.start();
-          return sse();
+          return sse;
         }
         private Response notFound() {
           return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build();

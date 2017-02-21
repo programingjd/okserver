@@ -619,13 +619,20 @@ public abstract class Response {
       }
     }
 
-    public final class EventSource {
+    public static final class EventSource {
+
+      private SSE sse;
+
+      private EventSource(final SSE sse) {
+        this.sse = sse;
+      }
 
       public void send(final String data) {
         send(data, null);
       }
 
       public void send(final String data, final Map<String, String> metadata) {
+        if (sse == null) throw new IllegalStateException();
         if (data == null) throw new NullPointerException();
         if (metadata != null) {
           for (final Map.Entry<String, String> entry: metadata.entrySet()) {
@@ -638,31 +645,33 @@ public abstract class Response {
             }
           }
         }
-        mLock.lock();
+        sse.mLock.lock();
         try {
-          mQueue.add(new Message(data, metadata));
-          isReady.signal();
+          sse.mQueue.add(new Message(data, metadata));
+          sse.isReady.signal();
         }
         finally {
-          mLock.unlock();
+          sse.mLock.unlock();
         }
       }
 
       public void close() {
-        mLock.lock();
+        if (sse == null) return;
+        sse.mLock.lock();
         try {
-          mQueue.add(null);
-          isReady.signal();
+          sse.mQueue.add(null);
+          sse.isReady.signal();
         }
         finally {
-          mLock.unlock();
+          sse.mLock.unlock();
         }
+        sse = null;
       }
 
     }
 
     private final int mRetrySecs;
-    private final EventSource mEventSource = new EventSource();
+    private final EventSource mEventSource = new EventSource(this);
 
     /**
      * Creates an SSE response with the default retry delay.
@@ -705,7 +714,9 @@ public abstract class Response {
       while (true) {
         mLock.lock();
         try {
-          if (isReady.await(3000L, TimeUnit.MILLISECONDS)) {
+          if (mQueue.size() > 0 || isReady.await(10000L, TimeUnit.MILLISECONDS)) {
+            System.out.println("ok");
+            if (mQueue.size() == 0) continue;
             final Message message = mQueue.remove(0);
             if (message == null) break;
             final Map<String, String> metadata = message.metadata;
@@ -718,10 +729,12 @@ public abstract class Response {
             out.writeUtf8("data: " + data + "\n\n").flush();
           }
           else {
+            System.out.println("next");
             out.writeUtf8(":\n\n").flush();
           }
         }
         catch (final InterruptedException ignore) {
+          mEventSource.close();
           break;
         }
         finally {
