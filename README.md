@@ -46,7 +46,8 @@ Here's a very simple example:
 new HttpServer().requestHandler(
   new RequestHandler() {
     @Override
-    protected Response handle(final String method, final String path,
+    protected Response handle(final String clientIp, final boolean secure,
+                              final String method, final String path,
                               final Headers requestHeaders,
                               final Buffer requestBody) {
       final Response.Builder builder = new Response.Builder();
