@@ -59,7 +59,7 @@ public class DispatcherTest {
 
 
   @BeforeClass
-  public static void startServer() {
+  public static void prime() {
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.
     try {

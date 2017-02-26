@@ -39,14 +39,14 @@ public final class Https {
   final boolean http2;
 
   private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
-                final List<String> protocols, final List<String> cipherSuites) {
+                final List<String> protocols, final List<String> cipherSuites, final boolean http2) {
     if (cert == null && additionalCerts == null && protocols == null && cipherSuites == null) {
       mContext = null;
       mAdditionalContexts = null;
       mPlatform = null;
       this.protocols = null;
       this.cipherSuites = null;
-      http2 = false;
+      this.http2 = false;
     }
     else {
       mContext = createSSLContext(cert);
@@ -60,7 +60,7 @@ public final class Https {
       this.protocols = protos.toArray(new String[protos.size()]);
       final List<String> ciphers = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
       this.cipherSuites = ciphers.toArray(new String[ciphers.size()]);
-      this.http2 = platform.supportsHttp2();
+      this.http2 = http2 && platform.supportsHttp2();
     }
   }
 
@@ -120,7 +120,7 @@ public final class Https {
    * Instance used for servers that don't use HTTPS.
    */
   public static final Https DISABLED =
-    new Https(null, null, null, null);
+    new Https(null, null, null, null, false);
 
   @SuppressWarnings({ "WeakerAccess", "unused" })
   public enum Protocol {
@@ -140,6 +140,7 @@ public final class Https {
   @SuppressWarnings("unused")
   public static final class Builder {
 
+    private boolean mHttp2 = false;
     private List<String> mProtocols = null;
     private List<String> mCipherSuites = null;
     private byte[] mCertificate = null;
@@ -147,15 +148,27 @@ public final class Https {
 
     public Builder() {}
 
+
     /**
      * Sets the primary certificate.
      * @param bytes the certificate (pkcs12).
      * @return this.
      */
     public Builder certificate(final byte[] bytes) {
+      return certificate(bytes, true);
+    }
+
+    /**
+     * Sets the primary certificate.
+     * @param bytes the certificate (pkcs12).
+     * @param allowHttp2 whether to enable http2 (the platform needs to support it).
+     * @return this.
+     */
+    public Builder certificate(final byte[] bytes, final boolean allowHttp2) {
       if (bytes == null) throw new NullPointerException();
       if (mCertificate != null) throw new IllegalStateException("Main certificate already set.");
       mCertificate = bytes;
+      mHttp2 = allowHttp2;
       return this;
     }
 
@@ -214,7 +227,7 @@ public final class Https {
      * @return the Https instance.
      */
     public Https build() {
-      return new Https(mCertificate, mAdditionalCertificates, mProtocols, mCipherSuites);
+      return new Https(mCertificate, mAdditionalCertificates, mProtocols, mCipherSuites, mHttp2);
     }
 
   }

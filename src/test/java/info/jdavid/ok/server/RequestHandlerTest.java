@@ -92,8 +92,6 @@ public class RequestHandlerTest {
     return new Request.Builder().url(url).build();
   }
 
-
-
   @Test
   public void testParams() throws IOException {
     final BufferedSource source = Okio.buffer(client().newCall(new Request.Builder().

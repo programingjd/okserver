@@ -130,7 +130,7 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      Platform.setHttp2Protocol(socket, mApplicationProtocols);
+      if (http2) Platform.setHttp2Protocol(socket, mApplicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
@@ -167,7 +167,7 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      Platform.setHttp2Protocol(socket, mApplicationProtocols);
+      if (http2) Platform.setHttp2Protocol(socket, mApplicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
