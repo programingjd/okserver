@@ -91,10 +91,16 @@ public class ResponseBuilderTest {
   public void testBody() throws IOException {
     assertNull(response(404).noBody().build().body());
     assertEquals("test", response(200).body("test").build().body().string());
+    assertEquals("test",
+                 response(200).body("test".getBytes("UTF-8")).build().body().string());
     assertEquals(4, response(200).body("1234").build().body().bytes().length);
     final Buffer buffer = new Buffer();
     response(200).body("test").build().writeBody(null, buffer);
     assertEquals("test", buffer.readUtf8());
+    final Buffer source = new Buffer();
+    source.writeUtf8("test");
+    assertEquals("test",
+                 response(200).body(source, (int)source.size()).build().body().string());
   }
 
   @Test

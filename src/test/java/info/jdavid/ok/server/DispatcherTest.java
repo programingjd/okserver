@@ -10,6 +10,7 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okio.Buffer;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -56,6 +57,17 @@ public class DispatcherTest {
     };
   }
 
+
+  @BeforeClass
+  public static void startServer() {
+    // Use an http client once to get rid of the static initializer penalty.
+    // This is done so that the first test elapsed time doesn't get artificially high.
+    try {
+      final OkHttpClient c = client.newBuilder().readTimeout(1, TimeUnit.SECONDS).build();
+      c.newCall(new Request.Builder().url("http://google.com").build()).execute();
+    }
+    catch (final IOException ignore) {}
+  }
 
   @Test
   public void testSameThread() {

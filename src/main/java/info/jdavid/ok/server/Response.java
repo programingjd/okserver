@@ -487,6 +487,52 @@ public abstract class Response {
     }
 
     /**
+     * Sets a response body built from the specified bytes.
+     * @param bytes the octet stream.
+     * @return this
+     */
+    public Builder body(final byte[] bytes) {
+      return body(MediaTypes.OCTET_STREAM, bytes);
+    }
+
+    /**
+     * Sets a response body built from the specified bytes.
+     * @param contentType the media type.
+     * @param bytes the bytes.
+     * @return this
+     */
+    public Builder body(final MediaType contentType, final byte[] bytes) {
+      if (bytes == null) return body((ResponseBody)null);
+      final Buffer buffer = new Buffer().write(bytes);
+      return body(new BufferResponse(contentType, buffer));
+    }
+
+    /**
+     * Sets a response body built from the specified bytes.
+     * @param source the bytes.
+     * @param size the byte size of the source.
+     * @return this
+     */
+    public Builder body(final BufferedSource source, final int size) {
+      if (source == null) return body((ResponseBody)null);
+      if (size < 0) throw new IllegalArgumentException();
+      return body(new BufferResponse(MediaTypes.OCTET_STREAM, source, size));
+    }
+
+    /**
+     * Sets a response body built from the specified bytes.
+     * @param contentType the media type.
+     * @param source the bytes.
+     * @param size the byte size of the source.
+     * @return this
+     */
+    public Builder body(final MediaType contentType, final BufferedSource source, final int size) {
+      if (source == null) return body((ResponseBody)null);
+      if (size < 0) throw new IllegalArgumentException();
+      return body(new BufferResponse(contentType, source, size));
+    }
+
+    /**
      * Sets the response chunks.
      * @param contentType the media type.
      * @param chunks the response body chunks.
@@ -550,6 +596,23 @@ public abstract class Response {
     }
 
     /**
+     * Sets the response chunks built from the specified byte chunks.
+     * @param contentType the media type.
+     * @param chunks the bytes chunks.
+     * @return this
+     */
+    public Builder chunks(final MediaType contentType, final byte[]... chunks) {
+      if (chunks == null) return chunks(false, contentType, (ResponseBody)null);
+      final int length = chunks.length;
+      final ResponseBody[] bodies = new ResponseBody[length];
+      for (int i=0; i<length; ++i) {
+        final Buffer buffer = new Buffer().write(chunks[i]);
+        bodies[i] = new BufferResponse(contentType, buffer);
+      }
+      return chunks(false, contentType, bodies);
+    }
+
+    /**
      * Adds an url to send as a push stream on an HTTP 2 connection.
      * @param url the url of the content to push.
      * @return this
@@ -599,6 +662,7 @@ public abstract class Response {
       }
       return str.toString();
     }
+
   }
 
   /**
@@ -821,13 +885,18 @@ public abstract class Response {
 
   static final class BufferResponse extends ResponseBody {
     public final MediaType contentType;
-    public final Buffer buffer;
+    public final BufferedSource buffer;
+    public final int size;
     BufferResponse(final MediaType contentType, final Buffer buffer) {
+      this(contentType, buffer, (int)buffer.size());
+    }
+    BufferResponse(final MediaType contentType, final BufferedSource buffer, final int size) {
       this.contentType = contentType;
       this.buffer = buffer;
+      this.size = size;
     }
     @Override public MediaType contentType() { return contentType; }
-    @Override public long contentLength() { return buffer.size(); }
+    @Override public long contentLength() { return size; }
     @Override public BufferedSource source() { return buffer; }
   }
 
