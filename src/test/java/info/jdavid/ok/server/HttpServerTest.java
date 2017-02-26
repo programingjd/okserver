@@ -41,7 +41,6 @@ public class HttpServerTest {
     return client.
       newBuilder().
       readTimeout(0, TimeUnit.SECONDS).
-      /*connectionPool(new ConnectionPool(3, 30, TimeUnit.SECONDS)).*/
       build();
   }
 

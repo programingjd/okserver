@@ -33,29 +33,9 @@ public interface Dispatcher {
   /**
    * Default dispatcher. Requests are handled by a set of threads from a CachedThreadPool.
    */
-  public static class Default implements Dispatcher {
-    private ExecutorService mExecutors = null;
-    private final AtomicBoolean mShutdown = new AtomicBoolean();
-    @Override public void start() {
-      mShutdown.set(false);
-      mExecutors = Executors.newCachedThreadPool(); }
-    @Override public void dispatch(final HttpServer.Request request) {
-      mExecutors.execute(
-        new Runnable() {
-          @Override public void run() {
-            request.serve();
-          }
-        }
-      );
-    }
-    @Override public void shutdown() {
-      if (mShutdown.getAndSet(true)) return;
-      mExecutors.shutdownNow();
-      try {
-        mExecutors.awaitTermination(5, TimeUnit.SECONDS);
-      }
-      catch (final InterruptedException ignore) {}
-      mExecutors = null;
+  public static class Default extends ThreadPoolDispatcher {
+    @Override protected ExecutorService createThreadPool() {
+      return Executors.newCachedThreadPool();
     }
   }
 
@@ -113,6 +93,8 @@ public interface Dispatcher {
 
   /**
    * Dispatcher implementation that simply runs the dispatch job synchronously on the current thread.
+   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
+   * little while even after the request has been served.
    */
   @SuppressWarnings("unused")
   public static class SameThreadDispatcher implements Dispatcher {
@@ -121,6 +103,71 @@ public interface Dispatcher {
       request.serve();
     }
     @Override public void shutdown() {}
+  }
+
+  /**
+   * Dispatcher implementation that only uses one thread.
+   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
+   * little while even after the request has been served.
+   */
+  @SuppressWarnings("unused")
+  public static class SingleThreadDispatcher extends ThreadPoolDispatcher {
+    @Override protected ExecutorService createThreadPool() {
+      return Executors.newSingleThreadExecutor();
+    }
+  }
+
+  /**
+   * Dispatcher implementation that uses a fixed thread pool with the specified number of threads.
+   */
+  @SuppressWarnings("unused")
+  public static class MultiThreadsDispatcher extends ThreadPoolDispatcher {
+    private final int threadCount;
+    public MultiThreadsDispatcher(final int threadCount) {
+      this.threadCount = threadCount;
+    }
+    @Override protected ExecutorService createThreadPool() {
+      return Executors.newFixedThreadPool(threadCount);
+    }
+  }
+
+  /**
+   * Dispatcher implementation that uses a thread pool.
+   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
+   * little while even after the request has been served.
+   */
+  public static abstract class ThreadPoolDispatcher implements Dispatcher {
+    private ExecutorService mExecutors = null;
+    private final AtomicBoolean mShutdown = new AtomicBoolean();
+
+    /**
+     * Creates the thread pool that will be used to handle the server requests.
+     * @return the thread pool.
+     */
+    protected abstract ExecutorService createThreadPool();
+
+    @Override public void start() {
+      mShutdown.set(false);
+      mExecutors = createThreadPool();
+    }
+    @Override public void dispatch(final HttpServer.Request request) {
+      mExecutors.execute(
+        new Runnable() {
+          @Override public void run() {
+            request.serve();
+          }
+        }
+      );
+    }
+    @Override public void shutdown() {
+      if (mShutdown.getAndSet(true)) return;
+      mExecutors.shutdownNow();
+      try {
+        mExecutors.awaitTermination(5, TimeUnit.SECONDS);
+      }
+      catch (final InterruptedException ignore) {}
+      mExecutors = null;
+    }
   }
 
 }
