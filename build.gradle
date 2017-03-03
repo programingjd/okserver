@@ -24,11 +24,29 @@ repositories {
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
+tasks.withType(JavaCompile) {
+  doFirst {
+    String jre6Home = System.getProperty('java.home').replaceAll('\\\\', '/').replaceFirst(/1[.][789]/, '1.6')
+    if (new File(jre6Home).exists()) {
+      options.fork = true
+      options.bootClasspath = fileTree(include: [ '*.jar' ], dir: "${jre6Home}/lib").join(File.pathSeparator)
+      options.extensionDirs = "${jre6Home}/lib/ext"
+    }
+  }
+}
+
+tasks.withType(Test) {
+  doFirst {
+    jvmArgs('-Xbootclasspath/p:' + configurations.alpn.files{it.group=='info.jdavid.alpn'})
+  }
+}
+
 ext {
   bintrayApiKey = new File("$projectDir/local.properties").with {
     it.text.splitEachLine('=', { if (it && it[0] == 'bintrayApiKey') return it[1] })
   }
-  jdkVersion = Runtime.class.getPackage().getImplementationVersion().replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
+  jdkVersion = Runtime.class.getPackage().getImplementationVersion().
+    replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
 }
 
 configurations {
@@ -60,7 +78,7 @@ sourceSets {
 dependencies {
   compile 'com.squareup.okio:okio:1.11.0'
   compile 'com.squareup.okhttp3:okhttp:3.6.0'
-  alpn "info.jdavid.alpn:alpn-boot:${ext.jdkVersion}"
+  alpn "info.jdavid.alpn:alpn-boot:${jdkVersion}"
   testCompile 'junit:junit:4.12'
 }
 
@@ -77,8 +95,11 @@ jacocoTestReport {
 }
 
 test {
-  jvmArgs '-Xbootclasspath/p:' + configurations.alpn.files{it.group=='info.jdavid.alpn'
-  //bootstrapClasspath.add(0, files(configurations.alpn.files{it.group=='info.jdavid.alpn'}))
+  String jreHome = System.getProperty('java.home').replaceAll('\\\\', '/')
+  FileTree bootClasspath = configurations.alpn.asFileTree.plus(
+    fileTree(include: [ '*.jar' ], dir: "${jreHome}/lib")
+  )
+  setBootstrapClasspath(bootClasspath)
   testLogging {
     showStandardStreams = true
   }
@@ -152,7 +173,7 @@ publishing {
 
 bintray {
   user = 'programingjd'
-  key = ext.bintrayApiKey
+  key = bintrayApiKey
   dryRun = false
   publish = true
   publications = ['mavenJava']
