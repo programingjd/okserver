@@ -34,7 +34,7 @@ public class HttpServer {
   private Https mHttps = null;
 
   /**
-   * Sets the port number for the server.
+   * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).
    * @param port the port number.
    * @param securePort the secure port number.
    * @return this.
@@ -49,7 +49,7 @@ public class HttpServer {
   }
 
   /**
-   * Sets the port number for the server.
+   * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).
    * @param port the port number.
    * @return this.
    */
@@ -70,7 +70,8 @@ public class HttpServer {
   }
 
   /**
-   * Sets the port number for the server (secure connections).
+   * Sets the port number for the server (secure connections). You can use 0 for "none"
+   * (to disable the port binding).
    * @param port the port number.
    * @return this.
    */
@@ -213,7 +214,7 @@ public class HttpServer {
   public void shutdown() {
     if (!mStarted.get()) return;
     try {
-      mServerSocket.close();
+      if (mServerSocket != null) mServerSocket.close();
     }
     catch (final IOException ignore) {}
     try {

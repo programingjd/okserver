@@ -138,6 +138,11 @@ public class HttpsTest {
     assertEquals(2, split.length);
     assertEquals("http://localhost:8080/", split[0]);
     assertEquals("false", split[1]);
+    try {
+      client().newCall(new Request.Builder().url("http://localhost:8181").build()).execute();
+      fail();
+    }
+    catch (final IOException ignore) {}
   }
 
 }

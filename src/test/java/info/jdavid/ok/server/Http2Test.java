@@ -1,12 +1,16 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.ConnectionPool;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import okhttp3.Request;
 import okio.Buffer;
 import org.junit.AfterClass;
@@ -18,13 +22,22 @@ import static org.junit.Assert.*;
 
 public class Http2Test {
 
-  private static OkHttpClient client() {
-    return  HttpsTest.client.newBuilder().
+  private static OkHttpClient client(final List<Protocol> protocols) {
+    return HttpsTest.client.newBuilder().
       readTimeout(0, TimeUnit.SECONDS).
       retryOnConnectionFailure(false).
       connectTimeout(60, TimeUnit.SECONDS).
       connectionPool(new ConnectionPool(0, 1L, TimeUnit.SECONDS)).
+      protocols(protocols).
       build();
+  }
+
+  private static OkHttpClient http11Client() {
+    return client(Collections.singletonList(Protocol.HTTP_1_1));
+  }
+
+  private static OkHttpClient http2Client() {
+    return client(Arrays.asList(Protocol.HTTP_1_1, Protocol.HTTP_2));
   }
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
@@ -32,7 +45,7 @@ public class Http2Test {
   @BeforeClass
   public static void startServer() throws IOException {
     SERVER.
-      ports(8080, 8181).
+      ports(0, 8181).
       https(new Https.Builder().certificate(HttpsTest.cert, false).build()).
       requestHandler(new RequestHandler() {
         @Override public Response handle(final String clientIp, final boolean secure,
@@ -67,8 +80,33 @@ public class Http2Test {
   }
 
   @Test
-  public void testHttp2() {
-
+  public void testHttp() throws IOException {
+    try {
+      http11Client().newCall(new Request.Builder().url("http://localhost:8181").build()).execute();
+      fail();
+    }
+    catch (final IOException ignore) {}
+    try {
+      http2Client().newCall(new Request.Builder().url("http://localhost:8181").build()).execute();
+      fail();
+    }
+    catch (final IOException ignore) {}
+    try {
+      http11Client().newCall(new Request.Builder().url("http://localhost:8080").build()).execute();
+      fail();
+    }
+    catch (final IOException ignore) {}
+    try {
+      http2Client().newCall(new Request.Builder().url("http://localhost:8080").build()).execute();
+      fail();
+    }
+    catch (final IOException ignore) {}
+    final String result = http11Client().
+      newCall(new Request.Builder().url("https://localhost:8181").build()).execute().body().string();
+    final String[] split = result.split("\n");
+    assertEquals(2, split.length);
+    assertEquals("https://localhost:8181/", split[0]);
+    assertEquals("true", split[1]);
   }
 
 }
