@@ -10,6 +10,7 @@ import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.logger;
 
+
 abstract class Platform {
 
   private static final String JAVA_SPEC_VERSION = Runtime.class.getPackage().getSpecificationVersion();

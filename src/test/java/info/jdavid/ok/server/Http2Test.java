@@ -1,21 +1,20 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.ConnectionPool;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import okhttp3.Protocol;
 import okhttp3.Request;
 import okio.Buffer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+
 
 public class Http2Test {
 
@@ -25,7 +24,6 @@ public class Http2Test {
       retryOnConnectionFailure(false).
       connectTimeout(60, TimeUnit.SECONDS).
       connectionPool(new ConnectionPool(0, 1L, TimeUnit.SECONDS)).
-      protocols(Collections.singletonList(Protocol.HTTP_2)).
       build();
   }
 
@@ -68,5 +66,9 @@ public class Http2Test {
     assertTrue(Platform.findPlatform().supportsHttp2());
   }
 
+  @Test
+  public void testHttp2() {
+
+  }
 
 }

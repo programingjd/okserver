@@ -22,6 +22,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 import static info.jdavid.ok.server.Logger.logger;
 
+
 /**
  * Https is used to access the server certificates required by the server for HTTPS.
  * Certificates should be in pkcs12 format.<br>
@@ -118,12 +119,6 @@ public final class Https {
       catch (final IOException ignore) {}
     }
   }
-
-  /**
-   * Instance used for servers that don't use HTTPS.
-   */
-  public static final Https DISABLED =
-    new Https(null, null, null, null, false);
 
   @SuppressWarnings({ "WeakerAccess", "unused" })
   public enum Protocol {

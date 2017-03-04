@@ -12,6 +12,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
+
 public class StartStopTest {
 
   private static Request.Builder request(final int port, final String... segments) {

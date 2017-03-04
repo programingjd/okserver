@@ -15,6 +15,9 @@ import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 
+import static info.jdavid.ok.server.Logger.logger;
+
+
 class Http11 {
 
   private static String readRequest(final BufferedSource in) throws IOException {
@@ -22,7 +25,7 @@ class Http11 {
     if (index == -1) {
       final ByteString byteString = in.readByteString();
       if (byteString.size() > 0) {
-        Logger.log(byteString.utf8());
+        logger.warn("Invalid HTTP1.1 request:\n" + byteString.utf8());
       }
       return null;
     }

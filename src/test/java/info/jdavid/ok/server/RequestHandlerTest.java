@@ -18,6 +18,7 @@ import okio.Okio;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 
@@ -85,11 +86,6 @@ public class RequestHandlerTest {
       connectTimeout(60, TimeUnit.SECONDS).
       connectionPool(new ConnectionPool(0, 1L, TimeUnit.SECONDS)).
       build();
-  }
-
-  private static Request request() {
-    final String url = "http://localhost:8080";
-    return new Request.Builder().url(url).build();
   }
 
   @Test

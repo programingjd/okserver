@@ -26,12 +26,13 @@ import okio.Source;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 
 public class HttpsTest {
 
-  static byte[] getCert() {
+  private static byte[] getCert() {
     final Source source = Okio.source(HttpsTest.class.getResourceAsStream("/test.p12"));
     final Buffer buffer = new Buffer();
     try {

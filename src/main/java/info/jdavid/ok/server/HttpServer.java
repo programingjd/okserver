@@ -31,7 +31,7 @@ public class HttpServer {
   private Dispatcher mDispatcher = null;
   private KeepAliveStrategy mKeepAliveStrategy = KeepAliveStrategy.DEFAULT;
   private RequestHandler mRequestHandler = RequestHandler.DEFAULT;
-  private Https mHttps = Https.DISABLED;
+  private Https mHttps = null;
 
   /**
    * Sets the port number for the server.
@@ -189,8 +189,8 @@ public class HttpServer {
     if (mStarted.get()) {
       throw new IllegalStateException("The certificates cannot be changed while the server is running.");
     }
-    validateHttps();
-    this.mHttps = https == null ? Https.DISABLED : https;
+    if (https != null) validateHttps();
+    this.mHttps = https;
     return this;
   }
 
@@ -256,45 +256,53 @@ public class HttpServer {
         address = InetAddress.getByName(mHostname);
       }
 
-      final ServerSocket serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
-      serverSocket.setReuseAddress(true);
+      final ServerSocket serverSocket;
+      if (mPort > 0) {
+        serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
+        serverSocket.setReuseAddress(true);
+      }
+      else {
+        serverSocket = null;
+      }
 
       final Https https = mHttps;
       final SecureServerSocket secureServerSocket;
-      if (https == Https.DISABLED) {
-        secureServerSocket = mSecureServerSocket = null;
-      }
-      else {
+      if (https != null && mSecurePort > 0) {
         secureServerSocket = mSecureServerSocket = new SecureServerSocket(mSecurePort, address);
         secureServerSocket.setReuseAddress(true);
       }
+      else {
+        secureServerSocket = mSecureServerSocket = null;
+      }
 
-      new Thread(new Runnable() {
-        @Override public void run() {
-          try {
-            //noinspection InfiniteLoopStatement
-            while (true) {
-              try {
-                dispatch(dispatcher, serverSocket.accept(), false);
-              }
-              catch (final IOException e) {
-                if (serverSocket.isClosed()) {
-                  break;
+      if (serverSocket != null) {
+        new Thread(new Runnable() {
+          @Override public void run() {
+            try {
+              //noinspection InfiniteLoopStatement
+              while (true) {
+                try {
+                  dispatch(dispatcher, serverSocket.accept(), false);
                 }
-                logger.warn("HTTP", e);
+                catch (final IOException e) {
+                  if (serverSocket.isClosed()) {
+                    break;
+                  }
+                  logger.warn("HTTP", e);
+                }
               }
             }
+            finally {
+              try { serverSocket.close(); } catch (final IOException ignore) {}
+              try { if (secureServerSocket != null) serverSocket.close(); } catch(final IOException ignore) {}
+              try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
+              mServerSocket = null;
+              mSecureServerSocket = null;
+              mStarted.set(false);
+            }
           }
-          finally {
-            try { serverSocket.close(); } catch (final IOException ignore) {}
-            try { if (secureServerSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
-            try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
-            mServerSocket = null;
-            mSecureServerSocket = null;
-            mStarted.set(false);
-          }
-        }
-      }).start();
+        }).start();
+      }
 
       if (secureServerSocket != null) {
         new Thread(new Runnable() {
@@ -314,7 +322,7 @@ public class HttpServer {
               }
             }
             finally {
-              try { serverSocket.close(); } catch (final IOException ignore) {}
+              try { if (serverSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
               try { secureServerSocket.close(); } catch (final IOException ignore) {}
               try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
               mServerSocket = null;
