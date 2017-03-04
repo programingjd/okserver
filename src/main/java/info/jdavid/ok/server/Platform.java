@@ -8,7 +8,7 @@ import java.util.List;
 
 import javax.net.ssl.SSLSocket;
 
-import static info.jdavid.ok.server.Logger.log;
+import static info.jdavid.ok.server.Logger.logger;
 
 abstract class Platform {
 
@@ -67,7 +67,7 @@ abstract class Platform {
 
     private Jdk9Platform() {
       super();
-      log("JDK9 Platform");
+      logger.info("JDK9 Platform");
       mApplicationProtocols = findApplicationProtocolsField();
     }
 
@@ -108,7 +108,7 @@ abstract class Platform {
 
     private Jdk8Platform() {
       super();
-      log("JDK8 Platform");
+      logger.info("JDK8 Platform");
       mApplicationProtocols = findApplicationProtocolsField();
     }
 
@@ -149,7 +149,7 @@ abstract class Platform {
 
     private Jdk7Platform() {
       super();
-      log("JDK7 Platform");
+      logger.info("JDK7 Platform");
       mApplicationProtocols = findApplicationProtocolsField();
     }
 
@@ -194,7 +194,7 @@ abstract class Platform {
 
     private Android16Platform(final int version) {
       super();
-      log("Android Platform");
+      logger.info("Android Platform");
       mVersion = version;
     }
 

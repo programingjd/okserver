@@ -20,7 +20,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import static info.jdavid.ok.server.Logger.log;
+import static info.jdavid.ok.server.Logger.logger;
 
 /**
  * Https is used to access the server certificates required by the server for HTTPS.
@@ -51,10 +51,13 @@ public final class Https {
     else {
       mContext = createSSLContext(cert);
       final Platform platform = mPlatform = Platform.findPlatform();
-      mAdditionalContexts = new HashMap<String, SSLContext>(additionalCerts.size());
-      for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
-        final SSLContext additionalContext = createSSLContext(entry.getValue());
-        if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
+      mAdditionalContexts =
+        new HashMap<String, SSLContext>(additionalCerts == null ? 0 : additionalCerts.size());
+      if (additionalCerts != null) {
+        for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
+          final SSLContext additionalContext = createSSLContext(entry.getValue());
+          if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
+        }
       }
       final List<String> protos = protocols == null ? platform.defaultProtocols() : protocols;
       this.protocols = protos.toArray(new String[protos.size()]);
@@ -101,11 +104,11 @@ public final class Https {
       return context;
     }
     catch (final GeneralSecurityException e) {
-      log(e);
+      logger.warn("Failed to create SSL context.", e);
       return null;
     }
     catch (final IOException e) {
-      log(e);
+      logger.warn("Failed to load SSL certificate.", e);
       return null;
     }
     finally {

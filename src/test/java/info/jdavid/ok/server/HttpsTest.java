@@ -120,13 +120,23 @@ public class HttpsTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void testHttps() throws IOException {
     final String result =
       client().newCall(new Request.Builder().url("https://localhost:8181").build()).execute().body().string();
     final String[] split = result.split("\n");
     assertEquals(2, split.length);
     assertEquals("https://localhost:8181/", split[0]);
     assertEquals("true", split[1]);
+  }
+
+  @Test
+  public void testHttp() throws IOException {
+    final String result =
+      client().newCall(new Request.Builder().url("http://localhost:8080").build()).execute().body().string();
+    final String[] split = result.split("\n");
+    assertEquals(2, split.length);
+    assertEquals("http://localhost:8080/", split[0]);
+    assertEquals("false", split[1]);
   }
 
 }

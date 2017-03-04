@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static info.jdavid.ok.server.Logger.log;
+import static info.jdavid.ok.server.Logger.logger;
 
 /**
  * The dispatcher is responsible for dispatching requests to workers.
@@ -58,7 +58,7 @@ public interface Dispatcher {
             System.gc();
             final float used =
               Math.round((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024f);
-            log(used + "k");
+            logger.info(used + "k");
           }
         }
       });
@@ -67,12 +67,12 @@ public interface Dispatcher {
       mExecutors.execute(
         new Runnable() {
           @Override public void run() {
-            log("Connections: " + mConnections.incrementAndGet());
+            logger.info("Connections: " + mConnections.incrementAndGet());
             try {
               request.serve();
             }
             finally {
-              log("Connections: " + mConnections.decrementAndGet());
+              logger.info("Connections: " + mConnections.decrementAndGet());
             }
           }
         }

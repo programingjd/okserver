@@ -146,6 +146,7 @@ public abstract class Response {
   /**
    * Builder for the Response class.
    */
+  @SuppressWarnings("UnusedReturnValue")
   public static final class Builder {
 
     private static final String CONTENT_LENGTH = "Content-Length";

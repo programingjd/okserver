@@ -11,13 +11,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 
-import static info.jdavid.ok.server.Logger.log;
+import static info.jdavid.ok.server.Logger.logger;
 
 
 /**
  * Http Server class.
  */
-@SuppressWarnings({ "unused", "WeakerAccess", "Convert2Lambda" })
+@SuppressWarnings({ "unused", "WeakerAccess", "Convert2Lambda", "UnusedReturnValue" })
 public class HttpServer {
 
   private final AtomicBoolean mStarted = new AtomicBoolean();
@@ -281,14 +281,14 @@ public class HttpServer {
                 if (serverSocket.isClosed()) {
                   break;
                 }
-                log(e);
+                logger.warn("HTTP", e);
               }
             }
           }
           finally {
             try { serverSocket.close(); } catch (final IOException ignore) {}
             try { if (secureServerSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
-            try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
+            try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
             mServerSocket = null;
             mSecureServerSocket = null;
             mStarted.set(false);
@@ -309,14 +309,14 @@ public class HttpServer {
                   if (secureServerSocket.isClosed()) {
                     break;
                   }
-                  log(e);
+                  logger.warn("HTTPS", e);
                 }
               }
             }
             finally {
               try { serverSocket.close(); } catch (final IOException ignore) {}
               try { secureServerSocket.close(); } catch (final IOException ignore) {}
-              try { dispatcher.shutdown(); } catch (final Exception e) { log(e); }
+              try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
               mServerSocket = null;
               mSecureServerSocket = null;
               mStarted.set(false);
@@ -324,10 +324,9 @@ public class HttpServer {
           }
         }).start();
       }
-
     }
     catch (final IOException e) {
-      log(e);
+      logger.error(e.getMessage(), e);
     }
   }
 
@@ -351,14 +350,26 @@ public class HttpServer {
               sslSocket = https.createSSLSocket(socket, hostname, http2);
             }
             catch (final SSLHandshakeException e) {
-              log(handshake.getCipherSuites());
+              final String[] cipherSuites = handshake.getCipherSuites();
+              final StringBuilder s = new StringBuilder();
+              boolean addSeparator = false;
+              for (final String value: cipherSuites) {
+                if (addSeparator) {
+                  s.append(' ');
+                }
+                else {
+                  addSeparator = true;
+                }
+                s.append(value);
+              }
+              logger.info(s.toString());
               throw new IOException(e);
             }
           }
         }
         catch (final SocketTimeoutException ignore) {}
         catch (final Exception e) {
-          log(e);
+          logger.warn(e.getMessage(), e);
         }
         if (sslSocket == null) {
           try {
@@ -401,7 +412,7 @@ public class HttpServer {
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
-      log(e);
+      logger.warn(e.getMessage(), e);
     }
   }
 
@@ -411,7 +422,7 @@ public class HttpServer {
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
-      log(e);
+      logger.warn(e.getMessage(), e);
     }
   }
 

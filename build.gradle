@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.6.0.2'
+version '3.6.0.3'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -47,6 +47,7 @@ ext {
   }
   jdkVersion = Runtime.class.getPackage().getImplementationVersion().
     replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
+  println jdkVersion
 }
 
 configurations {
@@ -76,10 +77,11 @@ sourceSets {
 
 
 dependencies {
-  compile 'com.squareup.okio:okio:1.11.0'
   compile 'com.squareup.okhttp3:okhttp:3.6.0'
+  compile 'org.slf4j:slf4j-api:1.7.24'
   alpn "info.jdavid.alpn:alpn-boot:${jdkVersion}"
   testCompile 'junit:junit:4.12'
+  testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'
 }
 
 jacoco {
