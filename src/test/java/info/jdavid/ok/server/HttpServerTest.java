@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 
@@ -35,12 +36,22 @@ public class HttpServerTest {
     return new Request.Builder().url(url.build());
   }
 
+  private static Request.Builder secureRequest(final String... segments) {
+    HttpUrl.Builder url = new HttpUrl.Builder().scheme("https").host("localhost").port(8181);
+    if (segments != null) {
+      for (final String segment: segments) {
+        url.addPathSegment(segment);
+      }
+    }
+    return new Request.Builder().url(url.build());
+  }
+
   private static final OkHttpClient client = new OkHttpClient();
 
   private static OkHttpClient client() {
-    return client.
+    return HttpsTest.client.
       newBuilder().
-      readTimeout(0, TimeUnit.SECONDS).
+      protocols(Collections.singletonList(Protocol.HTTP_1_1)).
       build();
   }
 
@@ -48,7 +59,11 @@ public class HttpServerTest {
 
   @BeforeClass
   public static void startServer() {
-    SERVER.port(8080).maxRequestSize(512).start();
+    SERVER.
+      ports(8080, 8181).
+      https(new Https.Builder().certificate(HttpsTest.cert).build()).
+      maxRequestSize(512).
+      start();
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.
     try {
@@ -93,26 +108,43 @@ public class HttpServerTest {
   public void testIllegalState() throws IOException {
     try {
       SERVER.hostname("test");
-      fail();
+      fail("A new hostname should not be accepted once the server has been started.");
     }
     catch (final IllegalStateException e) {
       assertNull(SERVER.hostname());
     }
     try {
       SERVER.port(8090);
-      fail();
+      fail("A new port should not be accepted once the server has been started.");
     }
     catch (final IllegalStateException e) {
       assertEquals(8080, SERVER.port());
     }
     try {
+      SERVER.securePort(8191);
+      fail("A new secure port should not be accepted once the server has been started.");
+    }
+    catch (final IllegalStateException e) {
+      assertEquals(8181, SERVER.securePort());
+    }
+    try {
+      SERVER.ports(8090, 8191);
+      fail("A new port should not be accepted once the server has been started.");
+    }
+    catch (final IllegalStateException e) {
+      assertEquals(8080, SERVER.port());
+      assertEquals(8181, SERVER.securePort());
+    }
+    try {
       SERVER.maxRequestSize(1024);
+      fail("A new maximum request size should not be accepted once the server has been started.");
     }
     catch (final IllegalStateException e) {
       assertEquals(512, SERVER.maxRequestSize());
     }
     try {
       SERVER.start();
+      fail("Starting the server again while it's still running should have failed.");
     }
     catch (final IllegalStateException e) {
       assertTrue(SERVER.isRunning());
@@ -126,6 +158,21 @@ public class HttpServerTest {
         post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[700])).
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(413, r.code());
+    assertEquals("Payload Too Large", r.message());
+    r.close();
+  }
+
+  @Test
+  public void testPayloadTooLargeSecure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("test").
+        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[700])).
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(413, r.code());
     assertEquals("Payload Too Large", r.message());
@@ -138,6 +185,19 @@ public class HttpServerTest {
       request("notfound").
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(404, r.code());
+    assertEquals("Not Found", r.message());
+    r.close();
+  }
+
+  @Test
+  public void testNotFoundSecure() throws IOException {
+    final Response r = client().newCall(secureRequest("notfound").
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(404, r.code());
     assertEquals("Not Found", r.message());
@@ -151,12 +211,26 @@ public class HttpServerTest {
         post(RequestBody.create(MediaTypes.TEXT, "abc")).
         build()
     ).execute();
+    assertNull(r.handshake());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(405, r.code());
     assertEquals("Method Not Allowed", r.message());
     r.close();
   }
 
+  @Test
+  public void testMethodNotAllowedSecure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("wrongmethod").
+        post(RequestBody.create(MediaTypes.TEXT, "abc")).
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(405, r.code());
+    assertEquals("Method Not Allowed", r.message());
+    r.close();
+  }
 
   @Test
   public void testGet1() throws IOException {
@@ -165,6 +239,23 @@ public class HttpServerTest {
         header("key1", "val1").
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("val1", r.header("key1"));
+    assertEquals("0", r.header("Content-Length"));
+    assertEquals("", r.body().string());
+  }
+
+  @Test
+  public void testGet1Secure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("test").
+        header("key1", "val1").
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
@@ -181,6 +272,26 @@ public class HttpServerTest {
         post(RequestBody.create(MediaTypes.TEXT, "text")).
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("val1b", r.header("key1"));
+    assertArrayEquals(new String[] { "val1a", "val1b" }, r.headers("key1").toArray());
+    assertEquals("4", r.header("Content-Length"));
+    assertTrue(r.header("Content-Type").startsWith("text/plain"));
+    assertEquals("text", r.body().string());
+  }
+
+  @Test
+  public void testPost1Secure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("test").
+        header("key1", "val1a").addHeader("key1", "val1b").
+        post(RequestBody.create(MediaTypes.TEXT, "text")).
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
@@ -198,6 +309,23 @@ public class HttpServerTest {
         put(RequestBody.create(MediaTypes.JSON, "{}")).
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertTrue(r.header("Content-Type").startsWith("application/json"));
+    assertEquals("2", r.header("Content-Length"));
+    assertEquals("{}", r.body().string());
+  }
+
+  @Test
+  public void testPut1Secure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("test").
+        put(RequestBody.create(MediaTypes.JSON, "{}")).
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
@@ -214,6 +342,24 @@ public class HttpServerTest {
         delete(RequestBody.create(MediaTypes.OCTET_STREAM, bytes)).
         build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("application/octet-stream", r.header("Content-Type"));
+    assertEquals("6", r.header("Content-Length"));
+    assertArrayEquals(bytes, r.body().bytes());
+  }
+
+  @Test
+  public void testDelete1Secure() throws IOException {
+    final byte[] bytes = new byte[] { 1, 0, 5, 0, 100, -5 };
+    final Response r = client().newCall(
+      secureRequest("test").
+        delete(RequestBody.create(MediaTypes.OCTET_STREAM, bytes)).
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
@@ -229,12 +375,54 @@ public class HttpServerTest {
         delete().
         build()
     ).execute();
+    assertNull(r.handshake());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
     assertNull(r.header("Content-Type"));
     assertEquals("0", r.header("Content-Length"));
     assertEquals("", r.body().string());
+  }
+
+  @Test
+  public void testDelete2Secure() throws IOException {
+    final Response r = client().newCall(
+      secureRequest("test").
+        delete().
+        build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertNull(r.header("Content-Type"));
+    assertEquals("0", r.header("Content-Length"));
+    assertEquals("", r.body().string());
+  }
+
+  private RequestBody chunkedRequestBody() {
+    return new RequestBody() {
+      @Override public MediaType contentType() {
+        return MediaTypes.OCTET_STREAM;
+      }
+      @Override public void writeTo(final BufferedSink sink) throws IOException {
+        sink.writeHexadecimalUnsignedLong(4);
+        sink.writeUtf8("\r\n");
+        sink.writeUtf8("chun");
+        sink.writeUtf8("\r\n");
+        sink.writeHexadecimalUnsignedLong(11);
+        sink.writeUtf8("\r\n");
+        sink.writeUtf8("ked_request");
+        sink.writeUtf8("\r\n");
+        sink.writeHexadecimalUnsignedLong(7);
+        sink.writeUtf8("\r\n");
+        sink.writeUtf8("_data_1");
+        sink.writeUtf8("\r\n");
+        sink.writeHexadecimalUnsignedLong(0);
+        sink.writeUtf8("\r\n");
+        sink.writeUtf8("\r\n");
+      }
+    };
   }
 
   private void testChunked(final boolean explicit) throws IOException {
@@ -244,29 +432,26 @@ public class HttpServerTest {
     }
     final Response r = client().newCall(
       requestBuilder.
-        post(new RequestBody() {
-          @Override public MediaType contentType() {
-            return MediaTypes.OCTET_STREAM;
-          }
-          @Override public void writeTo(final BufferedSink sink) throws IOException {
-            sink.writeHexadecimalUnsignedLong(4);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("chun");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(11);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("ked_request");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(7);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("_data_1");
-            sink.writeUtf8("\r\n");
-            sink.writeHexadecimalUnsignedLong(0);
-            sink.writeUtf8("\r\n");
-            sink.writeUtf8("\r\n");
-          }
-        }).build()
+        post(chunkedRequestBody()).build()
     ).execute();
+    assertNull(r.handshake());
+    assertEquals(Protocol.HTTP_1_1, r.protocol());
+    assertEquals(200, r.code());
+    assertEquals("OK", r.message());
+    assertEquals("chunked_request_data_1", r.body().source().readUtf8());
+    r.close();
+  }
+
+  private void testChunkedSecure(final boolean explicit) throws IOException {
+    final Request.Builder requestBuilder = secureRequest("test");
+    if (explicit) {
+      requestBuilder.header("Transfer-Encoding", "chunked").header("Content-Length", "-1");
+    }
+    final Response r = client().newCall(
+      requestBuilder.
+        post(chunkedRequestBody()).build()
+    ).execute();
+    assertNotNull(r.handshake().tlsVersion());
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     assertEquals("OK", r.message());
@@ -282,6 +467,16 @@ public class HttpServerTest {
   @Test
   public void testImplicitChunked() throws IOException {
     testChunked(false);
+  }
+
+  @Test
+  public void testExplicitChunkedSecure() throws IOException {
+    testChunkedSecure(true);
+  }
+
+  @Test
+  public void testImplicitChunkedSecure() throws IOException {
+    testChunkedSecure(false);
   }
 
 }

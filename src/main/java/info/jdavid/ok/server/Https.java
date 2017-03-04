@@ -41,31 +41,21 @@ public final class Https {
 
   private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
                 final List<String> protocols, final List<String> cipherSuites, final boolean http2) {
-    if (cert == null && additionalCerts == null && protocols == null && cipherSuites == null) {
-      mContext = null;
-      mAdditionalContexts = null;
-      mPlatform = null;
-      this.protocols = null;
-      this.cipherSuites = null;
-      this.http2 = false;
-    }
-    else {
-      mContext = createSSLContext(cert);
-      final Platform platform = mPlatform = Platform.findPlatform();
-      mAdditionalContexts =
-        new HashMap<String, SSLContext>(additionalCerts == null ? 0 : additionalCerts.size());
-      if (additionalCerts != null) {
-        for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
-          final SSLContext additionalContext = createSSLContext(entry.getValue());
-          if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
-        }
+    mContext = createSSLContext(cert);
+    final Platform platform = mPlatform = Platform.findPlatform();
+    mAdditionalContexts =
+      new HashMap<String, SSLContext>(additionalCerts == null ? 0 : additionalCerts.size());
+    if (additionalCerts != null) {
+      for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
+        final SSLContext additionalContext = createSSLContext(entry.getValue());
+        if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
       }
-      final List<String> protos = protocols == null ? platform.defaultProtocols() : protocols;
-      this.protocols = protos.toArray(new String[protos.size()]);
-      final List<String> ciphers = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
-      this.cipherSuites = ciphers.toArray(new String[ciphers.size()]);
-      this.http2 = http2 && platform.supportsHttp2();
     }
+    final List<String> protos = protocols == null ? platform.defaultProtocols() : protocols;
+    this.protocols = protos.toArray(new String[protos.size()]);
+    final List<String> ciphers = cipherSuites == null ? platform.defaultCipherSuites() : cipherSuites;
+    this.cipherSuites = ciphers.toArray(new String[ciphers.size()]);
+    this.http2 = http2 && platform.supportsHttp2();
   }
 
   SSLContext getContext(final String host) {
@@ -146,7 +136,6 @@ public final class Https {
 
     public Builder() {}
 
-
     /**
      * Sets the primary certificate.
      * @param bytes the certificate (pkcs12).
@@ -225,6 +214,9 @@ public final class Https {
      * @return the Https instance.
      */
     public Https build() {
+      if (mCertificate == null && mAdditionalCertificates.isEmpty()) {
+        throw new IllegalStateException("At least one certificate should be specified.");
+      }
       return new Https(mCertificate, mAdditionalCertificates, mProtocols, mCipherSuites, mHttp2);
     }
 

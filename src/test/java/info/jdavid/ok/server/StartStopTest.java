@@ -44,7 +44,7 @@ public class StartStopTest {
     Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8085).build()).execute().code());
-      fail("Server should have stopped");
+      fail("Server should have stopped.");
     }
     catch (final ConnectException ignore) {}
     catch (final InterruptedIOException ignored) {}
@@ -62,7 +62,7 @@ public class StartStopTest {
     Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8086).build()).execute().code());
-      fail("Server should have stopped");
+      fail("Server should have stopped.");
     }
     catch (final ConnectException ignore) {}
     catch (final InterruptedIOException ignored) {}
@@ -71,7 +71,7 @@ public class StartStopTest {
     Thread.sleep(5000L);
     try {
       assertEquals(404, client().newCall(request(8087).build()).execute().code());
-      fail("Server should have stopped");
+      fail("Server should have stopped.");
     }
     catch (final ConnectException ignore) {}
     catch (final InterruptedIOException ignored) {}

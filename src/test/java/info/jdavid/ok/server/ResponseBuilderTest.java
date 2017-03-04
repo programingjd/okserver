@@ -29,22 +29,22 @@ public class ResponseBuilderTest {
       new Response.Builder().build();
       fail("Should have failed because no status line has been set.");
     }
-    catch (IllegalStateException ignore) {}
+    catch (final IllegalStateException ignore) {}
     try {
       new Response.Builder().statusLine(StatusLine.parse("HTTP1.1/200")).build();
       fail("Should have failed because no status message has been set.");
     }
-    catch (Exception ignore) {}
+    catch (final ProtocolException ignore) {}
     try {
       new Response.Builder().statusLine(StatusLine.parse("HTTP1.1/-999")).build();
       fail("Should have failed because invalid status code has been set.");
     }
-    catch (Exception ignore) {}
+    catch (final ProtocolException ignore) {}
     try {
       new Response.Builder().body("body").chunks("chunk1", "chunk2").build();
       fail("Should have failed because both body and chunks were specified.");
     }
-    catch (IllegalStateException ignore) {}
+    catch (final IllegalStateException ignore) {}
   }
 
   @Test

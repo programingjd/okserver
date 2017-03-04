@@ -2,10 +2,13 @@ package info.jdavid.ok.server;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.logger;
@@ -13,7 +16,17 @@ import static info.jdavid.ok.server.Logger.logger;
 
 abstract class Platform {
 
-  private static final String JAVA_SPEC_VERSION = Runtime.class.getPackage().getSpecificationVersion();
+  private static final String JAVA_SPEC_VERSION;
+  static {
+    final String spec = Runtime.class.getPackage().getSpecificationVersion();
+    if (spec == null) {
+      JAVA_SPEC_VERSION = System.getProperty("java.specification.version");
+    }
+    else {
+      JAVA_SPEC_VERSION = spec;
+    }
+  }
+
 
   abstract List<String> defaultProtocols();
 
@@ -47,29 +60,51 @@ abstract class Platform {
     return null;
   }
 
+  private static Method findApplicationProtocolsMethod() {
+    try {
+      return SSLParameters.class.getMethod("setApplicationProtocols", String[].class);
+    }
+    catch (final NoSuchMethodException ignore) {}
+    return null;
+  }
+
   private static final String[] protocols = new String[] { "h2", "http/1.1" };
 
   private static void setHttp2Protocol(final SSLSocket socket, final Field field) {
     try {
       field.set(socket, protocols);
     }
-    catch (final Exception e) {
+    catch (final IllegalAccessException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static void setHttp2Protocol(final SSLSocket socket, final Method method) {
+    final SSLParameters parameters = socket.getSSLParameters();
+    try {
+      method.invoke(parameters, new Object[] { protocols });
+      socket.setSSLParameters(parameters);
+    }
+    catch (final IllegalAccessException e1) {
+      throw new RuntimeException(e1);
+    }
+    catch (final InvocationTargetException e2) {
+      throw new RuntimeException(e2);
     }
   }
 
   private static class Jdk9Platform extends Platform {
 
     static Platform buildIfSupported() {
-      return JAVA_SPEC_VERSION.startsWith("1.9") ? new Jdk9Platform() : null;
+      return Float.parseFloat(JAVA_SPEC_VERSION) >= 9 ? new Jdk9Platform() : null;
     }
 
-    private final Field mApplicationProtocols;
+    private final Method mApplicationProtocols;
 
     private Jdk9Platform() {
       super();
       logger.info("JDK9 Platform");
-      mApplicationProtocols = findApplicationProtocolsField();
+      mApplicationProtocols = findApplicationProtocolsMethod();
     }
 
     @Override List<String> defaultProtocols() {

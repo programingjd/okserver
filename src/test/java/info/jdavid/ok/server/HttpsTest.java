@@ -140,7 +140,7 @@ public class HttpsTest {
     assertEquals("false", split[1]);
     try {
       client().newCall(new Request.Builder().url("http://localhost:8181").build()).execute();
-      fail();
+      fail("Secure port 8181 should not accept plain HTTP connections.");
     }
     catch (final IOException ignore) {}
   }

@@ -77,6 +77,7 @@ sourceSets {
 
 
 dependencies {
+  //compile 'com.squareup.okio:okio:1.11.0'
   compile 'com.squareup.okhttp3:okhttp:3.6.0'
   compile 'org.slf4j:slf4j-api:1.7.24'
   alpn "info.jdavid.alpn:alpn-boot:${jdkVersion}"
