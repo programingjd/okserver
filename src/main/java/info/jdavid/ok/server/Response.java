@@ -146,6 +146,8 @@ public abstract class Response {
 
   /**
    * Builder for the Response class.
+   * You should not reuse builder instances when a body (or chunks) have been set, because those
+   * can only be read once.
    */
   @SuppressWarnings("UnusedReturnValue")
   public static final class Builder {

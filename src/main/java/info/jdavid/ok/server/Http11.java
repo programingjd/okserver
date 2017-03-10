@@ -47,7 +47,7 @@ class Http11 {
     }
   }
 
-  static void serve(final Socket socket, final boolean secure,
+  static void serve(final Socket socket, final boolean secure, final boolean insecureOnly,
                     final long maxRequestSize,
                     final KeepAliveStrategy keepAliveStrategy,
                     final RequestHandler requestHandler) throws IOException {
@@ -87,7 +87,8 @@ class Http11 {
             }
             else {
               if (length == 0) {
-                response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                        secure, insecureOnly, false,
                                                         method, path, headersBuilder.build(), null);
               }
               else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
@@ -121,12 +122,14 @@ class Http11 {
                       statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
                   }
                   else {
-                    response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                    response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                            secure, insecureOnly, false,
                                                             method, path, headersBuilder.build(), body);
                   }
                 }
                 else {
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                          secure, insecureOnly, false,
                                                           method, path, headersBuilder.build(), null);
                 }
               }
@@ -135,11 +138,13 @@ class Http11 {
                   final Buffer body = new Buffer();
                   if (!socket.isClosed()) in.readFully(body, length);
                   body.flush();
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                          secure, insecureOnly, false,
                                                           method, path, headersBuilder.build(), body);
                 }
                 else {
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp, secure,
+                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                          secure, insecureOnly, false,
                                                           method, path, headersBuilder.build(), null);
                 }
               }

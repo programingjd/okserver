@@ -12,7 +12,47 @@ import okio.Buffer;
 @SuppressWarnings("WeakerAccess")
 public interface RequestHandler {
 
-  public Response handle(final String clientIp, final boolean secure,
+  public static final class Request {
+
+    public final String clientIp;
+    public final boolean secure;
+    public final boolean insecureOnly;
+    public final boolean http2;
+    public final String method;
+    public final HttpUrl url;
+    public final Headers headers;
+    public final Buffer body;
+
+    Request(final String clientIp,
+            final boolean secure, final boolean insecureOnly, final boolean http2,
+            final String method, final HttpUrl url,
+            final Headers headers, final Buffer body) {
+      this.clientIp = clientIp;
+      this.secure = secure;
+      this.insecureOnly = insecureOnly;
+      this.method = method;
+      this.http2 = http2;
+      this.url = url;
+      this.headers = headers;
+      this.body = body;
+    }
+
+  }
+
+  /**
+   * Creates the server response for a given request.
+   * @param clientIp the client ip.
+   * @param secure whether the request is secure (over https) or not.
+   * @param insecureOnly whether the server accepts only insecure connections or whether https is enabled.
+   * @param http2 whether the request protocol is HTTP 2 (h2) rather than an HTTP 1.1.
+   * @param method the request method (get, post, ...).
+   * @param url the request url.
+   * @param requestHeaders the request headers.
+   * @param requestBody the request body.
+   * @return the response for the request.
+   */
+  public Response handle(final String clientIp,
+                         final boolean secure, final boolean insecureOnly, final boolean http2,
                          final String method, final HttpUrl url,
                          final Headers requestHeaders, final Buffer requestBody);
   /**
@@ -23,7 +63,8 @@ public interface RequestHandler {
   static class Helper {
 
     static Response handle(final RequestHandler handler,
-                           final String clientIp, final boolean secure,
+                           final String clientIp,
+                           final boolean secure, final boolean insecureOnly, final boolean http2,
                            final String method, final String path,
                            final Headers requestHeaders, final Buffer requestBody) {
       final String h = requestHeaders == null ? null : requestHeaders.get("Host");
@@ -38,14 +79,16 @@ public interface RequestHandler {
         scheme(secure ? "https" : "http").
         host(host);
       if (port > 0) url.port(port);
-      return handler.handle(clientIp, secure, method, url.build(), requestHeaders, requestBody);
+      return handler.handle(clientIp, secure, insecureOnly, http2,
+                            method, url.build(), requestHeaders, requestBody);
     }
 
   }
 
   static class DefaultRequestHandler implements RequestHandler {
 
-    @Override public Response handle(final String clientIp, final boolean secure,
+    @Override public Response handle(final String clientIp,
+                                     final boolean secure, final boolean insecureOnly, final boolean http2,
                                      final String method, final HttpUrl url,
                                      final Headers requestHeaders, final Buffer requestBody) {
       final Response.Builder builder = new Response.Builder();

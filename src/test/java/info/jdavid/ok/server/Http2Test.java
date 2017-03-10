@@ -52,11 +52,12 @@ public class Http2Test {
       https(new Https.Builder().certificate(HttpsTest.cert, true).build()).
       requestHandler(new RequestHandler() {
         @Override public Response handle(final String clientIp, final boolean secure,
+                                         final boolean insecureOnly, final boolean http2,
                                          final String method, final HttpUrl url,
                                          final Headers requestHeaders, final Buffer requestBody) {
           final List<String> path = url.pathSegments();
           if (path.isEmpty() || !path.get(path.size() - 1).equals("push")) {
-            final String s = url + "\n" + secure;
+            final String s = url + "\n" + secure + "\n" + insecureOnly + "\n" + http2;
             final HttpUrl pushUrl = url.newBuilder("push").build();
             return new Response.Builder().statusLine(StatusLines.OK).body(s).push(pushUrl).build();
           }
@@ -101,9 +102,11 @@ public class Http2Test {
     assertEquals(Protocol.HTTP_1_1, r.protocol());
     assertEquals(200, r.code());
     final String[] split1 = r.body().string().split("\n");
-    assertEquals(2, split1.length);
+    assertEquals(4, split1.length);
     assertEquals("https://localhost:8181/", split1[0]);
     assertEquals("true", split1[1]);
+    assertEquals("false", split1[2]);
+    assertEquals("false", split1[3]);
   }
 
   //@Test // requires jdk9
@@ -114,9 +117,11 @@ public class Http2Test {
     assertEquals(Protocol.HTTP_2, r.protocol());
     assertEquals(200, r.code());
     final String[] split1 = r.body().string().split("\n");
-    assertEquals(2, split1.length);
+    assertEquals(4, split1.length);
     assertEquals("https://localhost:8181/", split1[0]);
     assertEquals("true", split1[1]);
+    assertEquals("false", split1[2]);
+    assertEquals("true", split1[3]);
     try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
     assertEquals(1, pushCounter.get());
   }

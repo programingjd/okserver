@@ -99,9 +99,10 @@ public class HttpsTest {
       https(new Https.Builder().certificate(cert, false).build()).
       requestHandler(new RequestHandler() {
         @Override public Response handle(final String clientIp, final boolean secure,
+                                         final boolean insecureOnly, final boolean http2,
                                          final String method, final HttpUrl url,
                                          final Headers requestHeaders, final Buffer requestBody) {
-          final String s = url + "\n" + secure;
+          final String s = url + "\n" + secure + "\n" + insecureOnly;
           return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
         }
       }).
@@ -125,9 +126,10 @@ public class HttpsTest {
     final String result =
       client().newCall(new Request.Builder().url("https://localhost:8181").build()).execute().body().string();
     final String[] split = result.split("\n");
-    assertEquals(2, split.length);
+    assertEquals(3, split.length);
     assertEquals("https://localhost:8181/", split[0]);
     assertEquals("true", split[1]);
+    assertEquals("false", split[2]);
   }
 
   @Test
@@ -135,8 +137,9 @@ public class HttpsTest {
     final String result =
       client().newCall(new Request.Builder().url("http://localhost:8080").build()).execute().body().string();
     final String[] split = result.split("\n");
-    assertEquals(2, split.length);
+    assertEquals(3, split.length);
     assertEquals("http://localhost:8080/", split[0]);
+    assertEquals("false", split[1]);
     assertEquals("false", split[1]);
     try {
       client().newCall(new Request.Builder().url("http://localhost:8181").build()).execute();

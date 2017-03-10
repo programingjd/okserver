@@ -20,7 +20,8 @@ public class DispatcherTest {
 
   private static HttpServer server(final Dispatcher dispatcher) {
     return new HttpServer().dispatcher(dispatcher).port(8080).requestHandler(new RequestHandler() {
-      @Override public Response handle(final String clientIp, final boolean secure,
+      @Override public Response handle(final String clientIp,
+                                       final boolean secure, final boolean insecureOnly, final boolean http2,
                                        final String method, final HttpUrl url,
                                        final Headers requestHeaders, final Buffer requestBody) {
         try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}

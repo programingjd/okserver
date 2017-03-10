@@ -163,14 +163,15 @@ class Http2 {
         }
         else {
           if (length == 0) {
-            response = handler.handle(clientIp, true, method, requestUrl, requestHeaders.build(), null);
+            response = handler.handle(clientIp, true, false,true, method, requestUrl,
+                                      requestHeaders.build(), null);
           }
           else if (length < 0) {
             if (useBody) {
               response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
             }
             else {
-              response = handler.handle(clientIp, true,
+              response = handler.handle(clientIp, true, false,true,
                                         method, requestUrl, requestHeaders.build(), null);
             }
           }
@@ -179,11 +180,11 @@ class Http2 {
               final Buffer body = new Buffer();
               if (stream.isOpen()) source.readFully(body, length);
               body.flush();
-              response = handler.handle(clientIp, true,
+              response = handler.handle(clientIp, true, false,true,
                                         method, requestUrl, requestHeaders.build(), body);
             }
             else {
-              response = handler.handle(clientIp, true,
+              response = handler.handle(clientIp, true, false,true,
                                         method, requestUrl, requestHeaders.build(), null);
             }
           }
@@ -217,7 +218,8 @@ class Http2 {
               pushHeaderList.add(new Header(name, headers.value(i)));
             }
             final Response pushResponse =
-              handler.handle(clientIp, true, method, push, requestHeaders.build(), null);
+              handler.handle(clientIp, true, false,true, method, push,
+                             requestHeaders.build(), null);
             final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
             pushStream.sendResponseHeaders(responseHeaders(pushResponse), true);
             final BufferedSink pushSink = Okio.buffer(pushStream.getSink());

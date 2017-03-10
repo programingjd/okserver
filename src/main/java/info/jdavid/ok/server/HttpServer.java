@@ -283,7 +283,7 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  dispatch(dispatcher, serverSocket.accept(), false);
+                  dispatch(dispatcher, serverSocket.accept(), false, secureServerSocket == null);
                 }
                 catch (final IOException e) {
                   if (serverSocket.isClosed()) {
@@ -312,7 +312,7 @@ public class HttpServer {
               //noinspection InfiniteLoopStatement
               while (true) {
                 try {
-                  dispatch(dispatcher, secureServerSocket.accept(), true);
+                  dispatch(dispatcher, secureServerSocket.accept(), true, false);
                 }
                 catch (final IOException e) {
                   if (secureServerSocket.isClosed()) {
@@ -342,7 +342,12 @@ public class HttpServer {
   public final class Request {
     private final Socket mSocket;
     private final boolean mSecure;
-    private Request(final Socket socket, final boolean secure) { mSocket = socket; mSecure = secure; }
+    private final boolean mInsecureOnly;
+    private Request(final Socket socket, final boolean secure, final boolean insecureOnly) {
+      mSocket = socket;
+      mSecure = secure;
+      mInsecureOnly = insecureOnly;
+    }
     public void serve() {
       final Socket socket = mSocket;
       if (mSecure) {
@@ -399,25 +404,26 @@ public class HttpServer {
             HttpServer.this.serveHttp2(sslSocket, hostname);
           }
           else {
-            HttpServer.this.serveHttp1(sslSocket, true);
+            HttpServer.this.serveHttp1(sslSocket, true, true);
           }
         }
       }
       else {
-        HttpServer.this.serveHttp1(socket, false);
+        HttpServer.this.serveHttp1(socket, false, mInsecureOnly);
       }
     }
   }
 
-  private void dispatch(final Dispatcher dispatcher, final Socket socket, final boolean secure) {
+  private void dispatch(final Dispatcher dispatcher, final Socket socket,
+                        final boolean secure, final boolean insecureOnly) {
     if (!Thread.currentThread().isInterrupted()) {
-      dispatcher.dispatch(new Request(socket, secure));
+      dispatcher.dispatch(new Request(socket, secure, insecureOnly));
     }
   }
 
-  private void serveHttp1(final Socket socket, final boolean secure) {
+  private void serveHttp1(final Socket socket, final boolean secure, final boolean insecureOnly) {
     try {
-      Http11.serve(socket, secure, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
+      Http11.serve(socket, secure, insecureOnly, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {

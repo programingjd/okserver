@@ -52,7 +52,8 @@ public class ClientIpTest {
   @BeforeClass
   public static void startServer() {
     SERVER.port(8080).requestHandler(new RequestHandler() {
-      @Override public Response handle(final String clientIp, final boolean secure,
+      @Override public Response handle(final String clientIp,
+                                       final boolean secure, final boolean insecureOnly, final boolean http2,
                                        final String method, final HttpUrl url,
                                        final Headers requestHeaders, final Buffer requestBody) {
         return new Response.Builder().statusLine(StatusLines.OK).body(clientIp).build();

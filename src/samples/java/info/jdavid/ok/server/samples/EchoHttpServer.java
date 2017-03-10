@@ -23,7 +23,7 @@ public class EchoHttpServer {
 
   public EchoHttpServer(final int port) {
     mServer = new HttpServer().requestHandler(new RequestHandler() {
-      @Override public Response handle(final String clientIp, final boolean secure,
+      @Override public Response handle(final String clientIp, final boolean secure, final boolean http2,
                                        final String method, final HttpUrl url,
                                        final Headers requestHeaders, final Buffer requestBody) {
         if (!"POST".equals(method)) return unsupported();
