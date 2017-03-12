@@ -118,10 +118,10 @@ public class MediaTypesTest {
 
   @Test
   public void testFromFile() {
-    final File dir = new File(".");
-    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(dir));
-    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(new File(dir, "__doesnotexist__")));
-    assertEquals(MediaTypes.HTML, MediaTypes.fromFile(new File(dir, "__doesnotexist__.html")));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(new File(".")));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(new File("..")));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(new File("__doesnotexist__")));
+    assertEquals(MediaTypes.HTML, MediaTypes.fromFile(new File("__doesnotexist__.html")));
   }
 
 }

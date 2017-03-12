@@ -2,6 +2,7 @@ package info.jdavid.ok.server;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -14,9 +15,139 @@ import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okio.Buffer;
+import okio.BufferedSource;
 import okio.Okio;
 
+
 public class RequestHandlerChain extends AbstractRequestHandler {
+
+  public static void main(final String[] args) {
+    final Map<String, String> map = new HashMap<String, String>(args.length);
+    String key = null;
+    String value = null;
+    for (final String arg: args) {
+      if (arg.startsWith("--")) {
+        if (key != null) {
+          map.put(key, value);
+        }
+        key = arg.substring(2);
+        value = null;
+      }
+      else {
+        value = value == null ? arg : value + " " + arg;
+      }
+    }
+    if (key != null) {
+      map.put(key, value);
+    }
+    if (map.containsKey("help")) {
+      usage();
+    }
+    else {
+      final HttpServer server = new HttpServer();
+      if (map.containsKey("port")) {
+        try {
+          final int port = Integer.parseInt(map.get("port"));
+          server.port(port);
+        }
+        catch (final NullPointerException ignore) {
+          usage();
+        }
+        catch (final NumberFormatException ignore) {
+          usage();
+        }
+      }
+      if (map.containsKey("sport")) {
+        try {
+          final int port = Integer.parseInt(map.get("sport"));
+          server.securePort(port);
+        }
+        catch (final NullPointerException ignore) {
+          usage();
+        }
+        catch (final NumberFormatException ignore) {
+          usage();
+        }
+      }
+      if (map.containsKey("hostname")) {
+        final String hostname = map.get("hostname");
+        if (hostname == null) {
+          usage();
+        }
+        else {
+          server.hostname(hostname);
+        }
+      }
+      if (map.containsKey("cert")) {
+        final String path = map.get("cert");
+        if (path == null) {
+          usage();
+        }
+        else {
+          BufferedSource source = null;
+          try {
+            source = Okio.buffer(Okio.source(new File(path)));
+            final byte[] cert = source.readByteArray();
+            server.https(new Https.Builder().certificate(cert, true).build());
+          }
+          catch (final FileNotFoundException ignore) {
+            System.out.println("Could not find certificate: \"" + path + "\".");
+          }
+          catch (final IOException ignore) {
+            System.out.println("Could not read certificate: \"" + path + "\".");
+          }
+          finally {
+            if (source != null) {
+              try {
+                source.close();
+              }
+              catch (final IOException ignore) {}
+            }
+          }
+        }
+      }
+      final File root;
+      if (map.containsKey("root")) {
+        final String path = map.get("root");
+        if (path == null) {
+          root = new File(".");
+        }
+        else {
+          root = new File(path);
+        }
+      }
+      else {
+        root = new File(".");
+      }
+      server.requestHandler(new RequestHandlerChain().add(new FileRequestHandler(root)));
+      server.start();
+    }
+  }
+
+  private static void usage() {
+    System.out.println("Usage:\nAll parameters are optional.");
+    System.out.println(pad("--port portnumber", 30) +
+                       "the port to bind to for http (insecure) connections.");
+    System.out.println(pad("--sport portnumber", 30) +
+                       "the port to bind to for https (secure) connections.");
+    System.out.println(pad("--cert path/to/cert.p12", 30) +
+                       "the path to the p12 certificate for https.");
+    System.out.println(pad("--hostname hostname", 30) +
+                       "the hostname to bind to.");
+    System.out.println(pad("--root path/to/webroot", 30) +
+                       "the path to the web root directory.");
+    System.out.println(pad("--help", 30) +
+                       "prints this help.");
+  }
+
+  private static String pad(final String s, final int n) {
+    final String tenSpaces = "          ";
+    final StringBuilder builder = new StringBuilder(s);
+    while (builder.length() < n) {
+      builder.append(tenSpaces);
+    }
+    return builder.substring(0, n);
+  }
 
   /**
    * Request object that holds the information about the request, as well as the request body.
@@ -105,9 +236,9 @@ public class RequestHandlerChain extends AbstractRequestHandler {
           if (matcher.start() > 0) return null;
           if (matcher.end() < encodedPath.length()) return null;
           final int n = matcher.groupCount();
-          final String[] params = new String[n-1];
-          for (int i=1; i>n; ++i) {
-            params[i] = matcher.group(i);
+          final String[] params = new String[n];
+          for (int i=0; i<n; ++i) {
+            params[i] = matcher.group(i + 1);
           }
           return params;
         }
@@ -189,7 +320,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
         if (mediaType == MediaTypes.DIRECTORY) {
           f = index(file);
           if (f == null) return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
-          m =mediaType(f);
+          m = mediaType(f);
         }
         else {
           f = file;

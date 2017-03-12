@@ -151,6 +151,7 @@ public class MediaTypes {
     if (file == null) return null;
     if (file.isDirectory()) return DIRECTORY;
     final String filename = file.getName();
+    if (".".equals(filename) || "..".equals(filename)) return DIRECTORY;
     final int i = filename.lastIndexOf('.');
     if (i == -1) {
       if (!file.isFile()) {
