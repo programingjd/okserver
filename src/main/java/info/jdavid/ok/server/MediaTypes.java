@@ -1,5 +1,6 @@
 package info.jdavid.ok.server;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,10 +77,26 @@ public class MediaTypes {
   private static final Map<String, MediaType> EXTENSIONS = initMap();
   private static Map<String, MediaType> initMap() {
     final Map<String, MediaType> map = new HashMap<String, MediaType>(64);
-    map.put("css", CSS);
-    map.put("csv", CSV);
     map.put("html", HTML);
+    map.put("css", CSS);
+    map.put("js", JAVASCRIPT);
+    map.put("jpg", JPG);
+    map.put("png", PNG);
     map.put("htm", HTML);
+    map.put("xhtml", XHTML);
+    map.put("woff", WOFF);
+    map.put("woff2", WOFF2);
+    map.put("webmanifest", WEB_MANIFEST);
+    map.put("otf", OTF);
+    map.put("ttf", TTF);
+    map.put("eot", EOT);
+    map.put("gif", GIF);
+    map.put("bmp", BMP);
+    map.put("svg", SVG);
+    map.put("ico", ICO);
+    map.put("webp", WEBP);
+
+    map.put("csv", CSV);
     map.put("txt", TEXT);
     map.put("howto", TEXT);
     map.put("readme", TEXT);
@@ -95,30 +112,16 @@ public class MediaTypes {
     map.put("apk", APK);
     map.put("dmg", DMG);
     map.put("iso", ISO);
-    map.put("js", JAVASCRIPT);
     map.put("json", JSON);
     map.put("bin", OCTET_STREAM);
     map.put("pdf", PDF);
-    map.put("woff", WOFF);
-    map.put("woff2", WOFF2);
-    map.put("xhtml", XHTML);
-    map.put("webmanifest", WEB_MANIFEST);
-    map.put("otf", OTF);
-    map.put("ttf", TTF);
-    map.put("eot", EOT);
+
     map.put("wav", WAV);
     map.put("mp3", MP3);
     map.put("ogg", OGG);
     map.put("mp4", MP4);
     map.put("ogv", OGV);
     map.put("webm", WEBM);
-    map.put("jpg", JPG);
-    map.put("png", PNG);
-    map.put("gif", GIF);
-    map.put("bmp", BMP);
-    map.put("svg", SVG);
-    map.put("ico", ICO);
-    map.put("webp", WEBP);
     return map;
   }
 
@@ -142,6 +145,25 @@ public class MediaTypes {
       return MediaTypes.TEXT;
     }
     return null;
+  }
+
+  public static MediaType fromFile(final File file) {
+    if (file == null) return null;
+    if (file.isDirectory()) return DIRECTORY;
+    final String filename = file.getName();
+    final int i = filename.lastIndexOf('.');
+    if (i == -1) {
+      if (!file.isFile()) {
+        return DIRECTORY; // files with no extension that don't exist (yet) are treated as directories.
+      }
+      final File parent = file.getParentFile();
+      if (parent != null && "acme-challenge".equals(parent.getName())) {
+        return MediaTypes.TEXT; // return text/plain for certificate acme-challenge files.
+      }
+      return null;
+    }
+    final String ext = filename.substring(i+1).toLowerCase();
+    return EXTENSIONS.get(ext);
   }
 
 }

@@ -13,7 +13,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
                                final Buffer requestBody) {
     if (acceptClientIp(clientIp)) {
       if (secure || allowInsecure(method, url, insecureOnly)) {
-        return handle(http2, method, url, requestHeaders, requestBody);
+        return handle(clientIp, http2, method, url, requestHeaders, requestBody);
       }
       else {
         return handleDisallowedInsecureRequest(method, url, insecureOnly);
@@ -24,7 +24,8 @@ public abstract class AbstractRequestHandler implements RequestHandler {
     }
   }
 
-  protected abstract Response handle(final boolean http2, final String method, final HttpUrl url,
+  protected abstract Response handle(final String clientIp, final boolean http2,
+                                     final String method, final HttpUrl url,
                                      final Headers requestHeaders, final Buffer requestBody);
 
 

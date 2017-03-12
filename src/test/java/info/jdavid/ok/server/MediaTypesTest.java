@@ -1,5 +1,8 @@
 package info.jdavid.ok.server;
 
+import java.io.File;
+import java.io.IOException;
+
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import org.junit.Test;
@@ -57,9 +60,68 @@ public class MediaTypesTest {
   }
 
   private static void test(final String extension, final MediaType expected) {
+    testFromUrl(extension, expected);
+    testFromFile(extension, expected);
+  }
+
+  private static void testFromUrl(final String extension, final MediaType expected) {
     final HttpUrl url =
       new HttpUrl.Builder().scheme("https").host("test.com").addPathSegment("example." + extension).build();
     assertEquals(expected, MediaTypes.fromUrl(url));
+  }
+
+  private static void testFromFile(final String extension, final MediaType expected) {
+    final File file = new File("./example." + extension);
+    assertEquals(expected, MediaTypes.fromFile(file));
+  }
+
+  @Test
+  public void testFromUrlAcmeChallenge() {
+    final HttpUrl url =
+      new HttpUrl.Builder().scheme("http").host("test.com").
+        addPathSegment(".well-known").addPathSegment("acme-challenge").addPathSegment("123456567890").build();
+    assertEquals(MediaTypes.TEXT, MediaTypes.fromUrl(url));
+  }
+
+  @Test
+  public void testFromFileAcmeChallenge() throws IOException {
+    final File tmp = File.createTempFile("testFromFileAcmeChallenge", null);
+    //noinspection ResultOfMethodCallIgnored
+    tmp.delete();
+    //noinspection ResultOfMethodCallIgnored
+    tmp.mkdir();
+    final File dir = new File(tmp,"./acme-challenge");
+    //noinspection ResultOfMethodCallIgnored
+    dir.mkdir();
+    final File file = new File(dir, "1234567890");
+    //noinspection ResultOfMethodCallIgnored
+    file.createNewFile();
+    try {
+      assertEquals(MediaTypes.TEXT, MediaTypes.fromFile(file));
+    }
+    finally {
+      if (!file.delete()) file.deleteOnExit();
+      if (!dir.delete()) dir.deleteOnExit();
+      if (!tmp.delete()) tmp.deleteOnExit();
+    }
+  }
+
+  @Test
+  public void testFromUrlDirectory() {
+    final HttpUrl url =
+      new HttpUrl.Builder().scheme("http").host("test.com").build();
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromUrl(url));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromUrl(url.newBuilder("").build()));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromUrl(url.newBuilder("/").build()));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromUrl(url.newBuilder("/dir/").build()));
+  }
+
+  @Test
+  public void testFromFile() {
+    final File dir = new File(".");
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(dir));
+    assertEquals(MediaTypes.DIRECTORY, MediaTypes.fromFile(new File(dir, "__doesnotexist__")));
+    assertEquals(MediaTypes.HTML, MediaTypes.fromFile(new File(dir, "__doesnotexist__.html")));
   }
 
 }

@@ -12,33 +12,6 @@ import okio.Buffer;
 @SuppressWarnings("WeakerAccess")
 public interface RequestHandler {
 
-  public static final class Request {
-
-    public final String clientIp;
-    public final boolean secure;
-    public final boolean insecureOnly;
-    public final boolean http2;
-    public final String method;
-    public final HttpUrl url;
-    public final Headers headers;
-    public final Buffer body;
-
-    Request(final String clientIp,
-            final boolean secure, final boolean insecureOnly, final boolean http2,
-            final String method, final HttpUrl url,
-            final Headers headers, final Buffer body) {
-      this.clientIp = clientIp;
-      this.secure = secure;
-      this.insecureOnly = insecureOnly;
-      this.method = method;
-      this.http2 = http2;
-      this.url = url;
-      this.headers = headers;
-      this.body = body;
-    }
-
-  }
-
   /**
    * Creates the server response for a given request.
    * @param clientIp the client ip.
