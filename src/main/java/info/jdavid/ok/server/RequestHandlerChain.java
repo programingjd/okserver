@@ -21,7 +21,8 @@ import okio.Okio;
 
 public class RequestHandlerChain extends AbstractRequestHandler {
 
-  public static void main(final String[] args) {
+  public static void main(final String[] args2) {
+    final String[] args = new String[] { "--root", "i:/jdavid/pierreblanche.bitbucket.org" };
     final Map<String, String> map = new HashMap<String, String>(args.length);
     String key = null;
     String value = null;
@@ -324,18 +325,26 @@ public class RequestHandlerChain extends AbstractRequestHandler {
         }
         else {
           f = file;
+          if (mAcceptMediaTypes.size() > 0 && !mAcceptMediaTypes.containsKey(mediaType)) {
+            return new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody();
+          }
           m = mediaType;
         }
         final String etag = etag(file);
         if (etag != null && etag.equalsIgnoreCase(request.headers.get("If-None-Match"))) {
           return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
         }
-        try {
-          return new Response.Builder().
-            statusLine(StatusLines.OK).etag(etag).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+        if (f.exists()) {
+          try {
+            return new Response.Builder().
+              statusLine(StatusLines.OK).etag(etag).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+          }
+          catch (final FileNotFoundException e) {
+            return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
+          }
         }
-        catch (final FileNotFoundException e) {
-          throw new RuntimeException(e);
+        else {
+          return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
         }
       }
     }

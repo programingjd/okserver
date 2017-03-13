@@ -146,13 +146,10 @@ test {
 }
 
 task cli(type: JavaExec, dependsOn: classes) {
-  debug true
+  //debug true
   main =  'info.jdavid.ok.server.RequestHandlerChain'
   classpath = sourceSets.main.runtimeClasspath
   classpath += files(configurations.cli.files)
-  if (project.hasProperty("args")) {
-    args((project.property('args') as String).split())
-  }
 }
 
 task singleJar(type: Jar, dependsOn: jar) {
