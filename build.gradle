@@ -82,6 +82,7 @@ dependencies {
   compile 'org.slf4j:slf4j-api:1.7.24'
   alpn "info.jdavid.alpn:alpn-boot:${jdkVersion}"
   testCompile 'junit:junit:4.12'
+  testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'
   cli 'org.slf4j:slf4j-jdk14:1.7.24'
 }

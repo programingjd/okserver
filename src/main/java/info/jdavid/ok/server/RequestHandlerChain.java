@@ -21,8 +21,8 @@ import okio.Okio;
 
 public class RequestHandlerChain extends AbstractRequestHandler {
 
-  public static void main(final String[] args2) {
-    final String[] args = new String[] { "--root", "i:/jdavid/pierreblanche.bitbucket.org" };
+  public static void main(final String[] args) {
+    //final String[] args = new String[] { "--root", "i:/jdavid/pierreblanche.bitbucket.org" };
     final Map<String, String> map = new HashMap<String, String>(args.length);
     String key = null;
     String value = null;
