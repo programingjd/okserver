@@ -63,6 +63,7 @@ public class HttpServerTest {
       ports(8080, 8181).
       https(new Https.Builder().certificate(HttpsTest.cert).build()).
       maxRequestSize(512).
+      requestHandler(new TestRequestHandler()).
       start();
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.

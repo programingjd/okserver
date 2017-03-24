@@ -13,8 +13,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okio.Buffer;
-import okio.BufferedSource;
-import okio.Okio;
+import okio.Source;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -30,6 +29,7 @@ public class RequestHandlerTest {
                                      final String method, final HttpUrl url,
                                      final Headers requestHeaders, final Buffer requestBody) {
         final Buffer buffer = new Buffer();
+        System.out.println(clientIp);
         buffer.writeByte(byteLength(clientIp));
         buffer.writeUtf8(clientIp);
         buffer.writeByte(secure ? 0x01 : 0x00);
@@ -91,41 +91,57 @@ public class RequestHandlerTest {
 
   @Test
   public void testParams() throws IOException {
-    final BufferedSource source = Okio.buffer(client().newCall(new Request.Builder().
+    final Source source = client().newCall(new Request.Builder().
       url("http://localhost:8080").
       addHeader("test_name", "test_value").
       post(RequestBody.create(MediaTypes.TEXT, "test content")).
       build()
-    ).execute().body().source());
-    final int ipLength = source.readByte();
-    final String ip = source.readUtf8(ipLength);
+    ).execute().body().source();
+    final Buffer buffer = new Buffer();
+    assertEquals(1, source.read(buffer, 1));
+    final int ipLength = buffer.readByte();
+    assertEquals(ipLength, source.read(buffer, ipLength));
+    final String ip = buffer.readUtf8(ipLength);
     assertEquals("127.0.0.1", ip);
-    final byte secure = source.readByte();
+    source.read(buffer, 1);
+    final byte secure = buffer.readByte();
     assertEquals(0x00, secure);
-    final int methodLength = source.readByte();
-    final String method = source.readUtf8(methodLength);
+    source.read(buffer, 1);
+    final int methodLength = buffer.readByte();
+    source.read(buffer, methodLength);
+    final String method = buffer.readUtf8(methodLength);
     assertEquals("POST", method);
-    final int urlLength = source.readByte();
-    final String url = source.readUtf8(urlLength);
+    source.read(buffer, 1);
+    final int urlLength = buffer.readByte();
+    source.read(buffer, urlLength);
+    final String url = buffer.readUtf8(urlLength);
     assertEquals("http://localhost:8080/", url);
-    final byte count = source.readByte();
+    source.read(buffer, 1);
+    final byte count = buffer.readByte();
     assertTrue(count > 3);
     final Map<String, String> headers = new HashMap<String, String>(count);
     for (int i=0; i<count; ++i) {
-      final int nameLength = source.readByte();
-      final String name = source.readUtf8(nameLength);
-      final int valueLength = source.readByte();
-      final String value = source.readUtf8(valueLength);
+      source.read(buffer, 1);
+      final int nameLength = buffer.readByte();
+      source.read(buffer, nameLength);
+      final String name = buffer.readUtf8(nameLength);
+      source.read(buffer, 1);
+      final int valueLength = buffer.readByte();
+      source.read(buffer, valueLength);
+      final String value = buffer.readUtf8(valueLength);
       headers.put(name, value);
     }
     assertEquals("test_value", headers.get("test_name"));
     assertEquals("text/plain; charset=utf-8", headers.get("Content-Type"));
     assertEquals("12", headers.get("Content-Length"));
     assertEquals("localhost:8080", headers.get("Host"));
-    final int bodyLength = source.readByte();
-    final String body = source.readUtf8(bodyLength);
+    source.read(buffer, 1);
+    final int bodyLength = buffer.readByte();
+    source.read(buffer, bodyLength);
+    final String body = buffer.readUtf8(bodyLength);
     assertEquals("test content", body);
-    assertTrue(source.exhausted());
+    assertEquals(-1, source.read(buffer, 1));
+    source.close();
   }
 
 }

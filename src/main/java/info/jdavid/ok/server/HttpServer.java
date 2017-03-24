@@ -1,12 +1,15 @@
 package info.jdavid.ok.server;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
@@ -30,8 +33,9 @@ public class HttpServer {
   private SecureServerSocket mSecureServerSocket = null;
   private Dispatcher mDispatcher = null;
   private KeepAliveStrategy mKeepAliveStrategy = KeepAliveStrategy.DEFAULT;
-  private RequestHandler mRequestHandler = RequestHandler.DEFAULT;
+  private RequestHandler mRequestHandler = null;
   private Https mHttps = null;
+  private Lock mServerSocketLock = new ReentrantLock();
 
   /**
    * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).
@@ -159,8 +163,16 @@ public class HttpServer {
       throw new IllegalStateException("The request handler cannot be changed while the server is running.");
     }
     validateHandler();
-    this.mRequestHandler = handler == null ? RequestHandler.DEFAULT : handler;
+    this.mRequestHandler = handler;
     return this;
+  }
+
+  private RequestHandler requestHandler() {
+    RequestHandler handler = mRequestHandler;
+    if (handler == null) {
+      handler = mRequestHandler = RequestHandlerChain.createDefaultChain();
+    }
+    return handler;
   }
 
   protected void validateDispatcher() {}
@@ -211,20 +223,29 @@ public class HttpServer {
   /**
    * Shuts down the server.
    */
+  @SuppressWarnings("Duplicates")
   public void shutdown() {
     if (!mStarted.get()) return;
     try {
+      mServerSocketLock.lock();
       if (mServerSocket != null) mServerSocket.close();
     }
     catch (final IOException ignore) {}
+    finally {
+      mServerSocketLock.unlock();
+    }
     try {
+      mServerSocketLock.lock();
       if (mSecureServerSocket != null) mSecureServerSocket.close();
     }
     catch (final IOException ignore) {}
+    finally {
+      mServerSocketLock.unlock();
+    }
     try {
       mDispatcher.shutdown();
     }
-    catch (final Exception ignore) {}
+    //catch (final Exception ignore) {}
     finally {
       mStarted.set(false);
     }
@@ -247,6 +268,10 @@ public class HttpServer {
     }
     try {
       if (!mSetup.getAndSet(true)) setup();
+      final RequestHandler handler = requestHandler();
+      if (handler instanceof AbstractRequestHandler) {
+        ((AbstractRequestHandler)handler).init();
+      }
       final Dispatcher dispatcher = dispatcher();
       dispatcher.start();
       final InetAddress address;
@@ -259,7 +284,14 @@ public class HttpServer {
 
       final ServerSocket serverSocket;
       if (mPort > 0) {
-        serverSocket = mServerSocket = new ServerSocket(mPort, -1, address);
+        serverSocket = new ServerSocket(mPort, -1, address);
+        try {
+          mServerSocketLock.lock();
+          mServerSocket = serverSocket;
+        }
+        finally {
+          mServerSocketLock.unlock();
+        }
         serverSocket.setReuseAddress(true);
       }
       else {
@@ -269,8 +301,15 @@ public class HttpServer {
       final Https https = mHttps;
       final SecureServerSocket secureServerSocket;
       if (https != null && mSecurePort > 0) {
-        secureServerSocket = mSecureServerSocket = new SecureServerSocket(mSecurePort, address);
+        secureServerSocket = new SecureServerSocket(mSecurePort, address);
         secureServerSocket.setReuseAddress(true);
+        try {
+          mServerSocketLock.lock();
+          mSecureServerSocket = secureServerSocket;
+        }
+        finally {
+          mServerSocketLock.unlock();
+        }
       }
       else {
         secureServerSocket = mSecureServerSocket = null;
@@ -285,6 +324,10 @@ public class HttpServer {
                 try {
                   dispatch(dispatcher, serverSocket.accept(), false, secureServerSocket == null);
                 }
+                catch (final BindException e) {
+                  logger.warn("Could not bind to port: " + mPort, e);
+                  break;
+                }
                 catch (final IOException e) {
                   if (serverSocket.isClosed()) {
                     break;
@@ -294,12 +337,17 @@ public class HttpServer {
               }
             }
             finally {
-              try { serverSocket.close(); } catch (final IOException ignore) {}
-              try { if (secureServerSocket != null) serverSocket.close(); } catch(final IOException ignore) {}
-              try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
-              mServerSocket = null;
-              mSecureServerSocket = null;
-              mStarted.set(false);
+              try {
+                if (!serverSocket.isClosed()) serverSocket.close();
+              }
+              catch (final IOException ignore) {}
+              try {
+                mServerSocketLock.lock();
+                mServerSocket = null;
+              }
+              finally {
+                mServerSocketLock.unlock();
+              }
             }
           }
         }).start();
@@ -314,6 +362,10 @@ public class HttpServer {
                 try {
                   dispatch(dispatcher, secureServerSocket.accept(), true, false);
                 }
+                catch (final BindException e) {
+                  logger.warn("Could not bind to port: " + mPort, e);
+                  break;
+                }
                 catch (final IOException e) {
                   if (secureServerSocket.isClosed()) {
                     break;
@@ -323,16 +375,24 @@ public class HttpServer {
               }
             }
             finally {
-              try { if (serverSocket != null) serverSocket.close(); } catch (final IOException ignore) {}
-              try { secureServerSocket.close(); } catch (final IOException ignore) {}
-              try { dispatcher.shutdown(); } catch (final Exception e) { logger.warn(e.getMessage(), e); }
-              mServerSocket = null;
-              mSecureServerSocket = null;
-              mStarted.set(false);
+              try {
+                if (!secureServerSocket.isClosed()) secureServerSocket.close();
+              }
+              catch (final IOException ignore) {}
+              try {
+                mServerSocketLock.lock();
+                mSecureServerSocket = null;
+              }
+              finally {
+                mServerSocketLock.unlock();
+              }
             }
           }
         }).start();
       }
+    }
+    catch (final BindException e) {
+      throw new RuntimeException(e);
     }
     catch (final IOException e) {
       logger.error(e.getMessage(), e);
@@ -404,7 +464,7 @@ public class HttpServer {
             HttpServer.this.serveHttp2(sslSocket, hostname);
           }
           else {
-            HttpServer.this.serveHttp1(sslSocket, true, true);
+            HttpServer.this.serveHttp1(sslSocket, true, false);
           }
         }
       }

@@ -45,8 +45,27 @@ public class Http2Test {
 
   private static AtomicInteger pushCounter = new AtomicInteger();
 
+  private static boolean needsAlpnBoot() {
+    final String v = Runtime.class.getPackage().getImplementationVersion();
+    return (v != null && (v.startsWith("1.6") || v.startsWith("1.7") || v.startsWith("1.8")));
+  }
+
   @BeforeClass
   public static void startServer() throws IOException {
+    if (needsAlpnBoot() && !"true".equals(System.getProperty("started-with-gradle"))) {
+      throw new RuntimeException(
+        "This test needs to run within an environment that has an implementation of ALPN.\n" +
+        "ALPN is an important part of the http2 protocol negociation.\n" +
+        "You can either run it with java 9, or run it from gradle, as the gradle test task adds an ALPN " +
+        "implementation to the boot class path.\n" +
+        "In IntelliJ IDEA, you can go to the settings under:\n" +
+        "Build, Execution, Deployment > Build Tools > Gradle > Runner\n" +
+        "and check the option:\n" +
+        "Delegate IDE build/run actions to gradle\n" +
+        "This will make the IDE use gradle when running tests from within the IDE itself."
+      );
+    }
+
     SERVER.
       ports(0, 8181).
       https(new Https.Builder().certificate(HttpsTest.cert, true).build()).

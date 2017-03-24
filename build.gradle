@@ -100,6 +100,7 @@ jacocoTestReport {
 }
 
 test {
+  // todo, only add alpn to bootclasspath if not running with java 9.
   String jreHome = System.getProperty('java.home').replaceAll('\\\\', '/')
   FileTree bootClasspath = configurations.alpn.asFileTree.plus(
     fileTree(include: [ '*.jar' ], dir: "${jreHome}/lib")
@@ -114,6 +115,7 @@ test {
     classDumpFile = file("$buildDir/jacoco/classpathdumps")
   }
   systemProperty 'https.proptocols', 'TLSv1.2'
+  systemProperty 'started-with-gradle', 'true'
   doLast {
     File html = reports.html.entryPoint
     def doc = org.jsoup.Jsoup.parse(html, 'UTF-8')

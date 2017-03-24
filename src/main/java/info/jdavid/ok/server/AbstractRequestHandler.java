@@ -32,6 +32,8 @@ public abstract class AbstractRequestHandler implements RequestHandler {
   private static final Response FORBIDDEN =
     new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody().build();
 
+  protected void init() {}
+
   /**
    * Returns whether the client ip is allowed (not blacklisted) or not.
    * @param clientIp the client ip to validate.

@@ -83,11 +83,19 @@ public interface Dispatcher {
       if (mConnections.getAndSet(-9999) < 0) return;
       mExecutors.shutdownNow();
       try {
-        mExecutors.awaitTermination(5, TimeUnit.SECONDS);
+        if (!mExecutors.awaitTermination(15, TimeUnit.SECONDS)) {
+          throw new RuntimeException("Failed to stop request handler.");
+        }
       }
       catch (final InterruptedException ignore) {}
       mExecutors = null;
       mExecutor.shutdownNow();
+      try {
+        if (!mExecutor.awaitTermination(15, TimeUnit.SECONDS)) {
+          throw new RuntimeException("Failed to stop request handler.");
+        }
+      }
+      catch (final InterruptedException ignore) {}
       mExecutor = null;
     }
   }
@@ -164,7 +172,9 @@ public interface Dispatcher {
       if (mShutdown.getAndSet(true)) return;
       mExecutors.shutdownNow();
       try {
-        mExecutors.awaitTermination(5, TimeUnit.SECONDS);
+        if (!mExecutors.awaitTermination(15, TimeUnit.SECONDS)) {
+          throw new RuntimeException("Failed to stop request handler.");
+        }
       }
       catch (final InterruptedException ignore) {}
       mExecutors = null;

@@ -700,12 +700,12 @@ public abstract class Response {
       }
 
       public void send(final String data, final Map<String, String> metadata) {
-        if (sse == null) throw new IllegalStateException();
-        if (data == null) throw new NullPointerException();
+        if (sse == null) throw new IllegalStateException("SSE response is null.");
+        if (data == null) throw new NullPointerException("The message data cannot be null.");
         if (metadata != null) {
           for (final Map.Entry<String, String> entry: metadata.entrySet()) {
             final String key = entry.getKey();
-            if (key == null) throw new NullPointerException();
+            if (key == null) throw new NullPointerException("The metadata key cannot be null.");
             final int n = key.length();
             for (int i=0; i<n; ++i) {
               final char c = key.charAt(i);

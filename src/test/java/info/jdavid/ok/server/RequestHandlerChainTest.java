@@ -28,9 +28,9 @@ public class RequestHandlerChainTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
 
-    RequestHandlerChain.main(new String[] { "--root", root.getPath() });
+    final HttpServer server = RequestHandlerChain.cmd(new String[] { "--root", root.getPath() });
+    assertNotNull(server);
     //try { Thread.sleep(3000L); } catch (final InterruptedException ignore) {}
-
     final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED);
     try {
       web.setCache(new Cache() {
@@ -71,6 +71,7 @@ public class RequestHandlerChainTest {
     }
     finally {
       web.close();
+      server.shutdown();
     }
   }
 

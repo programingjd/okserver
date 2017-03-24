@@ -152,7 +152,7 @@ public final class Https {
      * @return this.
      */
     public Builder certificate(final byte[] bytes, final boolean allowHttp2) {
-      if (bytes == null) throw new NullPointerException();
+      if (bytes == null) throw new NullPointerException("The certificate byte array cannot be null.");
       if (mCertificate != null) throw new IllegalStateException("Main certificate already set.");
       mCertificate = bytes;
       mHttp2 = allowHttp2;
@@ -166,8 +166,8 @@ public final class Https {
      * @return this.
      */
     public Builder addCertificate(final String hostname, final byte[] bytes) {
-      if (hostname == null) throw new NullPointerException();
-      if (bytes == null) throw new NullPointerException();
+      if (hostname == null) throw new NullPointerException("The hostname cannot be null.");
+      if (bytes == null) throw new NullPointerException("The certificate byte array cannot be null.");
       if (mAdditionalCertificates.containsKey(hostname)) {
         throw new IllegalStateException("Certificate for host \"" + hostname + "\" has already been set.");
       }
