@@ -1,8 +1,8 @@
 package info.jdavid.ok.server.samples;
 
-import info.jdavid.ok.server.RequestHandler;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
+import info.jdavid.ok.server.RequestHandlerChain;
+import info.jdavid.ok.server.handler.RegexHandler;
+import info.jdavid.ok.server.handler.Request;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
 import info.jdavid.ok.server.HttpServer;
@@ -22,31 +22,30 @@ public class EchoHttpServer {
   }
 
   public EchoHttpServer(final int port) {
-    mServer = new HttpServer().requestHandler(new RequestHandler() {
-      @Override
-      public Response handle(final String clientIp,
-                             final boolean secure, final boolean insecureOnly, final boolean http2,
-                             final String method, final HttpUrl url,
-                             final Headers requestHeaders, final Buffer requestBody) {
-        if (!"POST".equals(method)) return unsupported();
-        if (!"/echo".equals(url.encodedPath())) return notFound();
-        final MediaType mime = MediaType.parse(requestHeaders.get("Content-Type"));
-        return echo(requestBody, mime);
-      }
-    }).port(port);
+    mServer = new HttpServer().
+//      requestHandler(new RequestHandler() {
+//        @Override
+//        public Response handle(final String clientIp,
+//                               final boolean secure, final boolean insecureOnly, final boolean http2,
+//                               final String method, final HttpUrl url,
+//                               final Headers requestHeaders, final Buffer requestBody) {
+//          if (!"POST".equals(method)) return unsupported();
+//          if (!"/echo".equals(url.encodedPath())) return notFound();
+//          final MediaType mime = MediaType.parse(requestHeaders.get("Content-Type"));
+//          return echo(requestBody, mime).build();
+//        }
+//      }).
+      requestHandler(new RequestHandlerChain().add(new EchoHandler())).
+      port(port);
   }
 
-  private Response notFound() {
-    return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build();
-  }
+//  private Response notFound() {
+//    return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build();
+//  }
 
-  private Response unsupported() {
-    return new Response.Builder().statusLine(StatusLines.METHOD_NOT_ALLOWED).noBody().build();
-  }
-
-  private Response echo(final Buffer requestBody, final MediaType mime) {
-    return new Response.Builder().statusLine(StatusLines.OK).body(new EchoBody(requestBody, mime)).build();
-  }
+//  private Response unsupported() {
+//    return new Response.Builder().statusLine(StatusLines.METHOD_NOT_ALLOWED).noBody().build();
+//  }
 
   public void start() {
     mServer.start();
@@ -59,6 +58,22 @@ public class EchoHttpServer {
 
   public static void main(final String[] args) {
     new EchoHttpServer().start();
+  }
+
+  private static Response.Builder echo(final Buffer requestBody, final MediaType mime) {
+    return new Response.Builder().statusLine(StatusLines.OK).body(new EchoBody(requestBody, mime));
+  }
+
+  private static class EchoHandler extends RegexHandler {
+
+    EchoHandler() {
+      super("POST", "/echo");
+    }
+
+    @Override public Response.Builder handle(final Request request, final String[] params) {
+      final MediaType mime = MediaType.parse(request.headers.get("Content-Type"));
+      return echo(request.body, mime);
+    }
   }
 
   private static class EchoBody extends ResponseBody {

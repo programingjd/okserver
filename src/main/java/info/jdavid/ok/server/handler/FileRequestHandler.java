@@ -40,8 +40,9 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   /**
-   * Creates a new file handler that will only accept requests matching the regex. The regex must
-   * have a group capturing the path of file relative to the web root (for instance "/root1/(.*)").
+   * Creates a new file handler that will only accept requests whose url is matching the regular expression.
+   * The regular expression must have a group capturing the path of a file relative to the web root
+   * (for instance "/root1/(.*)").
    * @param regex the regex used for accepting the request and capturing the path relative to the web root.
    * @param webRoot the web root directory containing the files.
    */
@@ -50,14 +51,16 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   /**
-   * Creates a new file handler that will only accept requests matching the regex. The regex must
-   * have a group capturing the path of file relative to the web root (for instance "/root1/(.*)").
+   * Creates a new file handler that will only accept requests whose url is matching the regular expression.
+   * The regular expression must have a group capturing the path of a file relative to the web root
+   * (for instance "/root1/(.*)").
    * @param regex the regex used for accepting the request and capturing the path relative to the web root.
+   * @param indexNames the (ordered) list of file names for index (directory) requests.
    * @param webRoot the web root directory containing the files.
    */
   public FileRequestHandler(final String regex,
                             final File webRoot, final List<String> indexNames) {
-    super("GET", "(.*)");
+    super("GET", regex);
     mWebRoot = webRoot;
     mIndexNames = indexNames;
   }

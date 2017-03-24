@@ -170,15 +170,16 @@ public abstract class Response {
     private String mMessage = null;
     private ResponseBody mBody = null;
     private ResponseBody[] mChunks = null;
+    private EventSource mEventSource = null;
+    private int mSSERetrySecs = 5;
+    private List<HttpUrl> mPush = null;
     private Headers.Builder mHeaders;
-    private List<HttpUrl> mPush;
 
     /**
      * Creates a new Builder.
      */
     public Builder() {
       mHeaders = new Headers.Builder();
-      mPush = null;
     }
 
     /**
@@ -617,6 +618,29 @@ public abstract class Response {
     }
 
     /**
+     * Sets the response event source (SSE response).
+     * @param eventSource the event source.
+     * @return this.
+     */
+    public Builder sse(final EventSource eventSource) {
+      mEventSource = eventSource;
+      return this;
+    }
+
+    /**
+     * Sets the response event source (SSE response).
+     * @param eventSource the event source.
+     * @param clientReconnectDelayInSeconds the reconnect delay in seconds for connected clients.
+     * @return this.
+     */
+    public Builder sse(final EventSource eventSource, final int clientReconnectDelayInSeconds) {
+      if (mCode == -1) statusLine(StatusLines.OK);
+      mEventSource = eventSource;
+      mSSERetrySecs = clientReconnectDelayInSeconds;
+      return this;
+    }
+
+    /**
      * Adds an url to send as a push stream on an HTTP 2 connection.
      * @param url the url of the content to push.
      * @return this
@@ -641,15 +665,56 @@ public abstract class Response {
       if (mMessage == null) {
         throw new IllegalStateException("The http message is missing.");
       }
+      if (mEventSource != null && mBody != null) {
+        throw new IllegalStateException("Both body and event source were specified.");
+      }
+      if (mEventSource != null && mChunks != null) {
+        throw new IllegalStateException("Both chunks and event source were specified.");
+      }
       if (mChunks != null && mBody != null) {
         throw new IllegalStateException("Both body and chunks were specified.");
       }
       if (mChunks != null) {
         return new ChunkedResponse(this);
       }
-      else {
-        return new SyncResponse(this);
+      if (mEventSource != null) {
+        if (mCode != 200) {
+          throw new IllegalStateException("SSE response should have a status code of 200 (OK).");
+        }
+        if (mHeaders.get(CONTENT_LENGTH) != null) {
+          throw new IllegalStateException("SSE response content length should not be set.");
+        }
+        final String contentType = mHeaders.get(CONTENT_TYPE);
+        if (contentType != null) {
+          if (!contentType.startsWith(MediaTypes.SSE.toString())) {
+            throw new IllegalStateException(
+              "SSE response content type should be " + MediaTypes.SSE.toString()
+            );
+          }
+        }
+        else {
+          mHeaders.set(CONTENT_TYPE, MediaTypes.SSE.toString());
+        }
+        final String cache = mHeaders.get(CACHE_CONTROL);
+        if (cache != null) {
+          if (!cache.equals("no-cache")) {
+            throw new IllegalStateException("SSE response cache control should be set to no-cache.");
+          }
+        }
+        else {
+          mHeaders.set(CACHE_CONTROL, "no-cache");
+        }
+        mHeaders.set("Connection", "keep-alive");
+        if (mHeaders.get(CORS_ALLOW_ORIGIN) == null) {
+          mHeaders.set(CORS_ALLOW_ORIGIN, "*");
+        }
+        mHeaders.set(CORS_ALLOW_METHODS, "GET");
+        if (mHeaders.get(CORS_ALLOW_HEADERS) == null) {
+          mHeaders.set(CORS_ALLOW_HEADERS, "Content-Type, Accept");
+        }
+        return new SSE(this);
       }
+      return new SyncResponse(this);
     }
 
     private static String join(final List<String> list) {
@@ -670,15 +735,110 @@ public abstract class Response {
   }
 
   /**
-   * SSE Response.
+   * Event Source for an SSE Response.
    */
-  public static class SSE extends Response {
+  public static final class EventSource {
+
+    private Lock mLock = new ReentrantLock();
+    private List<SSE> mResponses = new ArrayList<SSE>();
+
+    public EventSource() {}
+
+    EventSource connect(final SSE sse) {
+      mLock.lock();
+      try {
+        mResponses.add(sse);
+      }
+      finally {
+        mLock.unlock();
+      }
+      return this;
+    }
+
+    /**
+     * Sends a message with the specified data.
+     * @param data the message data.
+     */
+    public void send(final String data) {
+      send(data, null);
+    }
+
+    /**
+     * Sends a message with the specified metadata and the specified data.
+     * @param data the message data.
+     * @param metadata the message metadata.
+     */
+    public void send(final String data, final Map<String, String> metadata) {
+      if (data == null) throw new NullPointerException("The message data cannot be null.");
+      if (metadata != null) {
+        for (final Map.Entry<String, String> entry: metadata.entrySet()) {
+          final String key = entry.getKey();
+          if (key == null) throw new NullPointerException("The metadata key cannot be null.");
+          final int n = key.length();
+          for (int i=0; i<n; ++i) {
+            final char c = key.charAt(i);
+            if (c == ':' || c == '\n' || c == '\t') throw new IllegalArgumentException();
+          }
+        }
+      }
+      mLock.lock();
+      try {
+        final List<SSE> responses = mResponses;
+        for (final SSE sse: responses)  {
+          sse.mLock.lock();
+          try {
+            sse.mQueue.add(new SSE.Message(data, metadata));
+            sse.isReady.signal();
+          }
+          finally {
+            sse.mLock.unlock();
+          }
+        }
+      }
+      finally {
+        mLock.unlock();
+      }
+    }
+
+    public void close() {
+      mLock.lock();
+      try {
+        final List<SSE> responses = mResponses;
+        for (final SSE sse: responses)  {
+          sse.mLock.lock();
+          try {
+            sse.mQueue.add(null);
+            sse.isReady.signal();
+          }
+          finally {
+            sse.mLock.unlock();
+          }
+        }
+      }
+      finally {
+        mLock.unlock();
+      }
+    }
+
+    void disconnect(final SSE sse) {
+      mLock.lock();
+      try {
+        mResponses.remove(sse);
+      }
+      finally {
+        mLock.unlock();
+      }
+    }
+
+  }
+
+  private static class SSE extends Response {
 
     private final List<Message> mQueue = new LinkedList<Message>();
     private Lock mLock = new ReentrantLock();
     private Condition isReady = mLock.newCondition();
 
-    private static class Message {
+    static class Message {
       final String data;
       final Map<String, String> metadata;
       public Message(final String data, final Map<String, String> metadata) {
@@ -687,134 +847,56 @@ public abstract class Response {
       }
     }
 
-    public static final class EventSource {
+    private final int mRetry;
+    private final EventSource mEventSource;
 
-      private SSE sse;
-
-      private EventSource(final SSE sse) {
-        this.sse = sse;
-      }
-
-      public void send(final String data) {
-        send(data, null);
-      }
-
-      public void send(final String data, final Map<String, String> metadata) {
-        if (sse == null) throw new IllegalStateException("SSE response is null.");
-        if (data == null) throw new NullPointerException("The message data cannot be null.");
-        if (metadata != null) {
-          for (final Map.Entry<String, String> entry: metadata.entrySet()) {
-            final String key = entry.getKey();
-            if (key == null) throw new NullPointerException("The metadata key cannot be null.");
-            final int n = key.length();
-            for (int i=0; i<n; ++i) {
-              final char c = key.charAt(i);
-              if (c == ':' || c == '\n' || c == '\t') throw new IllegalArgumentException();
-            }
-          }
-        }
-        sse.mLock.lock();
-        try {
-          sse.mQueue.add(new Message(data, metadata));
-          sse.isReady.signal();
-        }
-        finally {
-          sse.mLock.unlock();
-        }
-      }
-
-      public void close() {
-        if (sse == null) return;
-        sse.mLock.lock();
-        try {
-          sse.mQueue.add(null);
-          sse.isReady.signal();
-        }
-        finally {
-          sse.mLock.unlock();
-        }
-        sse = null;
-      }
-
-    }
-
-    private final int mRetrySecs;
-    private final EventSource mEventSource = new EventSource(this);
-
-    /**
-     * Creates an SSE response with the default retry delay.
-     */
-    public SSE() {
-      this(5);
-    }
-
-    /**
-     * Creates an SSE response with the specified retry delay.
-     * @param retrySecs the retry delay in seconds.
-     */
-    public SSE(final int retrySecs) {
-      super(
-        Protocol.HTTP_1_1,
-        StatusLines.OK.code,
-        StatusLines.OK.message,
-        new Headers.Builder().
-          set("Content-Type", MediaTypes.SSE.toString()).
-          set("Cache-Control", "no-cache").
-          set("Connection", "keep-alive").
-          set("Access-Control-Allow-Origin", "*").
-          set("Access-Control-Allow-Methods", "GET").
-          set("Access-Control-Allow-Headers", "Content-Type, Accept").
-          build(),
-        null,
-        null,
-        null
-      );
-      mRetrySecs = retrySecs;
-    }
-
-    public EventSource getEventSource() {
-      return mEventSource;
+    SSE(final Response.Builder builder) {
+      super(builder);
+      mRetry = builder.mSSERetrySecs;
+      mEventSource = builder.mEventSource.connect(this);
     }
 
     @Override
     void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
-      out.writeUtf8("retry: " + mRetrySecs + "\n").flush();
-      while (true) {
-        mLock.lock();
-        try {
-          if (mQueue.size() > 0 || isReady.await(10000L, TimeUnit.MILLISECONDS)) {
-            System.out.println("ok");
-            if (mQueue.size() == 0) continue;
-            final Message message = mQueue.remove(0);
-            if (message == null) break;
-            final Map<String, String> metadata = message.metadata;
-            if (metadata != null) {
-              for (final Map.Entry<String, String> entry: metadata.entrySet()) {
-                out.writeUtf8(entry.getKey() + ": " + entry.getValue() + "\n\n");
+      out.writeUtf8("retry: " + mRetry + "\n").flush();
+      try {
+        while (true) {
+          mLock.lock();
+          try {
+            if (mQueue.size() > 0 || isReady.await(10000L, TimeUnit.MILLISECONDS)) {
+              if (mQueue.size() == 0) continue;
+              final Message message = mQueue.remove(0);
+              if (message == null) break;
+              final Map<String, String> metadata = message.metadata;
+              if (metadata != null) {
+                for (final Map.Entry<String, String> entry : metadata.entrySet()) {
+                  out.writeUtf8(entry.getKey() + ": " + entry.getValue() + "\n\n");
+                }
               }
+              final String data = message.data;
+              out.writeUtf8("data: " + data + "\n\n").flush();
             }
-            final String data = message.data;
-            out.writeUtf8("data: " + data + "\n\n").flush();
+            else {
+              out.writeUtf8(":\n\n").flush();
+            }
           }
-          else {
-            System.out.println("next");
-            out.writeUtf8(":\n\n").flush();
+          catch (final InterruptedException ignore) {
+            break;
+          }
+          finally {
+            mLock.unlock();
           }
         }
-        catch (final InterruptedException ignore) {
-          mEventSource.close();
-          break;
-        }
-        finally {
-          mLock.unlock();
-        }
+      }
+      finally {
+        mEventSource.disconnect(this);
       }
     }
 
   }
 
   private static class SyncResponse extends Response {
-    private SyncResponse(final Builder builder) {
+    SyncResponse(final Builder builder) {
       super(builder);
     }
     @Override
@@ -849,7 +931,7 @@ public abstract class Response {
   }
 
   private static class ChunkedResponse extends Response {
-    private ChunkedResponse(final Builder builder) {
+    ChunkedResponse(final Builder builder) {
       super(builder);
     }
 

@@ -23,7 +23,7 @@ public abstract class RegexHandler implements Handler {
    * @param method the request method.
    * @param regex the regular expression.
    */
-  RegexHandler(final String method, final String regex) {
+  protected RegexHandler(final String method, final String regex) {
     if (method == null) throw new NullPointerException("The accepted request method cannot be null.");
     if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
     mMethod = method.toUpperCase();
