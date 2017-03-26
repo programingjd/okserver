@@ -71,13 +71,32 @@ public class FileRequestHandler extends RegexHandler {
     if (n < 1) return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
     final String path = params[n-1];
     final File file = new File(mWebRoot, path.startsWith("/") ? path.substring(1) : path);
+    if (file.isDirectory()) {
+      final int pathLength = path.length();
+      if (pathLength > 0 && path.charAt(pathLength - 1) != '/') {
+        final File index = index(file);
+        if (index == null) {
+          return new Response.Builder().
+            statusLine(StatusLines.FORBIDDEN).
+            noBody();
+        }
+        else {
+          return new Response.Builder().
+            statusLine(StatusLines.MOVED_PERMANENTLY).
+            location(request.url.newBuilder().addPathSegment("").build()).
+            noBody();
+        }
+      }
+    }
     final String filename = file.getName();
-    if (mIndexNames.contains(filename)) {
-      // redirect index files e.g. /a/b/index.html to /a/b/
-      return new Response.Builder().
-        statusLine(StatusLines.PERMANENT_REDIRECT).
-        location(request.url.newBuilder("./").build()).
-        noBody();
+    if (file.isFile() && mIndexNames.contains(filename)) {
+      final File index = index(file.getParentFile());
+      if (index != null && index.getName().equals(filename)) {
+        return new Response.Builder().
+          statusLine(StatusLines.MOVED_PERMANENTLY).
+          location(request.url.newBuilder("./").build()).
+          noBody();
+      }
     }
     final MediaType mediaType = mediaType(file);
     if (mediaType == null) {
