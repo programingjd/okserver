@@ -2,6 +2,7 @@ package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -141,7 +142,7 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   protected String etag(final File file) {
-    return null;
+    return String.format("%012x", file.lastModified());
   }
 
   private File index(final File file) {

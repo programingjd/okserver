@@ -261,7 +261,6 @@ public class FileRequestHandlerTest {
     testETag("https://localhost:8181/");
   }
 
-
   private void testETag(final String baseUrl) throws IOException {
     final File root = getWebRoot();
     final HttpUrl url = HttpUrl.parse(baseUrl);
@@ -269,6 +268,31 @@ public class FileRequestHandlerTest {
     final okhttp3.Response response1 =
       client.newCall(new Request.Builder().url(url.newBuilder("/script.js").build()).build()).execute();
     assertEquals(200, response1.code());
+    final String etag = response1.header("ETag");
+    assertNotNull(etag);
+    assertEquals(text(new File(root, "script.js")), response1.body().string().trim());
+    final okhttp3.Response response2 =
+      client.newCall(new Request.Builder().
+        url(url.newBuilder("/script.js").build()).
+        addHeader("If-None-Match", etag).
+        build()).execute();
+    assertEquals(304, response2.code());
+    assertEquals("", response2.body().string());
+    final okhttp3.Response response3 =
+      client.newCall(new Request.Builder().
+        url(url.newBuilder("/script.js").build()).
+        addHeader("If-None-Match", "123456").
+        build()).execute();
+    assertEquals(200, response3.code());
+    assertEquals(text(new File(root, "script.js")), response3.body().string().trim());
+    assertTrue(new File(root, "script.js").setLastModified(System.currentTimeMillis()));
+    final okhttp3.Response response4 =
+      client.newCall(new Request.Builder().
+        url(url.newBuilder("/script.js").build()).
+        addHeader("If-None-Match", etag).
+        build()).execute();
+    assertEquals(200, response4.code());
+    assertEquals(text(new File(root, "script.js")), response4.body().string().trim());
   }
 
   private static WebRequest req(final String url) {
