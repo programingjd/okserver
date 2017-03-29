@@ -18,7 +18,7 @@ import okio.Buffer;
 public class BasicAuthHandler implements Handler {
 
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
-  private static final String REALM = "Basic realm=\"User Visible Realm\"";
+  private static final String DIGEST = "Basic realm=\"User Visible Realm\"";
 
   private final Handler mDelegate;
   private Set<String> mCredentials;
@@ -45,7 +45,7 @@ public class BasicAuthHandler implements Handler {
     final String auth = request.headers.get("Authorization");
     if (auth == null || !auth.startsWith("Basic ") || !mCredentials.contains(auth)) {
       return new Response.Builder().statusLine(StatusLines.UNAUTHORIZED).
-        addHeader(WWW_AUTHENTICATE, REALM).noBody();
+        addHeader(WWW_AUTHENTICATE, DIGEST).noBody();
     }
     else {
       return mDelegate.handle(request, params);

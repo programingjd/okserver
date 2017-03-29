@@ -1,4 +1,4 @@
-package info.jdavid.ok.server;
+package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -17,7 +17,11 @@ import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import info.jdavid.ok.server.handler.FileRequestHandler;
+import info.jdavid.ok.server.HttpServer;
+import info.jdavid.ok.server.Https;
+import info.jdavid.ok.server.HttpsTest;
+import info.jdavid.ok.server.MediaTypes;
+import info.jdavid.ok.server.RequestHandlerChain;
 import okhttp3.ConnectionPool;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;

@@ -50,7 +50,7 @@ public class HttpsTest {
 
   static final byte[] cert = getCert();
 
-  static final OkHttpClient client;
+  public static final OkHttpClient client;
   static {
     try {
       final X509TrustManager trustManager = new X509TrustManager() {

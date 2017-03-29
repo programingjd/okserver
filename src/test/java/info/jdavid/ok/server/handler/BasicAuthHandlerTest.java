@@ -1,4 +1,4 @@
-package info.jdavid.ok.server;
+package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +8,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import info.jdavid.ok.server.HttpServer;
+import info.jdavid.ok.server.Https;
+import info.jdavid.ok.server.HttpsTest;
+import info.jdavid.ok.server.RequestHandlerChain;
+import info.jdavid.ok.server.Response;
+import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.handler.BasicAuthHandler;
 import info.jdavid.ok.server.handler.Handler;
 import info.jdavid.ok.server.handler.Request;
@@ -68,7 +74,6 @@ public class BasicAuthHandlerTest {
   public static void stopServer() {
     SERVER.shutdown();
   }
-
 
   private static OkHttpClient client() {
     return HttpsTest.client.newBuilder().
