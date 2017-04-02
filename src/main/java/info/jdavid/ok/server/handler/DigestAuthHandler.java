@@ -67,7 +67,8 @@ public class DigestAuthHandler implements Handler {
    * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
-  public DigestAuthHandler(final Map<String, String> credentials, final byte[] seed, final Handler delegate) {
+  public DigestAuthHandler(final Map<String, String> credentials,
+                           final byte[] seed, final Handler delegate) {
     this(credentials, "digest", seed, delegate);
   }
 
@@ -80,7 +81,8 @@ public class DigestAuthHandler implements Handler {
    * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
-  public DigestAuthHandler(final Map<String, String> credentials, final String digestName, final byte[] seed,
+  public DigestAuthHandler(final Map<String, String> credentials, final String digestName,
+                           final byte[] seed,
                            final Handler delegate) {
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     mName = digestName;
@@ -104,7 +106,10 @@ public class DigestAuthHandler implements Handler {
   @Override
   public Response.Builder handle(final Request request, final String[] params) {
     final String auth = request.headers.get(AUTHORIZATION);
-    if (auth == null || !auth.startsWith("Digest ") || !validCredentials(request)) {
+    if (auth != null && auth.startsWith("Digest ") && areCredentialsValid(request)) {
+      return mDelegate.handle(request, params);
+    }
+    else {
       final String realm = mName + "@" + request.url.host();
       final String nonce = nonce(request, mKey, mNonceIv);
       //noinspection UnnecessaryLocalVariable
@@ -121,13 +126,10 @@ public class DigestAuthHandler implements Handler {
         addHeader(WWW_AUTHENTICATE, digest).
         noBody();
     }
-    else {
-      return mDelegate.handle(request, params);
-    }
   }
 
   private static String nonce(final Request request, final SecretKey key, final byte[] iv) {
-    final String time = String.format("%012x", System.currentTimeMillis());
+    final String time = hex(BigInteger.valueOf(System.currentTimeMillis()));
     final String random = hex(new SecureRandom().generateSeed(8));
     final String host = request.url.host();
     final String path = request.url.encodedPath();
@@ -167,7 +169,7 @@ public class DigestAuthHandler implements Handler {
     return map;
   }
 
-  private boolean validCredentials(final Request request) {
+  private boolean areCredentialsValid(final Request request) {
     final String headerValue = request.headers.get(AUTHORIZATION);
     if (!headerValue.startsWith("Digest ")) return false;
     final Map<String, String> map = parseHeaderValue(headerValue);
@@ -208,7 +210,13 @@ public class DigestAuthHandler implements Handler {
     return digest(MD5).digest(bytes(name));
   }
 
-  private static final String ZEROS = "                ";
+  private static final String ZERO = "0";
+  private static final String ZEROS = "0000000000000000";
+
+  private static String hex(final BigInteger bigInteger) {
+    final String s = bigInteger.toString(16);
+    return s.length() % 2 == 0 ? s : ZERO + s;
+  }
 
   private static String hex(final byte[] bytes) {
     final String s = new BigInteger(1, bytes).toString(16);

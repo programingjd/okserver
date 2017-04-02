@@ -1,4 +1,4 @@
-![jcenter](https://img.shields.io/badge/_jcenter_-_3.6.0.3-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_1/1-green.png?style=flat)
+![jcenter](https://img.shields.io/badge/_jcenter_-_3.6.0.3-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-_66/66-green.png?style=flat)
 # okserver
 A simple http server for the jvm and android, built on top of [okhttp](https://github.com/square/okhttp).
 
