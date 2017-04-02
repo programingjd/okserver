@@ -3,8 +3,10 @@ package info.jdavid.ok.server.handler;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.DefaultCredentialsProvider;
@@ -16,7 +18,10 @@ import info.jdavid.ok.server.Https;
 import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
+import okhttp3.ConnectionPool;
 import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import org.apache.http.auth.AuthScope;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -63,7 +68,7 @@ public class DigestAuthHandlerTest {
         protected boolean allowInsecure(final String method, final HttpUrl url, final boolean insecureOnly) {
           return true;
         }
-      }.add(new DigestAuthHandler(credentials, "Test", handler))).
+      }.add(new DigestAuthHandler(credentials, "Test", "DigestAuthTest".getBytes(), handler))).
       start();
   }
 
@@ -139,7 +144,7 @@ public class DigestAuthHandlerTest {
     }
   }
 
-  private void assertWWWAuthHeaderIsCorrect(final String headerValue, final String host) {
+  private Map<String, String> assertWWWAuthHeaderIsCorrect(final String headerValue, final String host) {
     assertNotNull(headerValue);
     assertTrue(headerValue.startsWith("Digest "));
     final Map<String, String> map1 = DigestAuthHandler.parseHeaderValue(headerValue);
@@ -148,6 +153,37 @@ public class DigestAuthHandlerTest {
     assertEquals("auth", map1.get("qop"));
     assertNotNull(map1.get("nonce"));
     assertNotNull(map1.get("opaque"));
+    return map1;
+  }
+
+  private static OkHttpClient client() {
+    return new OkHttpClient.Builder().
+      followRedirects(false).
+      retryOnConnectionFailure(false).
+      connectTimeout(60, TimeUnit.SECONDS).
+      connectionPool(new ConnectionPool(0, 1L, TimeUnit.SECONDS)).
+      protocols(Collections.singletonList(Protocol.HTTP_1_1)).
+      build();
+  }
+
+  @Test
+  public void testSeed() throws Exception {
+    final OkHttpClient client = client();
+    final okhttp3.Response r1 =
+      client.newCall(new okhttp3.Request.Builder().url("http://localhost:8080/").build()).execute();
+    assertEquals("", r1.body().string());
+    assertEquals(401, r1.code());
+    final String header1 = r1.header("WWW-Authenticate");
+    final String opaque1 = assertWWWAuthHeaderIsCorrect(header1, "localhost").get("opaque");
+    stopServer();
+    startServer();
+    final okhttp3.Response r2 =
+      client.newCall(new okhttp3.Request.Builder().url("http://localhost:8080/").build()).execute();
+    assertEquals("", r2.body().string());
+    assertEquals(401, r2.code());
+    final String header2 = r2.header("WWW-Authenticate");
+    final String opaque2 = assertWWWAuthHeaderIsCorrect(header2, "localhost").get("opaque");
+    assertEquals(opaque1, opaque2);
   }
 
 }

@@ -52,8 +52,8 @@ public class DigestAuthHandler implements Handler {
   private final Handler mDelegate;
   private final String mName;
   private final Map<String, String> mCredentials;
-  private final SecretKey mKey = secretKey();
-  private final byte[] mNonceIv = iv();
+  private final SecretKey mKey;
+  private final byte[] mNonceIv;
   private final String mOpaque;
 
   //private final MessageDigest MD5 = MessageDigest.getInstance("MD5");
@@ -61,26 +61,37 @@ public class DigestAuthHandler implements Handler {
 
   /**
    * Creates a new handler with digest auth for the specified list of username/password that delegates to the
-   * specified handler.
+   * specified handler. The seed should probably not change upon restarts or from server to server behind a
+   * load balancer, unless you don't mind users having to re-enter their credentials.
    * @param credentials a map of username to password.
+   * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
-  public DigestAuthHandler(final Map<String, String> credentials, final Handler delegate) {
-    this(credentials, "digest", delegate);
+  public DigestAuthHandler(final Map<String, String> credentials, final byte[] seed, final Handler delegate) {
+    this(credentials, "digest", seed, delegate);
   }
 
   /**
    * Creates a new handler with digest auth for the specified list of username/password that delegates to the
-   * specified handler.
+   * specified handler. The seed should probably not change upon restarts or from server to server behind a
+   * load balancer, unless you don't mind users having to re-enter their credentials.
    * @param credentials a map of username to password.
    * @param digestName the name of the realm.
+   * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
-  public DigestAuthHandler(final Map<String, String> credentials, final String digestName,
+  public DigestAuthHandler(final Map<String, String> credentials, final String digestName, final byte[] seed,
                            final Handler delegate) {
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     mName = digestName;
-    mOpaque = opaque(mName, mKey, iv());
+    final SecureRandom secureRandom = new SecureRandom(seed);
+    final byte[] bytes = new byte[16];
+    secureRandom.nextBytes(bytes);
+    mKey = secretKey(bytes);
+    secureRandom.nextBytes(bytes);
+    mOpaque = opaque(mName, mKey, iv(bytes));
+    secureRandom.nextBytes(bytes);
+    mNonceIv = iv(bytes);
     mDelegate = delegate;
     mCredentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
   }
@@ -232,16 +243,16 @@ public class DigestAuthHandler implements Handler {
     }
   }
 
-  private static byte[] iv() {
+  private static byte[] iv(final byte[] seed) {
     final byte[] bytes = new byte[16];
-    new SecureRandom().nextBytes(bytes);
+    new SecureRandom(seed).nextBytes(bytes);
     return bytes;
   }
 
-  private static SecretKey secretKey() {
+  private static SecretKey secretKey(final byte[] seed) {
     try {
       final KeyGenerator keygen = KeyGenerator.getInstance(AES);
-      keygen.init(new SecureRandom());
+      keygen.init(new SecureRandom(seed));
       return keygen.generateKey();
     }
     catch (final NoSuchAlgorithmException e) {
