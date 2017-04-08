@@ -10,6 +10,12 @@ import okhttp3.HttpUrl;
 public interface Handler {
 
   /**
+   * Sets up the handler.
+   * @return this.
+   */
+  public Handler setup();
+
+  /**
    * Returns whether this handler accepts the request by returning either null (the request is not accepted
    * and should be handled by another one further down the chain) or an array of parameters extracted from
    * the url. The array of parameters can be empty but not null for the request to be accepted.

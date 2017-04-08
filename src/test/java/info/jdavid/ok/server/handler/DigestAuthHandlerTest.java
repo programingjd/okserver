@@ -49,6 +49,7 @@ public class DigestAuthHandlerTest {
       raf.close();
     }
     final Handler handler = new Handler() {
+      @Override public Handler setup() { return this; }
       @Override public String[] matches(final String method, final HttpUrl url) {
         return new String[0];
       }

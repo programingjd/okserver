@@ -188,7 +188,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
    * @return this.
    */
   public RequestHandlerChain add(final Handler handler) {
-    mChain.add(handler);
+    mChain.add(handler.setup());
     return this;
   }
 

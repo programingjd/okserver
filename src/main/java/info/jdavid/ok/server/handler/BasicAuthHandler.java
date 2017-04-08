@@ -9,18 +9,17 @@ import java.util.prefs.BackingStoreException;
 
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
-import okhttp3.HttpUrl;
 import okio.Buffer;
+
 
 /**
  * Handler that adds basic auth to another handler.
  */
-public class BasicAuthHandler implements Handler {
+public class BasicAuthHandler extends AuthHandler {
 
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
   private static final String DIGEST = "Basic realm=\"User Visible Realm\"";
 
-  private final Handler mDelegate;
   private Set<String> mCredentials;
 
   /**
@@ -30,25 +29,28 @@ public class BasicAuthHandler implements Handler {
    * @param delegate the delegate handler.
    */
   public BasicAuthHandler(final Map<String, String> credentials, final Handler delegate) {
-    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
-    mDelegate = delegate;
+    super(delegate);
     mCredentials = credentials == null ? Collections.<String>emptySet() : credentials(credentials);
   }
 
-  @Override
-  public String[] matches(final String method, final HttpUrl url) {
-    return mDelegate.matches(method, url);
+  /**
+   * Checks if the credentials are valid.
+   * @param auth the authorization value ("Basic base64(user:password)").
+   * @return true if the credentials are valid.
+   */
+  protected boolean areCredentialsValid(final String auth) {
+    return mCredentials.contains(auth);
   }
 
   @Override
   public Response.Builder handle(final Request request, final String[] params) {
     final String auth = request.headers.get("Authorization");
-    if (auth == null || !auth.startsWith("Basic ") || !mCredentials.contains(auth)) {
-      return new Response.Builder().statusLine(StatusLines.UNAUTHORIZED).
-        addHeader(WWW_AUTHENTICATE, DIGEST).noBody();
+    if (auth != null && auth.startsWith("Basic ") && areCredentialsValid(auth)) {
+      return handleAuthenticated(request, params);
     }
     else {
-      return mDelegate.handle(request, params);
+      return new Response.Builder().statusLine(StatusLines.UNAUTHORIZED).
+        addHeader(WWW_AUTHENTICATE, DIGEST).noBody();
     }
   }
 

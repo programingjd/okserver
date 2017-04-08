@@ -1,9 +1,12 @@
 package info.jdavid.ok.server.handler;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import info.jdavid.ok.server.RequestHandler;
 import info.jdavid.ok.server.Response;
 import okhttp3.HttpUrl;
 
@@ -15,7 +18,25 @@ import okhttp3.HttpUrl;
 public abstract class RegexHandler implements Handler {
 
   private final Pattern mPattern;
-  private final String mMethod;
+  private final List<String> mMethods;
+
+  /**
+   * Creates an handler that will accept a request with the specified methods,
+   * whose path matches the specified regular expression.
+   * @param methods the request methods.
+   * @param regex the regular expression.
+   */
+  protected RegexHandler(final Collection<String> methods, final String regex) {
+    if (methods == null || methods.isEmpty()) {
+      throw new NullPointerException("The accepted request method cannot be null.");
+    }
+    if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
+    mMethods = new ArrayList<String>(methods.size());
+    for (final String method: methods) {
+      methods.add(method.toUpperCase());
+    }
+    mPattern = Pattern.compile(regex);
+  }
 
   /**
    * Creates an handler that will accept a request with the specified method, whose path matches the specified
@@ -26,13 +47,15 @@ public abstract class RegexHandler implements Handler {
   protected RegexHandler(final String method, final String regex) {
     if (method == null) throw new NullPointerException("The accepted request method cannot be null.");
     if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
-    mMethod = method.toUpperCase();
+    mMethods = Collections.singletonList(method.toUpperCase());
     mPattern = Pattern.compile(regex);
   }
 
+  @Override public Handler setup() { return this; }
+
   @Override
   public String[] matches(final String method, final HttpUrl url) {
-    if (mMethod.equals(method)) {
+    if (mMethods.contains(method)) {
       final String encodedPath = url.encodedPath();
       final Matcher matcher = mPattern.matcher(url.encodedPath());
       if (matcher.find()) {
@@ -50,6 +73,29 @@ public abstract class RegexHandler implements Handler {
   }
 
   /**
+   * Adds a check on the request methods and path to the specified handler.
+   * @param methods the accepted methods.
+   * @param regex the regular expression that the the url path should match.
+   * @param delegate the delegate handler.
+   * @return the handler with the additional requirements.
+   */
+  public static Handler create(final Collection<String> methods, final String regex, final Handler delegate) {
+    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
+    return new RegexHandler(methods, regex) {
+      @Override public Handler setup() {
+        delegate.setup();
+        return this;
+      }
+      @Override public String[] matches(final String method, final HttpUrl url) {
+        return super.matches(method, url) == null ? null : delegate.matches(method, url);
+      }
+      @Override public Response.Builder handle(final Request request, final String[] params) {
+        return delegate.handle(request, params);
+      }
+    };
+  }
+
+  /**
    * Adds a check on the request method and path to the specified handler.
    * @param method the accepted method.
    * @param regex the regular expression that the the url path should match.
@@ -58,7 +104,12 @@ public abstract class RegexHandler implements Handler {
    */
   public static Handler create(final String method, final String regex, final Handler delegate) {
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
+    //noinspection Duplicates
     return new RegexHandler(method, regex) {
+      @Override public Handler setup() {
+        delegate.setup();
+        return this;
+      }
       @Override public String[] matches(final String method, final HttpUrl url) {
         return super.matches(method, url) == null ? null : delegate.matches(method, url);
       }

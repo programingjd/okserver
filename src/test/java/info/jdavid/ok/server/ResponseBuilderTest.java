@@ -31,6 +31,11 @@ public class ResponseBuilderTest {
     }
     catch (final IllegalStateException ignore) {}
     try {
+      new Response.Builder().code();
+      fail("Should have failed because no status code has been set.");
+    }
+    catch (final IllegalStateException ignore) {}
+    try {
       new Response.Builder().statusLine(StatusLine.parse("HTTP1.1/200")).build();
       fail("Should have failed because no status message has been set.");
     }
@@ -54,6 +59,7 @@ public class ResponseBuilderTest {
     assertNull(StatusLines.get(-200));
     int[] codes = new int[] { 200, 404, 500 };
     for (int code: codes) {
+      assertEquals(code, response(code).code());
       final Response response = response(code).build();
       assertEquals(code, response.code());
       //noinspection ConstantConditions
@@ -78,13 +84,23 @@ public class ResponseBuilderTest {
   @Test
   public void testHeaders() throws IOException {
     assertEquals("v1", response(200).header("h1", "v1").build().header("h1"));
+    assertEquals("v1", response(200).header("h1", "v1").header("h1"));
     assertEquals("v1", response(200).addHeader("h1", "v1").build().header("h1"));
+    assertEquals("v1", response(200).addHeader("h1", "v1").header("h1"));
     assertEquals("v2", response(200).header("h1", "v1").header("h1", "v2").build().header("h1"));
-    final List<String> values = response(200).header("h1", "v1").addHeader("h1", "v2").build().headers("h1");
-    assertEquals(2, values.size());
-    assertTrue(values.contains("v1"));
-    assertTrue(values.contains("v2"));
+    assertEquals("v2", response(200).header("h1", "v1").header("h1", "v2").header("h1"));
+    final List<String> values1 =
+      response(200).header("h1", "v1").addHeader("h1", "v2").build().headers("h1");
+    assertEquals(2, values1.size());
+    assertTrue(values1.contains("v1"));
+    assertTrue(values1.contains("v2"));
     assertNull(response(200).header("h1","v1").addHeader("h1","v2").removeHeader("h1").build().header("h1"));
+    final List<String> values2 =
+      response(200).header("h1", "v1").addHeader("h1", "v2").headers("h1");
+    assertEquals(2, values2.size());
+    assertTrue(values2.contains("v1"));
+    assertTrue(values2.contains("v2"));
+    assertNull(response(200).header("h1","v1").addHeader("h1","v2").removeHeader("h1").header("h1"));
   }
 
   @Test

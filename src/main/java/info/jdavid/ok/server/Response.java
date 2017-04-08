@@ -173,14 +173,12 @@ public abstract class Response {
     private EventSource mEventSource = null;
     private int mSSERetrySecs = 5;
     private List<HttpUrl> mPush = null;
-    private Headers.Builder mHeaders;
+    private Headers.Builder mHeaders = new Headers.Builder();
 
     /**
      * Creates a new Builder.
      */
-    public Builder() {
-      mHeaders = new Headers.Builder();
-    }
+    public Builder() {}
 
     /**
      * Sets the status line.
@@ -192,6 +190,15 @@ public abstract class Response {
       this.mCode = statusLine.code;
       this.mMessage = statusLine.message;
       return this;
+    }
+
+    /**
+     * Gets the http response status code.
+     * @return the status code.
+     */
+    public int code() {
+      if (mCode == -1) throw new IllegalStateException("The status line has not been set.");
+      return mCode;
     }
 
     /**
@@ -365,6 +372,24 @@ public abstract class Response {
     public Builder location(final String path) {
       mHeaders.set(LOCATION, path);
       return this;
+    }
+
+    /**
+     * Gets the last value of the header with the specified name.
+     * @param name the header name.
+     * @return the last header value, or null if the header is absent.
+     */
+    public String header(final String name) {
+      return mHeaders.get(name);
+    }
+
+    /**
+     * Gets the list of values for the header with the specified name.
+     * @param name the header name.
+     * @return the list of values, which can be empty.
+     */
+    public List<String> headers(final String name) {
+      return mHeaders.build().values(name);
     }
 
     /**

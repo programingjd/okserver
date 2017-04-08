@@ -20,13 +20,13 @@ import javax.crypto.spec.IvParameterSpec;
 
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
-import okhttp3.HttpUrl;
 import okio.ByteString;
+
 
 /**
  * Handler that adds digest auth to another handler.
  */
-public class DigestAuthHandler implements Handler {
+public class DigestAuthHandler extends AuthHandler {
 
   private static final String AUTHORIZATION = "Authorization";
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
@@ -49,7 +49,6 @@ public class DigestAuthHandler implements Handler {
     }
   }
 
-  private final Handler mDelegate;
   private final String mName;
   private final Map<String, String> mCredentials;
   private final SecretKey mKey;
@@ -84,7 +83,7 @@ public class DigestAuthHandler implements Handler {
   public DigestAuthHandler(final Map<String, String> credentials, final String digestName,
                            final byte[] seed,
                            final Handler delegate) {
-    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
+    super(delegate);
     mName = digestName;
     final SecureRandom secureRandom = new SecureRandom(seed);
     final byte[] bytes = new byte[16];
@@ -94,20 +93,14 @@ public class DigestAuthHandler implements Handler {
     mOpaque = opaque(mName, mKey, iv(bytes));
     secureRandom.nextBytes(bytes);
     mNonceIv = iv(bytes);
-    mDelegate = delegate;
     mCredentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
-  }
-
-  @Override
-  public String[] matches(final String method, final HttpUrl url) {
-    return mDelegate.matches(method, url);
   }
 
   @Override
   public Response.Builder handle(final Request request, final String[] params) {
     final String auth = request.headers.get(AUTHORIZATION);
     if (auth != null && auth.startsWith("Digest ") && areCredentialsValid(request)) {
-      return mDelegate.handle(request, params);
+      return handleAuthenticated(request, params);
     }
     else {
       final String realm = mName + "@" + request.url.host();
@@ -126,6 +119,15 @@ public class DigestAuthHandler implements Handler {
         addHeader(WWW_AUTHENTICATE, digest).
         noBody();
     }
+  }
+
+  /**
+   * Gets the password for the specified username.
+   * @param username the username.
+   * @return the password or null if the username doesn't exist.
+   */
+  protected String getPassword(final String username) {
+    return mCredentials.get(username);
   }
 
   private static String nonce(final Request request, final SecretKey key, final byte[] iv) {
@@ -175,7 +177,7 @@ public class DigestAuthHandler implements Handler {
     final Map<String, String> map = parseHeaderValue(headerValue);
     final String username = map.get("username");
     if (username == null) return false;
-    final String password = mCredentials.get(username);
+    final String password = getPassword(username);
     if (password == null) return false;
     final String realm = map.get("realm");
     if (!(mName + "@" + request.url.host()).equals(realm)) return false;
@@ -306,6 +308,5 @@ public class DigestAuthHandler implements Handler {
       throw new RuntimeException(e);
     }
   }
-
 
 }

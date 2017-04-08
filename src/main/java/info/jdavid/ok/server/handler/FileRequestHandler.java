@@ -2,9 +2,9 @@ package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -18,8 +18,61 @@ import okio.Okio;
 public class FileRequestHandler extends RegexHandler {
 
   private final File mWebRoot;
-  private final Map<MediaType, Integer> mAcceptMediaTypes = new HashMap<MediaType, Integer>();
+  private final Collection<MediaType> mAllowedMediaTypes = new ArrayList<MediaType>(48);
   private final List<String> mIndexNames;
+
+
+  protected static class MediaTypeConfig {
+    public final boolean ranges;
+    public final boolean immutable;
+    public final int maxAge;
+
+    /**
+     *
+     * @param ranges whether range requests are allowed.
+     * @param immutable whether the content is immutable (will never change).
+     * @param maxAge time (secs) before the content is considered stale (-1 means don't cache).
+     */
+    public MediaTypeConfig(final boolean ranges, final boolean immutable, final int maxAge) {
+      this.ranges = ranges;
+      this.immutable = immutable;
+      this.maxAge = maxAge;
+    }
+  }
+
+  /**
+   * Returns the (cache) max-age for images.
+   * @return the max age in seconds.
+   */
+  protected int imageMaxAge() {
+    return 31536000; // one year
+  }
+
+  protected MediaTypeConfig config(final MediaType mediaType) {
+    final String type = mediaType.type();
+    if ("image".equals(type)) {
+      return new MediaTypeConfig(false, true, imageMaxAge());
+    }
+    else if ("".equals(type)) {
+      return new MediaTypeConfig(true, true, imageMaxAge());
+    }
+    return null;
+  }
+
+  /**
+   * Gets the list of allowed media types.
+   * @return the list of media types.
+   */
+  protected Collection<MediaType> allowedMediaTypes() {
+    return MediaTypes.defaultAllowedMediaTypes();
+  }
+
+  @Override
+  public Handler setup() {
+    super.setup();
+    mAllowedMediaTypes.addAll(allowedMediaTypes());
+    return this;
+  }
 
   private static List<String> DEFAULT_INDEX_NAMES = Arrays.asList("index.html", "index.htm");
 
@@ -113,7 +166,7 @@ public class FileRequestHandler extends RegexHandler {
       }
       else {
         f = file;
-        if (mAcceptMediaTypes.size() > 0 && !mAcceptMediaTypes.containsKey(mediaType)) {
+        if (mAllowedMediaTypes.size() > 0 && !mAllowedMediaTypes.contains(mediaType)) {
           return new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody();
         }
         m = mediaType;
@@ -124,6 +177,8 @@ public class FileRequestHandler extends RegexHandler {
       }
       if (f.exists()) {
         try {
+          final MediaTypeConfig config = config(mediaType);
+
           return new Response.Builder().
             statusLine(StatusLines.OK).etag(etag).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
         }

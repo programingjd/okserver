@@ -1,6 +1,8 @@
 package info.jdavid.ok.server;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +16,7 @@ import okhttp3.MediaType;
  */
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public class MediaTypes {
+
   public static final MediaType CSS = MediaType.parse("text/css");
   public static final MediaType CSV = MediaType.parse("text/csv");
   public static final MediaType HTML = MediaType.parse("text/html");
@@ -165,6 +168,17 @@ public class MediaTypes {
     }
     final String ext = filename.substring(i+1).toLowerCase();
     return EXTENSIONS.get(ext);
+  }
+
+  public static Collection<MediaType> defaultAllowedMediaTypes() {
+    return Arrays.asList(
+      HTML, XHTML, XML, JSON, ATOM, WEB_MANIFEST,
+      CSS, JAVASCRIPT, TEXT,
+      PNG, JPG, GIF, ICO, WEBP, SVG,
+      WOFF, WOFF2, TTF, OTF, EOT,
+      PDF, OCTET_STREAM, ZIP, SEVENZ, TAR, GZIP, XZ,
+      MP4, OGV, WEBM, MP3, OGG
+    );
   }
 
 }
