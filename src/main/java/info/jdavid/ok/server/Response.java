@@ -250,8 +250,8 @@ public abstract class Response {
      * @param secs the max-age value in seconds.
      * @return this
      */
-    public Builder maxAge(final long secs) {
-      mHeaders.add(CACHE_CONTROL, "max-age=" + secs);
+    public Builder maxAge(final long secs, final boolean immutable) {
+      mHeaders.add(CACHE_CONTROL, "max-age=" + secs + (immutable ? ", immutable" : ", must-revalidate"));
       return this;
     }
 

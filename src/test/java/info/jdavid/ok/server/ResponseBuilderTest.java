@@ -76,9 +76,14 @@ public class ResponseBuilderTest {
     assertNull(response(200).noCache(etag).etag(null).build().header("ETag"));
     assertEquals("no-store", response(200).noStore().build().header("Cache-Control"));
     assertNull(response(200).etag(etag).noStore().build().header("ETag"));
-    assertTrue(response(200).maxAge(30).priv().build().headers("Cache-Control").contains("private"));
-    assertEquals("max-age=60", response(200).maxAge(60).build().header("Cache-Control"));
-    assertTrue(response(200).maxAge(60).priv().build().headers("Cache-Control").contains("max-age=60"));
+    assertTrue(response(200).maxAge(30, false).priv().build().
+      headers("Cache-Control").contains("private"));
+    assertEquals("max-age=60, immutable",
+                 response(200).maxAge(60, true).build().header("Cache-Control"));
+    assertEquals("max-age=60, must-revalidate",
+                 response(200).maxAge(60, false).build().header("Cache-Control"));
+    assertTrue(response(200).maxAge(60, false).priv().build().
+      headers("Cache-Control").contains("max-age=60"));
   }
 
   @Test

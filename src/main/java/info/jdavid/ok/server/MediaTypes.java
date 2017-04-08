@@ -173,7 +173,7 @@ public class MediaTypes {
   public static Collection<MediaType> defaultAllowedMediaTypes() {
     return Arrays.asList(
       HTML, XHTML, XML, JSON, ATOM, WEB_MANIFEST,
-      CSS, JAVASCRIPT, TEXT,
+      CSS, JAVASCRIPT, TEXT, CSV,
       PNG, JPG, GIF, ICO, WEBP, SVG,
       WOFF, WOFF2, TTF, OTF, EOT,
       PDF, OCTET_STREAM, ZIP, SEVENZ, TAR, GZIP, XZ,

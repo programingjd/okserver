@@ -6,12 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
+import info.jdavid.ok.server.handler.header.AcceptRanges;
 import okhttp3.MediaType;
+import okio.BufferedSource;
 import okio.Okio;
 
 
@@ -45,18 +46,87 @@ public class FileRequestHandler extends RegexHandler {
    * @return the max age in seconds.
    */
   protected int imageMaxAge() {
-    return 31536000; // one year
+    return 31536000; // one year.
   }
 
+  /**
+   * Returns the (cache) max-age for large files (videos, archives, ...).
+   * @return the max age in seconds;
+   */
+  protected int largeFileMaxAge() {
+    return 0; // always re-validate.
+  }
+
+  /**
+   * Returns the (cache) max-age for small files (xml, json, ...).
+   * @return the max age in seconds;
+   */
+  protected int smallFileMaxAge() {
+    return -1; // don't cache.
+  }
+
+  /**
+   * Returns the (cache) max-age for css files (videos, archives, ...).
+   * @return the max age in seconds;
+   */
+  protected int cssMaxAge() {
+    return 0; // always re-validate.
+  }
+
+  /**
+   * Returns the (cache) max-age for javascript files (videos, archives, ...).
+   * @return the max age in seconds;
+   */
+  protected int jsMaxAge() {
+    return 0; // always re-validate.
+  }
+
+  /**
+   * Returns the (cache) max-age for html files.
+   * @return the max age in seconds;
+   */
+  protected int htmlMaxAge() {
+    return 0; // always re-validate.
+  }
+
+
+  /**
+   * Returns the config for the specified media type.
+   * @param mediaType the media type.
+   * @return the config.
+   */
   protected MediaTypeConfig config(final MediaType mediaType) {
     final String type = mediaType.type();
-    if ("image".equals(type)) {
+    final String subType = mediaType.subtype();
+    if ("html".equals(subType) || "xhtml+xml".equals(subType) || "manifest+json".equals(subType)) {
+      return new MediaTypeConfig(false, false, htmlMaxAge());
+    }
+    else if ("css".equals(subType)) {
+      return new MediaTypeConfig(false, false, cssMaxAge());
+    }
+    else if ("javascript".equals(subType)) {
+      return new MediaTypeConfig(false, false, jsMaxAge());
+    }
+    else if ("image".equals(type)) {
       return new MediaTypeConfig(false, true, imageMaxAge());
     }
-    else if ("".equals(type)) {
-      return new MediaTypeConfig(true, true, imageMaxAge());
+    else if ("font-woff".equals(subType) || "woff2".equals(subType) || "opentype".equals(subType) ||
+             "truetype".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
+      return new MediaTypeConfig(false, true, 31536000); // one year
     }
-    return null;
+    else if ("json".equals(subType) || "xml".equals(subType) || "atom+xml".equals(subType) ||
+             "csv".equals(subType)) {
+      return new MediaTypeConfig(false, false, smallFileMaxAge());
+    }
+    else if ("video".equals(type) || "audio".equals(type) ||
+             "gzip".equals(subType) || "x-gtar".equals(subType) || "x-xz".equals(subType) ||
+             "x-7z-compressed".equals(subType) || "zip".equals(subType) ||
+             "octet-stream".equals(subType) || "pdf".equals(subType)) {
+      return new MediaTypeConfig(true, false, largeFileMaxAge());
+    }
+    else {
+      return new MediaTypeConfig(false, false, 0);
+    }
   }
 
   /**
@@ -178,9 +248,90 @@ public class FileRequestHandler extends RegexHandler {
       if (f.exists()) {
         try {
           final MediaTypeConfig config = config(mediaType);
-
-          return new Response.Builder().
-            statusLine(StatusLines.OK).etag(etag).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+          if (config == null) {
+            return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
+          }
+          final Response.Builder response = new Response.Builder().etag(etag);
+          switch (config.maxAge) {
+            case -1:
+              response.noStore();
+              break;
+            case 0:
+              response.noCache(null);
+              break;
+            default:
+              response.maxAge(config.maxAge, config.immutable);
+              break;
+          }
+          if (config.ranges) {
+            response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
+            final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
+            if (rangeHeaderValue == null) {
+              response.statusLine(StatusLines.OK).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+            }
+            else {
+              if (!rangeHeaderValue.startsWith("Range: bytes=")) {
+                return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+              }
+              final String bytesRanges = rangeHeaderValue.substring(13);
+              final String[] ranges = bytesRanges.split(", ");
+              if (ranges.length == 0) {
+                return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+              }
+              if (ranges.length == 1) {
+                final String range = ranges[0];
+                final int dashIndex = range.indexOf('-');
+                if (dashIndex == -1) {
+                  return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                }
+                if (range.indexOf('-', dashIndex + 1) != -1) { // negative number.
+                  return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                }
+                final long start;
+                if (dashIndex == 0) {
+                  start = 0;
+                } else {
+                  try {
+                    start = Long.parseLong(range.substring(0, dashIndex));
+                  }
+                  catch (final NumberFormatException ignore) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                  if (start > f.length()) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                }
+                final long end;
+                if (dashIndex == range.length() - 1) {
+                  end = f.length();
+                }
+                else {
+                  try {
+                    end = Long.parseLong(range.substring(dashIndex + 1));
+                  }
+                  catch (final NumberFormatException ignore) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                  if (end > f.length()) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                }
+                if (start > end) {
+                  return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                }
+                // todo
+                //response.statusLine(StatusLines.PARTIAL).body(m, )
+              }
+              else {
+                // todo multipart ranges
+                // https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+              }
+            }
+          }
+          else {
+            response.statusLine(StatusLines.OK).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+          }
+          return response;
         }
         catch (final FileNotFoundException e) {
           return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
