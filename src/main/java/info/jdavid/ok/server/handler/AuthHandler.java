@@ -24,7 +24,8 @@ public abstract class AuthHandler implements Handler {
 
   @Override
   public Handler setup() {
-    return mDelegate.setup();
+    mDelegate.setup();
+    return this;
   }
 
   @Override

@@ -81,18 +81,7 @@ public abstract class RegexHandler implements Handler {
    */
   public static Handler create(final Collection<String> methods, final String regex, final Handler delegate) {
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
-    return new RegexHandler(methods, regex) {
-      @Override public Handler setup() {
-        delegate.setup();
-        return this;
-      }
-      @Override public String[] matches(final String method, final HttpUrl url) {
-        return super.matches(method, url) == null ? null : delegate.matches(method, url);
-      }
-      @Override public Response.Builder handle(final Request request, final String[] params) {
-        return delegate.handle(request, params);
-      }
-    };
+    return new RegexHandlerWrapper(methods, regex, delegate);
   }
 
   /**
@@ -105,18 +94,36 @@ public abstract class RegexHandler implements Handler {
   public static Handler create(final String method, final String regex, final Handler delegate) {
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     //noinspection Duplicates
-    return new RegexHandler(method, regex) {
-      @Override public Handler setup() {
-        delegate.setup();
-        return this;
-      }
-      @Override public String[] matches(final String method, final HttpUrl url) {
-        return super.matches(method, url) == null ? null : delegate.matches(method, url);
-      }
-      @Override public Response.Builder handle(final Request request, final String[] params) {
-        return delegate.handle(request, params);
-      }
-    };
+    return new RegexHandlerWrapper(method, regex, delegate);
+  }
+
+  private static class RegexHandlerWrapper extends RegexHandler {
+
+    private final Handler delegate;
+
+    protected RegexHandlerWrapper(final Collection<String> methods, final String regex, final Handler delegate) {
+      super(methods, regex);
+      this.delegate = delegate;
+    }
+
+    protected RegexHandlerWrapper(final String method, final String regex, final Handler delegate) {
+      super(method, regex);
+      this.delegate = delegate;
+    }
+
+    @Override public Handler setup() {
+      delegate.setup();
+      return this;
+    }
+
+    @Override public String[] matches(final String method, final HttpUrl url) {
+      return super.matches(method, url) == null ? null : delegate.matches(method, url);
+    }
+
+    @Override public Response.Builder handle(final Request request, final String[] params) {
+      return delegate.handle(request, params);
+    }
+
   }
 
 }
