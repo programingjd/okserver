@@ -12,10 +12,10 @@ import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.handler.header.AcceptRanges;
 import okhttp3.MediaType;
-import okio.BufferedSource;
 import okio.Okio;
 
 
+@SuppressWarnings("WeakerAccess")
 public class FileRequestHandler extends RegexHandler {
 
   private final File mWebRoot;
@@ -24,9 +24,9 @@ public class FileRequestHandler extends RegexHandler {
 
 
   protected static class MediaTypeConfig {
-    public final boolean ranges;
-    public final boolean immutable;
-    public final int maxAge;
+    final boolean ranges;
+    final boolean immutable;
+    final int maxAge;
 
     /**
      *
