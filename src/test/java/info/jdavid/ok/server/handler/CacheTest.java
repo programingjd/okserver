@@ -109,6 +109,7 @@ public class CacheTest {
     assertEquals(new File(root, "index.html").length(),
                  Integer.parseInt(response2.header("Content-Length")));
     assertEquals("no-cache", response2.header("Cache-Control"));
+    response2.close();
     cache.evictAll();
     assertNull(getResponse(cache, url));
 
@@ -119,6 +120,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(200, response3.code());
+    response3.close();
     assertNull(getResponse(cache, url));
 
     final String etag = response3.header("ETag");
@@ -130,6 +132,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(304, response4.code());
+    response4.close();
     assertNull(getResponse(cache, url));
   }
 
@@ -159,6 +162,7 @@ public class CacheTest {
     final String cacheControl = response2.header("Cache-Control");
     assertTrue(cacheControl.contains("max-age="));
     assertTrue(cacheControl.contains("immutable"));
+    response2.close();
     cache.evictAll();
     assertNull(getResponse(cache, url));
 
@@ -169,6 +173,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(200, response3.code());
+    response3.close();
     assertNull(getResponse(cache, url));
 
     final String etag = response3.header("ETag");
@@ -180,6 +185,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(304, response4.code());
+    response4.close();
     assertNull(getResponse(cache, url));
   }
 
@@ -206,7 +212,7 @@ public class CacheTest {
     assertEquals("no-store", response1.header("Cache-Control"));
     final String etag = response1.header("ETag");
     assertNull(etag);
-    response1.body().close();
+    response1.close();
     final Response response2 = getResponse(cache, url);
     assertNull(response2);
   }
@@ -235,6 +241,7 @@ public class CacheTest {
     assertEquals(new File(new File(root, "noindex"), "file.txt").length(),
                  Integer.parseInt(response2.header("Content-Length")));
     assertEquals("no-cache", response2.header("Cache-Control"));
+    response2.close();
     cache.evictAll();
     assertNull(getResponse(cache, url));
 
@@ -245,6 +252,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(200, response3.code());
+    response3.close();
     assertNull(getResponse(cache, url));
 
     final String etag = response3.header("ETag");
@@ -256,6 +264,7 @@ public class CacheTest {
         build()
     ).execute();
     assertEquals(304, response4.code());
+    response4.close();
     assertNull(getResponse(cache, url));
   }
 

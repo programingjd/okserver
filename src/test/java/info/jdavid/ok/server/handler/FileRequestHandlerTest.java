@@ -227,6 +227,7 @@ public class FileRequestHandlerTest {
     assertTrue(response3.header("Content-Type").startsWith(MediaTypes.PNG.type()));
     assertEquals(String.valueOf(new File(root, "img.png").length()),
                  response3.header("Content-Length"));
+    response3.body().close();
     final okhttp3.Response response4 =
       client.newCall(new Request.Builder().url(url.newBuilder().build()).build()).execute();
     assertEquals(200, response4.code());
