@@ -202,38 +202,14 @@ public class CacheTest {
 
     final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
     assertEquals(200, response1.code());
+    assertEquals(new File(root, "data.json").length(),
+                 Integer.parseInt(response1.header("Content-Length")));
+    assertEquals("no-store", response1.header("Cache-Control"));
+    final String etag = response1.header("ETag");
+    assertNull(etag);
     response1.body().close();
     final Response response2 = getResponse(cache, url);
-    assertNotNull(response2);
-    assertEquals(new File(root, "data.json").length(),
-                 Integer.parseInt(response2.header("Content-Length")));
-    //assertEquals("no-cache", response2.header("Cache-Control"));
-    final String cacheControl = response2.header("Cache-Control");
-    assertTrue(cacheControl.contains("max-age="));
-    assertFalse(cacheControl.contains("immutable"));
-    cache.evictAll();
-    assertNull(getResponse(cache, url));
-
-    final Response response3 = client.newCall(
-      new Request.Builder().
-        url(url).
-        header("Cache-Control", "no-cache, no-store, must-revalidate").
-        build()
-    ).execute();
-    assertEquals(200, response3.code());
-    assertNull(getResponse(cache, url));
-
-    final String etag = response3.header("ETag");
-    assertNotNull(etag);
-    final Response response4 = client.newCall(
-      new Request.Builder().
-        url(url).
-        header("If-None-Match", etag).
-        build()
-    ).execute();
-    assertEquals(304, response4.code());
-    assertNull(getResponse(cache, url));
+    assertNull(response2);
   }
-
 
 }
