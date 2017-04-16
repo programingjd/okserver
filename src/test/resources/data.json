@@ -1,0 +1,9 @@
+{
+  "key1": "value1",
+  "array": [
+    1, 2, 3
+  ],
+  "object": {
+    "name": "test"
+  }
+}
