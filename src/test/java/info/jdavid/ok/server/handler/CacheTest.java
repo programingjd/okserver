@@ -16,9 +16,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+
 
 public class CacheTest {
 
@@ -101,6 +100,7 @@ public class CacheTest {
     final OkHttpClient client = client();
     final Cache cache = client.cache();
     final HttpUrl url = HttpUrl.parse(baseUrl);
+
     final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
     assertEquals(200, response1.code());
     response1.body().close();
@@ -108,7 +108,81 @@ public class CacheTest {
     assertNotNull(response2);
     assertEquals(new File(root, "index.html").length(),
                  Integer.parseInt(response2.header("Content-Length")));
+    assertEquals("no-cache", response2.header("Cache-Control"));
+    cache.evictAll();
+    assertNull(getResponse(cache, url));
 
+    final Response response3 = client.newCall(
+      new Request.Builder().
+        url(url).
+        header("Cache-Control", "no-cache, no-store, must-revalidate").
+        build()
+    ).execute();
+    assertEquals(200, response3.code());
+    assertNull(getResponse(cache, url));
+
+    final String etag = response3.header("ETag");
+    assertNotNull(etag);
+    final Response response4 = client.newCall(
+      new Request.Builder().
+        url(url).
+        header("If-None-Match", etag).
+        build()
+    ).execute();
+    assertEquals(304, response4.code());
+    assertNull(getResponse(cache, url));
   }
+
+  @Test
+  public void testImgHttp() throws Exception {
+    testImg("http://localhost:8080/");
+  }
+
+  @Test
+  public void testImgHttps() throws Exception {
+    testImg("https://localhost:8181/");
+  }
+
+  private void testImg(final String baseUrl) throws Exception {
+    final File root = getWebRoot();
+    final OkHttpClient client = client();
+    final Cache cache = client.cache();
+    final HttpUrl url = HttpUrl.parse(baseUrl).newBuilder("img.png").build();
+
+    final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
+    assertEquals(200, response1.code());
+    response1.body().close();
+    final Response response2 = getResponse(cache, url);
+    assertNotNull(response2);
+    assertEquals(new File(root, "img.png").length(),
+                 Integer.parseInt(response2.header("Content-Length")));
+    //assertEquals("no-cache", response2.header("Cache-Control"));
+    final String cacheControl = response2.header("Cache-Control");
+    assertTrue(cacheControl.contains("max-age="));
+    assertTrue(cacheControl.contains("immutable"));
+    cache.evictAll();
+    assertNull(getResponse(cache, url));
+
+    final Response response3 = client.newCall(
+      new Request.Builder().
+        url(url).
+        header("Cache-Control", "no-cache, no-store, must-revalidate").
+        build()
+    ).execute();
+    assertEquals(200, response3.code());
+    assertNull(getResponse(cache, url));
+
+    final String etag = response3.header("ETag");
+    assertNotNull(etag);
+    final Response response4 = client.newCall(
+      new Request.Builder().
+        url(url).
+        header("If-None-Match", etag).
+        build()
+    ).execute();
+    assertEquals(304, response4.code());
+    assertNull(getResponse(cache, url));
+  }
+
 
 }
