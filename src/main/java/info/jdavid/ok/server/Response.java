@@ -248,6 +248,7 @@ public abstract class Response {
     /**
      * Sets the cache control max-age value.
      * @param secs the max-age value in seconds.
+     * @param immutable the immutable attribute.
      * @return this
      */
     public Builder maxAge(final long secs, final boolean immutable) {
