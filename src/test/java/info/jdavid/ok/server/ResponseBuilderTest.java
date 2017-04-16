@@ -83,7 +83,7 @@ public class ResponseBuilderTest {
     assertEquals("max-age=60, must-revalidate",
                  response(200).maxAge(60, false).build().header("Cache-Control"));
     assertTrue(response(200).maxAge(60, false).priv().build().
-      headers("Cache-Control").contains("max-age=60"));
+      headers("Cache-Control").contains("private"));
   }
 
   @Test
