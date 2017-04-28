@@ -13,6 +13,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import info.jdavid.ok.server.header.CacheControls;
+import info.jdavid.ok.server.header.Cors;
+import info.jdavid.ok.server.header.ETags;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -157,13 +160,6 @@ public abstract class Response {
     private static final String LOCATION = "Location";
     private static final String TRANSFER_ENCODING = "Transfer-Encoding";
     private static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
-    private static final String CACHE_CONTROL = "Cache-Control";
-    private static final String ETAG = "Etag";
-    private static final String CORS_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
-    private static final String CORS_ALLOW_METHODS = "Access-Control-Allow-Methods";
-    private static final String CORS_ALLOW_HEADERS = "Access-Control-Allow-Headers";
-    private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
-    private static final String CORS_EXPOSE_HEADERS = "Access-Control-Expose-Headers";
 
     private Protocol mProtocol = null;
     private int mCode = -1;
@@ -207,8 +203,8 @@ public abstract class Response {
      * @return this
      */
     public Builder noCache(final String etag) {
-      if (etag != null) mHeaders.set(ETAG, etag);
-      mHeaders.set(CACHE_CONTROL, "no-cache");
+      if (etag != null) mHeaders.set(ETags.HEADER, etag);
+      mHeaders.set(CacheControls.HEADER, "no-cache");
       return this;
     }
 
@@ -217,7 +213,7 @@ public abstract class Response {
      * @return this
      */
     public Builder noStore() {
-      mHeaders.removeAll(ETAG).set(CACHE_CONTROL, "no-store");
+      mHeaders.removeAll(ETags.HEADER).set(CacheControls.HEADER, "no-store");
       return this;
     }
 
@@ -228,10 +224,10 @@ public abstract class Response {
      */
     public Builder etag(final String etag) {
       if (etag == null) {
-        mHeaders.removeAll(ETAG);
+        mHeaders.removeAll(ETags.HEADER);
       }
       else {
-        mHeaders.set(ETAG, etag);
+        mHeaders.set(ETags.HEADER, etag);
       }
       return this;
     }
@@ -241,7 +237,7 @@ public abstract class Response {
      * @return this
      */
     public Builder priv() {
-      mHeaders.add(CACHE_CONTROL, "private");
+      mHeaders.add(CacheControls.HEADER, "private");
       return this;
     }
 
@@ -252,7 +248,8 @@ public abstract class Response {
      * @return this
      */
     public Builder maxAge(final long secs, final boolean immutable) {
-      mHeaders.add(CACHE_CONTROL, "max-age=" + secs + (immutable ? ", immutable" : ", must-revalidate"));
+      mHeaders.add(CacheControls.HEADER,
+                   "max-age=" + secs + (immutable ? ", immutable" : ", must-revalidate"));
       return this;
     }
 
@@ -266,15 +263,15 @@ public abstract class Response {
      */
     public Builder cors(final String origin, final List<String> methods, final List<String> headers,
                         final long secs) {
-      this.mHeaders.set(CORS_ALLOW_ORIGIN, origin == null ? "null" : origin);
+      this.mHeaders.set(Cors.ALLOW_ORIGIN, origin == null ? "null" : origin);
       if (methods != null) {
-        this.mHeaders.set(CORS_ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
+        this.mHeaders.set(Cors.ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
       }
       if (headers != null) {
-        this.mHeaders.set(CORS_ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
+        this.mHeaders.set(Cors.ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
       }
-      this.mHeaders.set(CORS_EXPOSE_HEADERS, join(Arrays.asList(ETAG, STRICT_TRANSPORT_SECURITY)));
-      this.mHeaders.set(CORS_MAX_AGE, String.valueOf(secs));
+      this.mHeaders.set(Cors.ALLOW_HEADERS, join(Arrays.asList(ETags.HEADER, STRICT_TRANSPORT_SECURITY)));
+      this.mHeaders.set(Cors.MAX_AGE, String.valueOf(secs));
       return this;
     }
 
@@ -721,22 +718,22 @@ public abstract class Response {
         else {
           mHeaders.set(CONTENT_TYPE, MediaTypes.SSE.toString());
         }
-        final String cache = mHeaders.get(CACHE_CONTROL);
+        final String cache = mHeaders.get(CacheControls.HEADER);
         if (cache != null) {
           if (!cache.equals("no-cache")) {
             throw new IllegalStateException("SSE response cache control should be set to no-cache.");
           }
         }
         else {
-          mHeaders.set(CACHE_CONTROL, "no-cache");
+          mHeaders.set(CacheControls.HEADER, "no-cache");
         }
         mHeaders.set("Connection", "keep-alive");
-        if (mHeaders.get(CORS_ALLOW_ORIGIN) == null) {
-          mHeaders.set(CORS_ALLOW_ORIGIN, "*");
+        if (mHeaders.get(Cors.ALLOW_ORIGIN) == null) {
+          mHeaders.set(Cors.ALLOW_ORIGIN, "*");
         }
-        mHeaders.set(CORS_ALLOW_METHODS, "GET");
-        if (mHeaders.get(CORS_ALLOW_HEADERS) == null) {
-          mHeaders.set(CORS_ALLOW_HEADERS, "Content-Type, Accept");
+        mHeaders.set(Cors.ALLOW_METHODS, "GET");
+        if (mHeaders.get(Cors.ALLOW_HEADERS) == null) {
+          mHeaders.set(Cors.ALLOW_HEADERS, "Content-Type, Accept");
         }
         return new SSE(this);
       }

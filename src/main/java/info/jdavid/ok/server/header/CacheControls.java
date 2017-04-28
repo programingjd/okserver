@@ -1,12 +1,12 @@
-package info.jdavid.ok.server.handler.header;
+package info.jdavid.ok.server.header;
 
 
 /**
  * Cache-Control header.
  */
-public final class CacheControl {
+public final class CacheControls {
 
-  private CacheControl() {}
+  private CacheControls() {}
 
   /**
    * Cache-Control header field name.

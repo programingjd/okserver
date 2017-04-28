@@ -4,18 +4,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
-import info.jdavid.ok.server.handler.header.AcceptRanges;
+import info.jdavid.ok.server.header.AcceptRanges;
+import info.jdavid.ok.server.header.ETags;
 import okhttp3.MediaType;
 import okio.Buffer;
 import okio.BufferedSource;
@@ -251,11 +249,8 @@ public class FileRequestHandler extends RegexHandler {
         m = mediaType;
       }
       final String etag = etag(file);
-      if (etag != null) {
-        if (etag.equalsIgnoreCase(request.headers.get("If-None-Match"))) {
+      if (etag != null && etag.equalsIgnoreCase(request.headers.get(ETags.IF_NONE_MATCH))) {
           return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
-        }
-        final String
       }
       if (f.exists()) {
         try {
@@ -279,19 +274,18 @@ public class FileRequestHandler extends RegexHandler {
             response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
             final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
             if (rangeHeaderValue == null) {
-              response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
+              return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
             }
             else {
               if (!rangeHeaderValue.startsWith(AcceptRanges.BYTES)) {
                 return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
               }
-              final String condition = request.headers.get(AcceptRanges.CONDITIONAL);
-              if (condition != null) {
-                if (condition.endsWith("GMT") || condition.startsWith("")) {
-                  throw new
+              if (etag != null) {
+                if (!ifMatch(request, etag)) {
+                  return response.statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                 }
-                else {
-
+                if (!ifRangeMatch(request, etag)) {
+                  return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
                 }
               }
               final String bytesRanges = rangeHeaderValue.substring(AcceptRanges.BYTES.length() + 1);
@@ -346,7 +340,7 @@ public class FileRequestHandler extends RegexHandler {
                 }
                 try {
                   final BufferedSource source = source(f, start);
-                  response.statusLine(StatusLines.PARTIAL).
+                  return response.statusLine(StatusLines.PARTIAL).
                     header(AcceptRanges.CONTENT_RANGE,
                            AcceptRanges.BYTES + " " + start + "-" + end + "/" + fileLength).
                     body(m, source, (int)(end - start));
@@ -361,13 +355,13 @@ public class FileRequestHandler extends RegexHandler {
               else {
                 // todo multipart ranges
                 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+                return null;
               }
             }
           }
           else {
-            response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
+            return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
           }
-          return response;
         }
         catch (final FileNotFoundException ignore) {
           return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
@@ -377,6 +371,33 @@ public class FileRequestHandler extends RegexHandler {
         return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
       }
     }
+  }
+
+  private boolean ifRangeMatch(final Request request, final String etag) {
+    final String value = request.headers.get(AcceptRanges.IF_RANGE);
+    if (value != null) {
+      final int firstQuote = value.indexOf('"');
+      final int lastQuote = value.lastIndexOf('"');
+      if (firstQuote != -1 && lastQuote > firstQuote) {
+        return etag.equals(value.substring(firstQuote + 1, lastQuote));
+      }
+    }
+    return true;
+  }
+
+  private boolean ifMatch(final Request request, final String etag) {
+    final String value = request.headers.get(ETags.IF_MATCH);
+    if (value != null) {
+      final String[] values = value.split(", ");
+      for (final String v: values) {
+        final int n = v.length();
+        if (n > 2 && v.charAt(0) == '"' && v.charAt(n - 1) == '"') {
+          if (etag.equals(v.substring(1, n-1))) return true;
+        }
+      }
+      return false;
+    }
+    return true;
   }
 
   protected BufferedSource source(final File f) throws FileNotFoundException {

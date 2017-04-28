@@ -1,7 +1,7 @@
 package info.jdavid.ok.server.handler;
 
 import info.jdavid.ok.server.Response;
-import info.jdavid.ok.server.handler.header.CacheControl;
+import info.jdavid.ok.server.header.CacheControls;
 import okhttp3.HttpUrl;
 
 
@@ -41,12 +41,12 @@ public abstract class AuthHandler implements Handler {
    */
   protected Response.Builder handleAuthenticated(final Request request, final String[] params) {
     final Response.Builder response = mDelegate.handle(request, params);
-    final String cacheControl = response.header(CacheControl.HEADER);
-    final String expires =  response.header(CacheControl.EXPIRES);
+    final String cacheControl = response.header(CacheControls.HEADER);
+    final String expires =  response.header(CacheControls.EXPIRES);
     final String modifiedCacheControl =
       modifiedCacheControlValue(request.method, response.code(), cacheControl, expires);
     if (modifiedCacheControl != null) {
-      response.header(CacheControl.HEADER, modifiedCacheControl);
+      response.header(CacheControls.HEADER, modifiedCacheControl);
     }
     return response;
   }
@@ -70,14 +70,14 @@ public abstract class AuthHandler implements Handler {
     }
     final String[] directives = cacheControlHeaderValue.split(", ");
     for (final String directive: directives) {
-      if (CacheControl.Directive.NO_STORE.equals(directive)) return null;
-      if (CacheControl.Directive.PRIVATE.equals(directive)) return null;
-      if (CacheControl.Directive.PUBLIC.equals(directive)) return null;
+      if (CacheControls.Directive.NO_STORE.equals(directive)) return null;
+      if (CacheControls.Directive.PRIVATE.equals(directive)) return null;
+      if (CacheControls.Directive.PUBLIC.equals(directive)) return null;
       if (!cacheable) {
-        if (directive.startsWith(CacheControl.Directive.MAX_AGE_EQUALS) ||
-            directive.startsWith(CacheControl.Directive.S_MAX_AGE_EQUALS) ||
-            directive.startsWith(CacheControl.Directive.STALE_WHILE_REVALIDATE_EQUALS) ||
-            directive.startsWith(CacheControl.Directive.STALE_IF_ERROR_EQUALS)) {
+        if (directive.startsWith(CacheControls.Directive.MAX_AGE_EQUALS) ||
+            directive.startsWith(CacheControls.Directive.S_MAX_AGE_EQUALS) ||
+            directive.startsWith(CacheControls.Directive.STALE_WHILE_REVALIDATE_EQUALS) ||
+            directive.startsWith(CacheControls.Directive.STALE_IF_ERROR_EQUALS)) {
           cacheable = true;
         }
       }

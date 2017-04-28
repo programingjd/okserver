@@ -1,4 +1,4 @@
-package info.jdavid.ok.server.handler.header;
+package info.jdavid.ok.server.header;
 
 
 /**
@@ -22,6 +22,6 @@ public final class AcceptRanges {
 
   public static final String RANGE = "Range";
 
-  public static final String CONDITIONAL = "If-Range";
+  public static final String IF_RANGE = "If-Range";
 
 }

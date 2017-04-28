@@ -1,4 +1,4 @@
-package info.jdavid.ok.server.handler.header;
+package info.jdavid.ok.server.header;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
