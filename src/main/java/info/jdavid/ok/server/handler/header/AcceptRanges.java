@@ -4,7 +4,9 @@ package info.jdavid.ok.server.handler.header;
 /**
  * Accept-Ranges header.
  */
-public class AcceptRanges {
+public final class AcceptRanges {
+
+  private AcceptRanges() {}
 
   /**
    * Accept-Ranges header field name. Used by the server to specify that range requests are supported.
@@ -19,5 +21,7 @@ public class AcceptRanges {
   public static final String BYTES = "bytes";
 
   public static final String RANGE = "Range";
+
+  public static final String CONDITIONAL = "If-Range";
 
 }

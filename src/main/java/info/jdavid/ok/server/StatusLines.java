@@ -74,7 +74,7 @@ public class StatusLines {
     c(HttpURLConnection.HTTP_REQ_TOO_LONG, "Request-URI Too Long"); // 414
   public static final StatusLine UNSUPPORTED_MEDIA_TYPE =
     c(HttpURLConnection.HTTP_UNSUPPORTED_TYPE, "Unsupported Media Type"); // 415
-  public static final StatusLine REQUEST_RANGE_NOT_SATISFIED =
+  public static final StatusLine REQUEST_RANGE_NOT_SATISFIABLE =
     c(416, "Request Range Not Statisfied"); // 416
   public static final StatusLine EXPECTATION_FAILED =
     c(417, "Expectation Failed"); // 417

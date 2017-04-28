@@ -6,9 +6,11 @@ import okhttp3.HttpUrl;
 /**
  * Preload link header used for http2 push.
  */
-public class Preload {
+public final class Preload {
 
-  public void addLink(final Headers.Builder headers, final HttpUrl url, final TYPE type) {
+  private Preload() {}
+
+  public static void addLink(final Headers.Builder headers, final HttpUrl url, final TYPE type) {
     headers.add(LINK, "<" + url.toString() + ">; rel=preload; as=" + type.name);
   }
 

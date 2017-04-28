@@ -4,7 +4,9 @@ package info.jdavid.ok.server.handler.header;
 /**
  * Cache-Control header.
  */
-public class CacheControl {
+public final class CacheControl {
+
+  private CacheControl() {}
 
   /**
    * Cache-Control header field name.
@@ -20,6 +22,8 @@ public class CacheControl {
    * Cache-Control directive.
    */
   public static class Directive {
+
+    private Directive() {}
 
     /**
      * The response should not be stored in the cache.

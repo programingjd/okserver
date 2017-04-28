@@ -2,17 +2,26 @@ package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.handler.header.AcceptRanges;
 import okhttp3.MediaType;
+import okio.Buffer;
+import okio.BufferedSource;
 import okio.Okio;
+import okio.Source;
+import okio.Timeout;
 
 
 @SuppressWarnings("WeakerAccess")
@@ -242,8 +251,11 @@ public class FileRequestHandler extends RegexHandler {
         m = mediaType;
       }
       final String etag = etag(file);
-      if (etag != null && etag.equalsIgnoreCase(request.headers.get("If-None-Match"))) {
-        return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
+      if (etag != null) {
+        if (etag.equalsIgnoreCase(request.headers.get("If-None-Match"))) {
+          return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
+        }
+        final String
       }
       if (f.exists()) {
         try {
@@ -267,13 +279,22 @@ public class FileRequestHandler extends RegexHandler {
             response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
             final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
             if (rangeHeaderValue == null) {
-              response.statusLine(StatusLines.OK).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+              response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
             }
             else {
-              if (!rangeHeaderValue.startsWith("Range: bytes=")) {
+              if (!rangeHeaderValue.startsWith(AcceptRanges.BYTES)) {
                 return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
               }
-              final String bytesRanges = rangeHeaderValue.substring(13);
+              final String condition = request.headers.get(AcceptRanges.CONDITIONAL);
+              if (condition != null) {
+                if (condition.endsWith("GMT") || condition.startsWith("")) {
+                  throw new
+                }
+                else {
+
+                }
+              }
+              final String bytesRanges = rangeHeaderValue.substring(AcceptRanges.BYTES.length() + 1);
               final String[] ranges = bytesRanges.split(", ");
               if (ranges.length == 0) {
                 return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
@@ -290,7 +311,8 @@ public class FileRequestHandler extends RegexHandler {
                 final long start;
                 if (dashIndex == 0) {
                   start = 0;
-                } else {
+                }
+                else {
                   try {
                     start = Long.parseLong(range.substring(0, dashIndex));
                   }
@@ -298,12 +320,14 @@ public class FileRequestHandler extends RegexHandler {
                     return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                   }
                   if (start > f.length()) {
-                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                    return new Response.Builder().
+                      statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                   }
                 }
+                final long fileLength = f.length();
                 final long end;
                 if (dashIndex == range.length() - 1) {
-                  end = f.length();
+                  end = fileLength;
                 }
                 else {
                   try {
@@ -312,15 +336,27 @@ public class FileRequestHandler extends RegexHandler {
                   catch (final NumberFormatException ignore) {
                     return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                   }
-                  if (end > f.length()) {
-                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  if (end > fileLength) {
+                    return new Response.Builder().
+                      statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                   }
                 }
                 if (start > end) {
                   return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                 }
-                // todo
-                //response.statusLine(StatusLines.PARTIAL).body(m, )
+                try {
+                  final BufferedSource source = source(f, start);
+                  response.statusLine(StatusLines.PARTIAL).
+                    header(AcceptRanges.CONTENT_RANGE,
+                           AcceptRanges.BYTES + " " + start + "-" + end + "/" + fileLength).
+                    body(m, source, (int)(end - start));
+                }
+                catch (final FileNotFoundException ignore) {
+                  return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
+                }
+                catch (final IOException ignored) {
+                  return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
+                }
               }
               else {
                 // todo multipart ranges
@@ -329,11 +365,11 @@ public class FileRequestHandler extends RegexHandler {
             }
           }
           else {
-            response.statusLine(StatusLines.OK).body(m, Okio.buffer(Okio.source(f)), (int)f.length());
+            response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
           }
           return response;
         }
-        catch (final FileNotFoundException e) {
+        catch (final FileNotFoundException ignore) {
           return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
         }
       }
@@ -341,6 +377,14 @@ public class FileRequestHandler extends RegexHandler {
         return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
       }
     }
+  }
+
+  protected BufferedSource source(final File f) throws FileNotFoundException {
+    return Okio.buffer(new RandomAccessFileSource(f));
+  }
+
+  protected BufferedSource source(final File f, final long offset) throws IOException {
+    return Okio.buffer(new RandomAccessFileSource(f, offset));
   }
 
   protected MediaType mediaType(final File file) {
@@ -359,6 +403,56 @@ public class FileRequestHandler extends RegexHandler {
       }
     }
     return null;
+  }
+
+
+  private class RandomAccessFileSource implements Source {
+
+    private final Timeout mTimeout = new Timeout();
+    private final RandomAccessFile mRandomAccessFile;
+    private final byte[] buffer = new byte[8192];
+    private int pos = 0;
+    private int len = 0;
+
+    public RandomAccessFileSource(final File f) throws FileNotFoundException {
+      mRandomAccessFile = new RandomAccessFile(f, "r");
+    }
+
+    public RandomAccessFileSource(final File f, final long offset) throws IOException {
+      mRandomAccessFile = new RandomAccessFile(f, "r");
+      mRandomAccessFile.seek(offset);
+    }
+
+    @Override
+    public long read(final Buffer sink, final long byteCount) throws IOException {
+      if (len > pos) {
+        final int n = (int)Math.min(len - pos, byteCount);
+        sink.write(buffer, pos, n);
+        if (pos + n == len) {
+          pos = len = 0;
+        }
+        else {
+          pos += n;
+        }
+        return n;
+      }
+      len = mRandomAccessFile.read(buffer, 0, buffer.length);
+      if (len == -1) return -1;
+      final int n = (int)Math.min(len, byteCount);
+      sink.write(buffer, 0, n);
+      return n;
+    }
+
+    @Override
+    public Timeout timeout() {
+      return mTimeout;
+    }
+
+    @Override
+    public void close() throws IOException {
+      mRandomAccessFile.close();
+    }
+
   }
 
 }
