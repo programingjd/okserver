@@ -1,6 +1,22 @@
 package info.jdavid.ok.server.header;
 
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.UUID;
+
+import okhttp3.MediaType;
+import okhttp3.ResponseBody;
+import okio.Buffer;
+import okio.BufferedSource;
+import okio.ByteString;
+import okio.Okio;
+import okio.Source;
+import okio.Timeout;
+
+
 /**
  * Accept-Ranges header.
  */
@@ -23,5 +39,140 @@ public final class AcceptRanges {
   public static final String RANGE = "Range";
 
   public static final String IF_RANGE = "If-Range";
+
+  public static final MediaType MULTIPART_TYPE = MediaType.parse("multipart/byteranges");
+
+  public static class ByteRangesBody extends ResponseBody {
+
+    final List<Part> parts;
+    final long length;
+
+    ByteRangesBody(final List<Part> parts) {
+      if (parts.isEmpty()) throw new IllegalArgumentException();
+      this.parts = parts;
+      long n = 0;
+      for (final Part part: parts) {
+        n += part.size;
+      }
+      length = n;
+    }
+
+    @Override public MediaType contentType() {
+      return MULTIPART_TYPE;
+    }
+
+    @Override public long contentLength() {
+      return length;
+    }
+
+    @Override public BufferedSource source() {
+      return Okio.buffer(new PartsSource(parts));
+    }
+
+    public static class Builder {
+
+      private static final ByteString SLASH = ByteString.encodeUtf8("/");
+      private static final ByteString DASH = ByteString.encodeUtf8("-");
+      private static final ByteString DASHES = ByteString.encodeUtf8("--");
+      private static final ByteString CRLF = ByteString.encodeUtf8("\r\n");
+      private static final ByteString CONTENT_TYPE_PREFIX = ByteString.encodeUtf8("Content-Type: ");
+      private static final ByteString CONTENT_RANGE_PREFIX = ByteString.encodeUtf8("Content-Range: bytes ");
+
+      final MediaType contentType;
+      final List<Part> parts = new ArrayList<Part>(8);
+      final ByteString boundary;
+      final Buffer buffer = new Buffer();
+
+      public Builder(final MediaType contentType) {
+        this(contentType, null);
+      }
+
+      public Builder(final MediaType contentType, final String boundary) {
+        this.contentType = contentType;
+        this.boundary = ByteString.encodeUtf8(boundary == null ? UUID.randomUUID().toString() : boundary);
+      }
+
+      public void addRange(final BufferedSource source, final long start, final long end, final long total) {
+        buffer.write(boundary);
+        buffer.write(DASHES);
+        buffer.write(CRLF);
+        buffer.write(CONTENT_TYPE_PREFIX);
+        buffer.writeUtf8(contentType.toString());
+        buffer.write(CRLF);
+        buffer.write(CONTENT_RANGE_PREFIX);
+        buffer.writeUtf8(String.valueOf(start));
+        buffer.write(DASH);
+        buffer.writeUtf8(String.valueOf(end));
+        buffer.write(SLASH);
+        buffer.writeUtf8(String.valueOf(total));
+        buffer.write(CRLF);
+        parts.add(new Part(buffer, (int)buffer.size()));
+        parts.add(new Part(source, (int)(end - start)));
+      }
+
+      public ByteRangesBody build() {
+        return new ByteRangesBody(parts);
+      }
+
+    }
+
+    static class PartsSource implements Source {
+
+      final Timeout timeout = new Timeout();
+      final ListIterator<Part> iterator;
+      private Part part;
+      private long pos = 0;
+
+      PartsSource(final List<Part> parts) {
+        if (parts.isEmpty()) throw new IllegalArgumentException();
+        iterator = parts.listIterator();
+        part = iterator.next();
+      }
+
+      @Override public long read(final Buffer sink, final long byteCount) throws IOException {
+        if (part == null) return -1;
+        final long n = Math.min(byteCount, part.size - pos);
+        sink.write(part.source, n);
+        pos += n;
+        if (pos == part.size) {
+          part.close();
+          part = iterator.hasNext() ? iterator.next() : null;
+        }
+        return n;
+      }
+
+      @Override public Timeout timeout() {
+        return timeout;
+      }
+
+      @Override public void close() {
+        while (part != null) {
+          try {
+            part.close();
+          }
+          catch (final IOException ignore) {}
+          part = iterator.hasNext() ? iterator.next() : null;
+        }
+      }
+
+    }
+
+    static class Part {
+
+      final BufferedSource source;
+      final int size;
+
+      private Part(final BufferedSource source, final int size) {
+        this.source = source;
+        this.size = size;
+      }
+
+      public void close() throws IOException {
+        source.close();
+      }
+
+    }
+
+  }
 
 }

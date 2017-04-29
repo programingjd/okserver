@@ -993,9 +993,9 @@ public abstract class Response {
   }
 
   static final class BufferResponse extends ResponseBody {
-    public final MediaType contentType;
-    public final BufferedSource buffer;
-    public final int size;
+    final MediaType contentType;
+    final BufferedSource buffer;
+    final int size;
     BufferResponse(final MediaType contentType, final Buffer buffer) {
       this(contentType, buffer, (int)buffer.size());
     }

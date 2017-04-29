@@ -302,6 +302,7 @@ public class FileRequestHandler extends RegexHandler {
                 if (range.indexOf('-', dashIndex + 1) != -1) { // negative number.
                   return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                 }
+                final long fileLength = f.length();
                 final long start;
                 if (dashIndex == 0) {
                   start = 0;
@@ -313,12 +314,11 @@ public class FileRequestHandler extends RegexHandler {
                   catch (final NumberFormatException ignore) {
                     return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                   }
-                  if (start > f.length()) {
+                  if (start > fileLength) {
                     return new Response.Builder().
                       statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                   }
                 }
-                final long fileLength = f.length();
                 final long end;
                 if (dashIndex == range.length() - 1) {
                   end = fileLength;
@@ -353,9 +353,91 @@ public class FileRequestHandler extends RegexHandler {
                 }
               }
               else {
-                // todo multipart ranges
-                // https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
-                return null;
+                final long fileLength = f.length();
+                for (final String range: ranges) {
+                  final int dashIndex = range.indexOf('-');
+                  if (dashIndex == -1) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                  if (range.indexOf('-', dashIndex + 1) != -1) { // negative number.
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                  final long start;
+                  if (dashIndex != 0) {
+                    try {
+                      start = Long.parseLong(range.substring(0, dashIndex));
+                    }
+                    catch (final NumberFormatException ignore) {
+                      return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                    }
+                    if (start > fileLength) {
+                      return new Response.Builder().
+                        statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
+                    }
+                  }
+                  else {
+                    start = 0;
+                  }
+                  final long end;
+                  if (dashIndex != range.length() - 1) {
+                    try {
+                      end = Long.parseLong(range.substring(dashIndex + 1));
+                    }
+                    catch (final NumberFormatException ignore) {
+                      return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                    }
+                    if (end > fileLength) {
+                      return new Response.Builder().
+                        statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
+                    }
+                  }
+                  else {
+                    end = fileLength;
+                  }
+                  if (start > end) {
+                    return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
+                  }
+                }
+                final AcceptRanges.ByteRangesBody.Builder multipart =
+                  new AcceptRanges.ByteRangesBody.Builder(m);
+                for (final String range: ranges) {
+                  final int dashIndex = range.indexOf('-');
+                  final long start;
+                  if (dashIndex == 0) {
+                    start = 0;
+                  }
+                  else {
+                    try {
+                      start = Long.parseLong(range.substring(0, dashIndex));
+                    }
+                    catch (final NumberFormatException e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                  final long end;
+                  if (dashIndex == range.length() - 1) {
+                    end = fileLength;
+                  }
+                  else {
+                    try {
+                      end = Long.parseLong(range.substring(dashIndex + 1));
+                    }
+                    catch (final NumberFormatException e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                  try {
+                    final BufferedSource source = source(f, start);
+                    multipart.addRange(source, start, end, fileLength);
+                  }
+                  catch (final FileNotFoundException ignore) {
+                    return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
+                  }
+                  catch (final IOException ignored) {
+                    return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
+                  }
+                }
+                return response.statusLine(StatusLines.PARTIAL).body(multipart.build());
               }
             }
           }
