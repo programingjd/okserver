@@ -32,23 +32,23 @@ import static info.jdavid.ok.server.Logger.logger;
 @SuppressWarnings("WeakerAccess")
 public final class Https {
 
-  private final SSLContext mContext;
-  private final Map<String, SSLContext> mAdditionalContexts;
-  private final Platform mPlatform;
+  final SSLContext context;
+  final Map<String, SSLContext> additionalContexts;
+  final Platform platform;
   final String[] protocols;
   final String[] cipherSuites;
   final boolean http2;
 
   private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
                 final List<String> protocols, final List<String> cipherSuites, final boolean http2) {
-    mContext = createSSLContext(cert);
-    final Platform platform = mPlatform = Platform.findPlatform();
-    mAdditionalContexts =
+    context = createSSLContext(cert);
+    final Platform platform = this.platform = Platform.findPlatform();
+    additionalContexts =
       new HashMap<String, SSLContext>(additionalCerts == null ? 0 : additionalCerts.size());
     if (additionalCerts != null) {
       for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
         final SSLContext additionalContext = createSSLContext(entry.getValue());
-        if (additionalContext != null) mAdditionalContexts.put(entry.getKey(), additionalContext);
+        if (additionalContext != null) additionalContexts.put(entry.getKey(), additionalContext);
       }
     }
     final List<String> protos = protocols == null ? platform.defaultProtocols() : protocols;
@@ -59,16 +59,16 @@ public final class Https {
   }
 
   SSLContext getContext(final String host) {
-    if (host == null) return mContext;
-    final SSLContext additionalContext = mAdditionalContexts.get(host);
-    return additionalContext == null ? mContext : additionalContext;
+    if (host == null) return context;
+    final SSLContext additionalContext = additionalContexts.get(host);
+    return additionalContext == null ? context : additionalContext;
   }
 
   SSLSocket createSSLSocket(final Socket socket,
                             final String hostname, final boolean http2) throws IOException {
     final SSLSocketFactory sslFactory = getContext(hostname).getSocketFactory();
     final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
-    mPlatform.setupSSLSocket(sslSocket, http2);
+    platform.setupSSLSocket(sslSocket, http2);
     sslSocket.setUseClientMode(false);
     sslSocket.setEnabledProtocols(protocols);
     sslSocket.setEnabledCipherSuites(cipherSuites);

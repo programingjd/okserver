@@ -77,7 +77,7 @@ public class MediaTypes {
 
   public static final MediaType DIRECTORY = MediaType.parse("text/directory");
 
-  private static final Map<String, MediaType> EXTENSIONS = initMap();
+  static final Map<String, MediaType> EXTENSIONS = initMap();
   private static Map<String, MediaType> initMap() {
     final Map<String, MediaType> map = new HashMap<String, MediaType>(64);
     map.put("html", HTML);

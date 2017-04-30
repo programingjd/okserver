@@ -104,9 +104,9 @@ class Http2 {
 
   private static class Http2ConnectionListener extends Http2Connection.Listener {
 
-    private final RequestHandler handler;
-    private final long max;
-    private final String clientIp;
+    final RequestHandler handler;
+    final long max;
+    final String clientIp;
 
     Http2ConnectionListener(final RequestHandler requestHandler,
                             final long maxRequestSize, final String address) {

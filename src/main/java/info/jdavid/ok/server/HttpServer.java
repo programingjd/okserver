@@ -23,19 +23,19 @@ import static info.jdavid.ok.server.Logger.logger;
 @SuppressWarnings({ "unused", "WeakerAccess", "Convert2Lambda", "UnusedReturnValue" })
 public class HttpServer {
 
-  private final AtomicBoolean mStarted = new AtomicBoolean();
-  private final AtomicBoolean mSetup = new AtomicBoolean();
-  private int mPort = 8080; // 80
-  private int mSecurePort = 8181; // 443
-  private String mHostname = null;
-  private long mMaxRequestSize = 65536;
-  private ServerSocket mServerSocket = null;
-  private SecureServerSocket mSecureServerSocket = null;
-  private Dispatcher mDispatcher = null;
-  private KeepAliveStrategy mKeepAliveStrategy = KeepAliveStrategy.DEFAULT;
-  private RequestHandler mRequestHandler = null;
-  private Https mHttps = null;
-  private Lock mServerSocketLock = new ReentrantLock();
+  final AtomicBoolean started = new AtomicBoolean();
+  final AtomicBoolean setup = new AtomicBoolean();
+  int port = 8080; // 80
+  int securePort = 8181; // 443
+  String hostname = null;
+  long maxRequestSize = 65536;
+  ServerSocket serverSocket = null;
+  SecureServerSocket secureServerSocket = null;
+  Dispatcher dispatcher = null;
+  KeepAliveStrategy keepAliveStrategy = KeepAliveStrategy.DEFAULT;
+  RequestHandler requestHandler = null;
+  Https https = null;
+  private Lock serverSocketLock = new ReentrantLock();
 
   /**
    * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).
@@ -44,11 +44,11 @@ public class HttpServer {
    * @return this.
    */
   public final HttpServer ports(final int port, final int securePort) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The port number cannot be changed while the server is running.");
     }
-    this.mPort = port;
-    this.mSecurePort = securePort;
+    this.port = port;
+    this.securePort = securePort;
     return this;
   }
 
@@ -58,10 +58,10 @@ public class HttpServer {
    * @return this.
    */
   public final HttpServer port(final int port) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The port number cannot be changed while the server is running.");
     }
-    this.mPort = port;
+    this.port = port;
     return this;
   }
 
@@ -70,7 +70,7 @@ public class HttpServer {
    * @return the server port number.
    */
   public final int port() {
-    return mPort;
+    return port;
   }
 
   /**
@@ -80,10 +80,10 @@ public class HttpServer {
    * @return this.
    */
   public final HttpServer securePort(final int port) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The port number cannot be changed while the server is running.");
     }
-    this.mSecurePort = port;
+    this.securePort = port;
     return this;
   }
 
@@ -92,7 +92,7 @@ public class HttpServer {
    * @return the server secure port number.
    */
   public final int securePort() {
-    return mSecurePort;
+    return securePort;
   }
 
   /**
@@ -101,10 +101,10 @@ public class HttpServer {
    * @return this.
    */
   public final HttpServer hostname(final String hostname) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The host name cannot be changed while the server is running.");
     }
-    this.mHostname = hostname;
+    this.hostname = hostname;
     return this;
   }
 
@@ -113,7 +113,7 @@ public class HttpServer {
    * @return the server host name.
    */
   public final String hostname() {
-    return mHostname;
+    return hostname;
   }
 
   /**
@@ -122,10 +122,10 @@ public class HttpServer {
    * @return this.
    */
   public final HttpServer maxRequestSize(final long size) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The max request size cannot be changed while the server is running.");
     }
-    this.mMaxRequestSize = size;
+    this.maxRequestSize = size;
     return this;
   }
 
@@ -134,7 +134,7 @@ public class HttpServer {
    * @return the maximum allowed request size.
    */
   public final long maxRequestSize() {
-    return mMaxRequestSize;
+    return maxRequestSize;
   }
 
   /**
@@ -143,11 +143,11 @@ public class HttpServer {
    * @return this
    */
   public final HttpServer keepAliveStrategy(final KeepAliveStrategy strategy) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException(
         "The keep-alive strategy cannot be changed while the server is running.");
     }
-    this.mKeepAliveStrategy = strategy == null ? KeepAliveStrategy.DEFAULT : strategy;
+    this.keepAliveStrategy = strategy == null ? KeepAliveStrategy.DEFAULT : strategy;
     return this;
   }
 
@@ -159,18 +159,18 @@ public class HttpServer {
    * @return this
    */
   public final HttpServer requestHandler(final RequestHandler handler) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The request handler cannot be changed while the server is running.");
     }
     validateHandler();
-    this.mRequestHandler = handler;
+    this.requestHandler = handler;
     return this;
   }
 
   private RequestHandler requestHandler() {
-    RequestHandler handler = mRequestHandler;
+    RequestHandler handler = requestHandler;
     if (handler == null) {
-      handler = mRequestHandler = RequestHandlerChain.createDefaultChain();
+      handler = requestHandler = RequestHandlerChain.createDefaultChain();
     }
     return handler;
   }
@@ -183,11 +183,11 @@ public class HttpServer {
    * @return this
    */
   public final HttpServer dispatcher(final Dispatcher dispatcher) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The dispatcher cannot be changed while the server is running.");
     }
     validateDispatcher();
-    this.mDispatcher = dispatcher;
+    this.dispatcher = dispatcher;
     return this;
   }
 
@@ -199,18 +199,18 @@ public class HttpServer {
    * @return this
    */
   public final HttpServer https(final Https https) {
-    if (mStarted.get()) {
+    if (started.get()) {
       throw new IllegalStateException("The certificates cannot be changed while the server is running.");
     }
     if (https != null) validateHttps();
-    this.mHttps = https;
+    this.https = https;
     return this;
   }
 
   private Dispatcher dispatcher() {
-    Dispatcher dispatcher = mDispatcher;
+    Dispatcher dispatcher = this.dispatcher;
     if (dispatcher == null) {
-      dispatcher = mDispatcher = new Dispatcher.Default();
+      dispatcher = this.dispatcher = new Dispatcher.Default();
     }
     return dispatcher;
   }
@@ -225,29 +225,29 @@ public class HttpServer {
    */
   @SuppressWarnings("Duplicates")
   public void shutdown() {
-    if (!mStarted.get()) return;
+    if (!started.get()) return;
     try {
-      mServerSocketLock.lock();
-      if (mServerSocket != null) mServerSocket.close();
+      serverSocketLock.lock();
+      if (serverSocket != null) serverSocket.close();
     }
     catch (final IOException ignore) {}
     finally {
-      mServerSocketLock.unlock();
+      serverSocketLock.unlock();
     }
     try {
-      mServerSocketLock.lock();
-      if (mSecureServerSocket != null) mSecureServerSocket.close();
+      serverSocketLock.lock();
+      if (secureServerSocket != null) secureServerSocket.close();
     }
     catch (final IOException ignore) {}
     finally {
-      mServerSocketLock.unlock();
+      serverSocketLock.unlock();
     }
     try {
-      mDispatcher.shutdown();
+      dispatcher.shutdown();
     }
     //catch (final Exception ignore) {}
     finally {
-      mStarted.set(false);
+      started.set(false);
     }
   }
 
@@ -256,18 +256,18 @@ public class HttpServer {
    * @return true if the server has been started, false if it hasn't, or has been stopped since.
    */
   public final boolean isRunning() {
-    return mStarted.get();
+    return started.get();
   }
 
   /**
    * Starts the server.
    */
   public final void start() {
-    if (mStarted.getAndSet(true)) {
+    if (started.getAndSet(true)) {
       throw new IllegalStateException("The server has already been started.");
     }
     try {
-      if (!mSetup.getAndSet(true)) setup();
+      if (!setup.getAndSet(true)) setup();
       final RequestHandler handler = requestHandler();
       if (handler instanceof AbstractRequestHandler) {
         ((AbstractRequestHandler)handler).init();
@@ -275,22 +275,22 @@ public class HttpServer {
       final Dispatcher dispatcher = dispatcher();
       dispatcher.start();
       final InetAddress address;
-      if (mHostname == null) {
+      if (hostname == null) {
         address = null; //new InetSocketAddress(0).getAddress();
       }
       else {
-        address = InetAddress.getByName(mHostname);
+        address = InetAddress.getByName(hostname);
       }
 
       final ServerSocket serverSocket;
-      if (mPort > 0) {
-        serverSocket = new ServerSocket(mPort, -1, address);
+      if (port > 0) {
+        serverSocket = new ServerSocket(port, -1, address);
         try {
-          mServerSocketLock.lock();
-          mServerSocket = serverSocket;
+          serverSocketLock.lock();
+          this.serverSocket = serverSocket;
         }
         finally {
-          mServerSocketLock.unlock();
+          serverSocketLock.unlock();
         }
         serverSocket.setReuseAddress(true);
       }
@@ -298,21 +298,21 @@ public class HttpServer {
         serverSocket = null;
       }
 
-      final Https https = mHttps;
+      final Https https = this.https;
       final SecureServerSocket secureServerSocket;
-      if (https != null && mSecurePort > 0) {
-        secureServerSocket = new SecureServerSocket(mSecurePort, address);
+      if (https != null && securePort > 0) {
+        secureServerSocket = new SecureServerSocket(securePort, address);
         secureServerSocket.setReuseAddress(true);
         try {
-          mServerSocketLock.lock();
-          mSecureServerSocket = secureServerSocket;
+          serverSocketLock.lock();
+          this.secureServerSocket = secureServerSocket;
         }
         finally {
-          mServerSocketLock.unlock();
+          serverSocketLock.unlock();
         }
       }
       else {
-        secureServerSocket = mSecureServerSocket = null;
+        secureServerSocket = this.secureServerSocket = null;
       }
 
       if (serverSocket != null) {
@@ -325,7 +325,7 @@ public class HttpServer {
                   dispatch(dispatcher, serverSocket.accept(), false, secureServerSocket == null);
                 }
                 catch (final BindException e) {
-                  logger.warn("Could not bind to port: " + mPort, e);
+                  logger.warn("Could not bind to port: " + port, e);
                   break;
                 }
                 catch (final IOException e) {
@@ -342,11 +342,11 @@ public class HttpServer {
               }
               catch (final IOException ignore) {}
               try {
-                mServerSocketLock.lock();
-                mServerSocket = null;
+                serverSocketLock.lock();
+                HttpServer.this.serverSocket = null;
               }
               finally {
-                mServerSocketLock.unlock();
+                serverSocketLock.unlock();
               }
             }
           }
@@ -363,7 +363,7 @@ public class HttpServer {
                   dispatch(dispatcher, secureServerSocket.accept(), true, false);
                 }
                 catch (final BindException e) {
-                  logger.warn("Could not bind to port: " + mPort, e);
+                  logger.warn("Could not bind to port: " + port, e);
                   break;
                 }
                 catch (final IOException e) {
@@ -380,11 +380,11 @@ public class HttpServer {
               }
               catch (final IOException ignore) {}
               try {
-                mServerSocketLock.lock();
-                mSecureServerSocket = null;
+                serverSocketLock.lock();
+                HttpServer.this.secureServerSocket = null;
               }
               finally {
-                mServerSocketLock.unlock();
+                serverSocketLock.unlock();
               }
             }
           }
@@ -417,7 +417,7 @@ public class HttpServer {
         try {
           final Handshake handshake = Handshake.read(socket);
           if (handshake != null) {
-            final Https https = mHttps;
+            final Https https = HttpServer.this.https;
             hostname = handshake.hostname;
             http2 = handshake.http2 && https.http2;
             try {
@@ -454,11 +454,11 @@ public class HttpServer {
         else {
           if (http2) {
             if (hostname == null) {
-              if (mHostname == null) {
+              if (HttpServer.this.hostname == null) {
                 hostname = "localhost";
               }
               else {
-                hostname = mHostname;
+                hostname = HttpServer.this.hostname;
               }
             }
             HttpServer.this.serveHttp2(sslSocket, hostname);
@@ -483,7 +483,7 @@ public class HttpServer {
 
   private void serveHttp1(final Socket socket, final boolean secure, final boolean insecureOnly) {
     try {
-      Http11.serve(socket, secure, insecureOnly, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
+      Http11.serve(socket, secure, insecureOnly, maxRequestSize, keepAliveStrategy, requestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {
@@ -493,7 +493,7 @@ public class HttpServer {
 
   private void serveHttp2(final SSLSocket socket, final String hostname) {
     try {
-      Http2.serve(socket, hostname, mMaxRequestSize, mKeepAliveStrategy, mRequestHandler);
+      Http2.serve(socket, hostname, maxRequestSize, keepAliveStrategy, requestHandler);
     }
     catch (final SocketTimeoutException ignore) {}
     catch (final Exception e) {

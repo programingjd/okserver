@@ -160,7 +160,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
     return builder.substring(0, n);
   }
 
-  private List<Handler> mChain = new LinkedList<Handler>();
+  List<Handler> chain = new LinkedList<Handler>();
 
   /**
    * Creates te default chain: a file handler serving the current directory.
@@ -188,7 +188,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
    * @return this.
    */
   public RequestHandlerChain add(final Handler handler) {
-    mChain.add(handler.setup());
+    chain.add(handler.setup());
     return this;
   }
 
@@ -196,7 +196,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   protected final Response handle(final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
                                   final Headers requestHeaders, final Buffer requestBody) {
-    for (final Handler handler: mChain) {
+    for (final Handler handler: chain) {
       final String[] params = handler.matches(method, url);
       if (params != null) {
         final Response.Builder responseBuilder =

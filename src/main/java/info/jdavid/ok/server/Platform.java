@@ -93,18 +93,18 @@ abstract class Platform {
     }
   }
 
-  private static class Jdk9Platform extends Platform {
+  static class Jdk9Platform extends Platform {
 
     static Platform buildIfSupported() {
       return Float.parseFloat(JAVA_SPEC_VERSION) >= 9 ? new Jdk9Platform() : null;
     }
 
-    private final Method mApplicationProtocols;
+    private final Method applicationProtocols;
 
     private Jdk9Platform() {
       super();
       logger.info("JDK9 Platform");
-      mApplicationProtocols = findApplicationProtocolsMethod();
+      applicationProtocols = findApplicationProtocolsMethod();
     }
 
     @Override List<String> defaultProtocols() {
@@ -125,7 +125,7 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      Platform.setHttp2Protocol(socket, mApplicationProtocols);
+      Platform.setHttp2Protocol(socket, applicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
@@ -134,18 +134,18 @@ abstract class Platform {
 
   }
 
-  private static class Jdk8Platform extends Platform {
+  static class Jdk8Platform extends Platform {
 
     static Platform buildIfSupported() {
       return JAVA_SPEC_VERSION.startsWith("1.8") ? new Jdk8Platform() : null;
     }
 
-    private final Field mApplicationProtocols;
+    private final Field applicationProtocols;
 
     private Jdk8Platform() {
       super();
       logger.info("JDK8 Platform");
-      mApplicationProtocols = findApplicationProtocolsField();
+      applicationProtocols = findApplicationProtocolsField();
     }
 
     @Override List<String> defaultProtocols() {
@@ -166,27 +166,27 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      if (http2) Platform.setHttp2Protocol(socket, mApplicationProtocols);
+      if (http2) Platform.setHttp2Protocol(socket, applicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
-      return mApplicationProtocols != null;
+      return applicationProtocols != null;
     }
 
   }
 
-  private static class Jdk7Platform extends Platform {
+  static class Jdk7Platform extends Platform {
 
     static Platform buildIfSupported() {
       return JAVA_SPEC_VERSION.startsWith("1.7") ? new Jdk8Platform() : null;
     }
 
-    private final Field mApplicationProtocols;
+    private final Field applicationProtocols;
 
     private Jdk7Platform() {
       super();
       logger.info("JDK7 Platform");
-      mApplicationProtocols = findApplicationProtocolsField();
+      applicationProtocols = findApplicationProtocolsField();
     }
 
     @Override List<String> defaultProtocols() {
@@ -203,16 +203,16 @@ abstract class Platform {
     }
 
     @Override void setupSSLSocket(final SSLSocket socket, final boolean http2) throws IOException {
-      if (http2) Platform.setHttp2Protocol(socket, mApplicationProtocols);
+      if (http2) Platform.setHttp2Protocol(socket, applicationProtocols);
     }
 
     @Override boolean supportsHttp2() {
-      return mApplicationProtocols != null;
+      return applicationProtocols != null;
     }
 
   }
 
-  private static class Android16Platform extends Platform {
+  static class Android16Platform extends Platform {
 
     static Platform buildIfSupported() {
       try {
@@ -226,12 +226,12 @@ abstract class Platform {
       }
     }
 
-    private final int mVersion;
+    private final int version;
 
     private Android16Platform(final int version) {
       super();
       logger.info("Android Platform");
-      mVersion = version;
+      this.version = version;
     }
 
     @Override List<String> defaultProtocols() {
@@ -239,7 +239,7 @@ abstract class Platform {
     }
 
     @Override List<String> defaultCipherSuites() {
-      return mVersion < 20 ?
+      return version < 20 ?
              Arrays.asList(
            "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
            "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",

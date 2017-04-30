@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.7.0.0'
+version '3.7.0.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -85,6 +85,12 @@ dependencies {
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'
   cli 'org.slf4j:slf4j-jdk14:1.7.24'
+}
+
+jar {
+  manifest {
+    attributes Sealed: true
+  }
 }
 
 jacoco {

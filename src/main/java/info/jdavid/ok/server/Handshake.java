@@ -16,20 +16,20 @@ import okio.Okio;
 
 final class Handshake {
 
-  private final byte[] mCipherSuites;
+  final byte[] cipherSuites;
   String hostname = null;
   boolean http2 = false;
 
   private Handshake(final byte[] cipherSuites) {
-    mCipherSuites = cipherSuites;
+    this.cipherSuites = cipherSuites;
   }
 
   String[] getCipherSuites() {
     final Buffer buffer = new Buffer();
-    buffer.write(mCipherSuites);
-    final List<String> list = new ArrayList<String>(mCipherSuites.length / 2);
+    buffer.write(cipherSuites);
+    final List<String> list = new ArrayList<String>(cipherSuites.length / 2);
     while (buffer.size() > 0) {
-      final String name = cipherSuites.get(buffer.readShort());
+      final String name = CIPHER_SUITES.get(buffer.readShort());
       if (name != null) {
         list.add(name);
       }
@@ -37,7 +37,7 @@ final class Handshake {
     return list.toArray(new String[list.size()]);
   }
 
-  private static final Map<Short, String> cipherSuites = createCipherSuitesMap();
+  static final Map<Short, String> CIPHER_SUITES = createCipherSuitesMap();
 
   private static int int24(final byte[] bytes) {
     return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
@@ -354,7 +354,7 @@ final class Handshake {
 
   }
 
-  private static Map<Short, String> createCipherSuitesMap() {
+  static Map<Short, String> createCipherSuitesMap() {
     // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
     final Map<Short, String> map = new HashMap<Short, String>(1024);
     map.put((short)0, "TLS_NULL_WITH_NULL_NULL");
