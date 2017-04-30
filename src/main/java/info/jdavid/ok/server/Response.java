@@ -33,17 +33,17 @@ import okio.BufferedSource;
 @SuppressWarnings({ "unused", "WeakerAccess" })
 public abstract class Response {
 
-  private final Protocol protocol;
-  private final int code;
-  private final String message;
-  private final Headers headers;
-  private final ResponseBody body;
-  private final ResponseBody[] chunks;
-  private final List<HttpUrl> push;
+  final Protocol protocol;
+  final int code;
+  final String message;
+  final Headers headers;
+  final ResponseBody body;
+  final ResponseBody[] chunks;
+  final List<HttpUrl> push;
 
   private Response(final Builder builder) {
-    this(builder.mProtocol, builder.mCode, builder.mMessage, builder.mHeaders.build(), builder.mBody,
-         builder.mChunks, builder.mPush);
+    this(builder.protocol, builder.code, builder.message, builder.headers.build(), builder.body,
+         builder.chunks, builder.push);
   }
 
   private Response(final Protocol protocol, final int code, final String message,
@@ -161,15 +161,15 @@ public abstract class Response {
     private static final String TRANSFER_ENCODING = "Transfer-Encoding";
     private static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
 
-    private Protocol mProtocol = null;
-    private int mCode = -1;
-    private String mMessage = null;
-    private ResponseBody mBody = null;
-    private ResponseBody[] mChunks = null;
-    private EventSource mEventSource = null;
-    private int mSSERetrySecs = 5;
-    private List<HttpUrl> mPush = null;
-    private Headers.Builder mHeaders = new Headers.Builder();
+    Protocol protocol = null;
+    int code = -1;
+    String message = null;
+    ResponseBody body = null;
+    private ResponseBody[] chunks = null;
+    private EventSource eventSource = null;
+    private int sseRetrySecs = 5;
+    private List<HttpUrl> push = null;
+    private Headers.Builder headers = new Headers.Builder();
 
     /**
      * Creates a new Builder.
@@ -182,9 +182,9 @@ public abstract class Response {
      * @return this
      */
     public Builder statusLine(final StatusLine statusLine) {
-      this.mProtocol = statusLine.protocol;
-      this.mCode = statusLine.code;
-      this.mMessage = statusLine.message;
+      protocol = statusLine.protocol;
+      code = statusLine.code;
+      message = statusLine.message;
       return this;
     }
 
@@ -193,8 +193,8 @@ public abstract class Response {
      * @return the status code.
      */
     public int code() {
-      if (mCode == -1) throw new IllegalStateException("The status line has not been set.");
-      return mCode;
+      if (code == -1) throw new IllegalStateException("The status line has not been set.");
+      return code;
     }
 
     /**
@@ -203,8 +203,8 @@ public abstract class Response {
      * @return this
      */
     public Builder noCache(final String etag) {
-      if (etag != null) mHeaders.set(ETags.HEADER, etag);
-      mHeaders.set(CacheControls.HEADER, "no-cache");
+      if (etag != null) headers.set(ETags.HEADER, etag);
+      headers.set(CacheControls.HEADER, "no-cache");
       return this;
     }
 
@@ -213,7 +213,7 @@ public abstract class Response {
      * @return this
      */
     public Builder noStore() {
-      mHeaders.removeAll(ETags.HEADER).set(CacheControls.HEADER, "no-store");
+      headers.removeAll(ETags.HEADER).set(CacheControls.HEADER, "no-store");
       return this;
     }
 
@@ -224,10 +224,10 @@ public abstract class Response {
      */
     public Builder etag(final String etag) {
       if (etag == null) {
-        mHeaders.removeAll(ETags.HEADER);
+        headers.removeAll(ETags.HEADER);
       }
       else {
-        mHeaders.set(ETags.HEADER, etag);
+        headers.set(ETags.HEADER, etag);
       }
       return this;
     }
@@ -237,7 +237,7 @@ public abstract class Response {
      * @return this
      */
     public Builder priv() {
-      mHeaders.add(CacheControls.HEADER, "private");
+      headers.add(CacheControls.HEADER, "private");
       return this;
     }
 
@@ -248,7 +248,7 @@ public abstract class Response {
      * @return this
      */
     public Builder maxAge(final long secs, final boolean immutable) {
-      mHeaders.add(CacheControls.HEADER,
+      headers.add(CacheControls.HEADER,
                    "max-age=" + secs + (immutable ? ", immutable" : ", must-revalidate"));
       return this;
     }
@@ -263,15 +263,15 @@ public abstract class Response {
      */
     public Builder cors(final String origin, final List<String> methods, final List<String> headers,
                         final long secs) {
-      this.mHeaders.set(Cors.ALLOW_ORIGIN, origin == null ? "null" : origin);
+      this.headers.set(Cors.ALLOW_ORIGIN, origin == null ? "null" : origin);
       if (methods != null) {
-        this.mHeaders.set(Cors.ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
+        this.headers.set(Cors.ALLOW_METHODS, methods.isEmpty() ? "null" : join(methods));
       }
       if (headers != null) {
-        this.mHeaders.set(Cors.ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
+        this.headers.set(Cors.ALLOW_HEADERS, headers.isEmpty() ? "null" : join(headers));
       }
-      this.mHeaders.set(Cors.ALLOW_HEADERS, join(Arrays.asList(ETags.HEADER, STRICT_TRANSPORT_SECURITY)));
-      this.mHeaders.set(Cors.MAX_AGE, String.valueOf(secs));
+      this.headers.set(Cors.ALLOW_HEADERS, join(Arrays.asList(ETags.HEADER, STRICT_TRANSPORT_SECURITY)));
+      this.headers.set(Cors.MAX_AGE, String.valueOf(secs));
       return this;
     }
 
@@ -340,7 +340,7 @@ public abstract class Response {
      * @return this
      */
     public Builder hsts(final long secs) {
-      mHeaders.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
+      headers.set(STRICT_TRANSPORT_SECURITY, "max-age=" + secs);
       return this;
     }
 
@@ -358,7 +358,7 @@ public abstract class Response {
      * @return this
      */
     public Builder location(final HttpUrl url) {
-      mHeaders.set(LOCATION, url.toString());
+      headers.set(LOCATION, url.toString());
       return this;
     }
 
@@ -368,7 +368,7 @@ public abstract class Response {
      * @return this
      */
     public Builder location(final String path) {
-      mHeaders.set(LOCATION, path);
+      headers.set(LOCATION, path);
       return this;
     }
 
@@ -378,7 +378,7 @@ public abstract class Response {
      * @return the last header value, or null if the header is absent.
      */
     public String header(final String name) {
-      return mHeaders.get(name);
+      return headers.get(name);
     }
 
     /**
@@ -387,7 +387,7 @@ public abstract class Response {
      * @return the list of values, which can be empty.
      */
     public List<String> headers(final String name) {
-      return mHeaders.build().values(name);
+      return headers.build().values(name);
     }
 
     /**
@@ -398,7 +398,7 @@ public abstract class Response {
      * @return this
      */
     public Builder header(final String name, final String value) {
-      mHeaders.set(name, value);
+      headers.set(name, value);
       return this;
     }
 
@@ -410,7 +410,7 @@ public abstract class Response {
      * @return this
      */
     public Builder addHeader(final String name, final String value) {
-      mHeaders.add(name, value);
+      headers.add(name, value);
       return this;
     }
 
@@ -420,7 +420,7 @@ public abstract class Response {
      * @return this
      */
     public Builder removeHeader(final String name) {
-      mHeaders.removeAll(name);
+      headers.removeAll(name);
       return this;
     }
 
@@ -430,7 +430,7 @@ public abstract class Response {
      * @return this
      */
     public Builder headers(final Headers headers) {
-      this.mHeaders = headers.newBuilder();
+      this.headers = headers.newBuilder();
       return this;
     }
 
@@ -440,7 +440,7 @@ public abstract class Response {
      * @return this
      */
     public Builder contentLength(final long length) {
-      mHeaders.set(CONTENT_LENGTH, String.valueOf(length));
+      headers.set(CONTENT_LENGTH, String.valueOf(length));
       return this;
     }
 
@@ -450,7 +450,7 @@ public abstract class Response {
      * @return this
      */
     public Builder contentType(final MediaType contentType) {
-      mHeaders.set(CONTENT_TYPE, contentType.toString());
+      headers.set(CONTENT_TYPE, contentType.toString());
       return this;
     }
 
@@ -459,7 +459,7 @@ public abstract class Response {
      * @return this
      */
     public Builder noBody() {
-      this.mBody = null;
+      this.body = null;
       contentLength(0);
       return this;
     }
@@ -470,7 +470,7 @@ public abstract class Response {
      * @return this
      */
     public Builder body(final ResponseBody body) {
-      this.mBody = body;
+      this.body = body;
       if (body == null) {
         contentLength(0);
         removeHeader(CONTENT_TYPE);
@@ -573,7 +573,7 @@ public abstract class Response {
     private Builder chunks(final boolean checkCommonContentType, final MediaType contentType,
                            final ResponseBody... chunks) {
       if (chunks == null) {
-        mChunks = null;
+        this.chunks = null;
         removeHeader(TRANSFER_ENCODING);
         removeHeader(CONTENT_TYPE);
       }
@@ -587,7 +587,7 @@ public abstract class Response {
             }
           }
         }
-        mChunks = chunks;
+        this.chunks = chunks;
         addHeader(TRANSFER_ENCODING, "chunked");
         removeHeader(CONTENT_LENGTH);
         if (contentType != null) {
@@ -646,7 +646,7 @@ public abstract class Response {
      * @return this.
      */
     public Builder sse(final EventSource eventSource) {
-      mEventSource = eventSource;
+      this.eventSource = eventSource;
       return this;
     }
 
@@ -657,9 +657,9 @@ public abstract class Response {
      * @return this.
      */
     public Builder sse(final EventSource eventSource, final int clientReconnectDelayInSeconds) {
-      if (mCode == -1) statusLine(StatusLines.OK);
-      mEventSource = eventSource;
-      mSSERetrySecs = clientReconnectDelayInSeconds;
+      if (code == -1) statusLine(StatusLines.OK);
+      this.eventSource = eventSource;
+      sseRetrySecs = clientReconnectDelayInSeconds;
       return this;
     }
 
@@ -669,8 +669,8 @@ public abstract class Response {
      * @return this
      */
     public Builder push(final HttpUrl url) {
-      if (this.mPush == null) this.mPush = new ArrayList<HttpUrl>(4);
-      this.mPush.add(url);
+      if (this.push == null) this.push = new ArrayList<HttpUrl>(4);
+      this.push.add(url);
       return this;
     }
 
@@ -679,35 +679,35 @@ public abstract class Response {
      * @return the response.
      */
     public Response build() {
-      if (mProtocol == null) {
+      if (protocol == null) {
         throw new IllegalStateException("The protocol should be specified.");
       }
-      if (mCode < 0) {
-        throw new IllegalStateException("The return code should is invalid: " + mCode + ".");
+      if (code < 0) {
+        throw new IllegalStateException("The return code should is invalid: " + code + ".");
       }
-      if (mMessage == null) {
+      if (message == null) {
         throw new IllegalStateException("The http message is missing.");
       }
-      if (mEventSource != null && mBody != null) {
+      if (eventSource != null && body != null) {
         throw new IllegalStateException("Both body and event source were specified.");
       }
-      if (mEventSource != null && mChunks != null) {
+      if (eventSource != null && chunks != null) {
         throw new IllegalStateException("Both chunks and event source were specified.");
       }
-      if (mChunks != null && mBody != null) {
+      if (chunks != null && body != null) {
         throw new IllegalStateException("Both body and chunks were specified.");
       }
-      if (mChunks != null) {
+      if (chunks != null) {
         return new ChunkedResponse(this);
       }
-      if (mEventSource != null) {
-        if (mCode != 200) {
+      if (eventSource != null) {
+        if (code != 200) {
           throw new IllegalStateException("SSE response should have a status code of 200 (OK).");
         }
-        if (mHeaders.get(CONTENT_LENGTH) != null) {
+        if (headers.get(CONTENT_LENGTH) != null) {
           throw new IllegalStateException("SSE response content length should not be set.");
         }
-        final String contentType = mHeaders.get(CONTENT_TYPE);
+        final String contentType = headers.get(CONTENT_TYPE);
         if (contentType != null) {
           if (!contentType.startsWith(MediaTypes.SSE.toString())) {
             throw new IllegalStateException(
@@ -716,24 +716,24 @@ public abstract class Response {
           }
         }
         else {
-          mHeaders.set(CONTENT_TYPE, MediaTypes.SSE.toString());
+          headers.set(CONTENT_TYPE, MediaTypes.SSE.toString());
         }
-        final String cache = mHeaders.get(CacheControls.HEADER);
+        final String cache = headers.get(CacheControls.HEADER);
         if (cache != null) {
           if (!cache.equals("no-cache")) {
             throw new IllegalStateException("SSE response cache control should be set to no-cache.");
           }
         }
         else {
-          mHeaders.set(CacheControls.HEADER, "no-cache");
+          headers.set(CacheControls.HEADER, "no-cache");
         }
-        mHeaders.set("Connection", "keep-alive");
-        if (mHeaders.get(Cors.ALLOW_ORIGIN) == null) {
-          mHeaders.set(Cors.ALLOW_ORIGIN, "*");
+        headers.set("Connection", "keep-alive");
+        if (headers.get(Cors.ALLOW_ORIGIN) == null) {
+          headers.set(Cors.ALLOW_ORIGIN, "*");
         }
-        mHeaders.set(Cors.ALLOW_METHODS, "GET");
-        if (mHeaders.get(Cors.ALLOW_HEADERS) == null) {
-          mHeaders.set(Cors.ALLOW_HEADERS, "Content-Type, Accept");
+        headers.set(Cors.ALLOW_METHODS, "GET");
+        if (headers.get(Cors.ALLOW_HEADERS) == null) {
+          headers.set(Cors.ALLOW_HEADERS, "Content-Type, Accept");
         }
         return new SSE(this);
       }
@@ -762,18 +762,18 @@ public abstract class Response {
    */
   public static final class EventSource {
 
-    private Lock mLock = new ReentrantLock();
-    private List<SSE> mResponses = new ArrayList<SSE>();
+    private Lock lock = new ReentrantLock();
+    List<SSE> responses = new ArrayList<SSE>();
 
     public EventSource() {}
 
     EventSource connect(final SSE sse) {
-      mLock.lock();
+      lock.lock();
       try {
-        mResponses.add(sse);
+        responses.add(sse);
       }
       finally {
-        mLock.unlock();
+        lock.unlock();
       }
       return this;
     }
@@ -804,52 +804,52 @@ public abstract class Response {
           }
         }
       }
-      mLock.lock();
+      lock.lock();
       try {
-        final List<SSE> responses = mResponses;
+        final List<SSE> responses = this.responses;
         for (final SSE sse: responses)  {
-          sse.mLock.lock();
+          sse.lock.lock();
           try {
-            sse.mQueue.add(new SSE.Message(data, metadata));
+            sse.queue.add(new SSE.Message(data, metadata));
             sse.isReady.signal();
           }
           finally {
-            sse.mLock.unlock();
+            sse.lock.unlock();
           }
         }
       }
       finally {
-        mLock.unlock();
+        lock.unlock();
       }
     }
 
     public void close() {
-      mLock.lock();
+      lock.lock();
       try {
-        final List<SSE> responses = mResponses;
+        final List<SSE> responses = this.responses;
         for (final SSE sse: responses)  {
-          sse.mLock.lock();
+          sse.lock.lock();
           try {
-            sse.mQueue.add(null);
+            sse.queue.add(null);
             sse.isReady.signal();
           }
           finally {
-            sse.mLock.unlock();
+            sse.lock.unlock();
           }
         }
       }
       finally {
-        mLock.unlock();
+        lock.unlock();
       }
     }
 
     void disconnect(final SSE sse) {
-      mLock.lock();
+      lock.lock();
       try {
-        mResponses.remove(sse);
+        responses.remove(sse);
       }
       finally {
-        mLock.unlock();
+        lock.unlock();
       }
     }
 
@@ -857,9 +857,9 @@ public abstract class Response {
 
   private static class SSE extends Response {
 
-    private final List<Message> mQueue = new LinkedList<Message>();
-    private Lock mLock = new ReentrantLock();
-    private Condition isReady = mLock.newCondition();
+    private Lock lock = new ReentrantLock();
+    private Condition isReady = lock.newCondition();
+    final List<Message> queue = new LinkedList<Message>();
 
     static class Message {
       final String data;
@@ -870,25 +870,25 @@ public abstract class Response {
       }
     }
 
-    private final int mRetry;
-    private final EventSource mEventSource;
+    final int retry;
+    final EventSource eventSource;
 
     SSE(final Response.Builder builder) {
       super(builder);
-      mRetry = builder.mSSERetrySecs;
-      mEventSource = builder.mEventSource.connect(this);
+      retry = builder.sseRetrySecs;
+      eventSource = builder.eventSource.connect(this);
     }
 
     @Override
     void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
-      out.writeUtf8("retry: " + mRetry + "\n").flush();
+      out.writeUtf8("retry: " + retry + "\n").flush();
       try {
         while (true) {
-          mLock.lock();
+          lock.lock();
           try {
-            if (mQueue.size() > 0 || isReady.await(10000L, TimeUnit.MILLISECONDS)) {
-              if (mQueue.size() == 0) continue;
-              final Message message = mQueue.remove(0);
+            if (queue.size() > 0 || isReady.await(10000L, TimeUnit.MILLISECONDS)) {
+              if (queue.size() == 0) continue;
+              final Message message = queue.remove(0);
               if (message == null) break;
               final Map<String, String> metadata = message.metadata;
               if (metadata != null) {
@@ -907,12 +907,12 @@ public abstract class Response {
             break;
           }
           finally {
-            mLock.unlock();
+            lock.unlock();
           }
         }
       }
       finally {
-        mEventSource.disconnect(this);
+        eventSource.disconnect(this);
       }
     }
 
