@@ -264,9 +264,10 @@ public class FileRequestHandler extends RegexHandler {
               response.noStore();
               break;
             case 0:
-              response.noCache(null);
+              response.noCache(etag);
               break;
             default:
+              if (etag != null) response.etag(etag);
               response.maxAge(config.maxAge, config.immutable);
               break;
           }
