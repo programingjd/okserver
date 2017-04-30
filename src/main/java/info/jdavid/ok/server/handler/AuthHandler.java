@@ -10,7 +10,7 @@ import okhttp3.HttpUrl;
  */
 public abstract class AuthHandler implements Handler {
 
-  private final Handler mDelegate;
+  final Handler delegate;
 
   /**
    * Adds authentication on top of the specified handler.
@@ -19,18 +19,18 @@ public abstract class AuthHandler implements Handler {
   public AuthHandler(final Handler delegate) {
     super();
     if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
-    mDelegate = delegate;
+    this.delegate = delegate;
   }
 
   @Override
   public Handler setup() {
-    mDelegate.setup();
+    delegate.setup();
     return this;
   }
 
   @Override
   public String[] matches(final String method, final HttpUrl url) {
-    return mDelegate.matches(method, url);
+    return delegate.matches(method, url);
   }
 
   /**
@@ -40,7 +40,7 @@ public abstract class AuthHandler implements Handler {
    * @return the response builder.
    */
   protected Response.Builder handleAuthenticated(final Request request, final String[] params) {
-    final Response.Builder response = mDelegate.handle(request, params);
+    final Response.Builder response = delegate.handle(request, params);
     final String cacheControl = response.header(CacheControls.HEADER);
     final String expires =  response.header(CacheControls.EXPIRES);
     final String modifiedCacheControl =

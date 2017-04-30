@@ -17,8 +17,8 @@ import okhttp3.HttpUrl;
  */
 public abstract class RegexHandler implements Handler {
 
-  private final Pattern mPattern;
-  private final List<String> mMethods;
+  final Pattern pattern;
+  final List<String> methods;
 
   /**
    * Creates an handler that will accept a request with the specified methods,
@@ -31,11 +31,11 @@ public abstract class RegexHandler implements Handler {
       throw new NullPointerException("The accepted request method cannot be null.");
     }
     if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
-    mMethods = new ArrayList<String>(methods.size());
+    final List<String> list = this.methods = new ArrayList<String>(methods.size());
     for (final String method: methods) {
-      methods.add(method.toUpperCase());
+      list.add(method.toUpperCase());
     }
-    mPattern = Pattern.compile(regex);
+    pattern = Pattern.compile(regex);
   }
 
   /**
@@ -47,17 +47,17 @@ public abstract class RegexHandler implements Handler {
   protected RegexHandler(final String method, final String regex) {
     if (method == null) throw new NullPointerException("The accepted request method cannot be null.");
     if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
-    mMethods = Collections.singletonList(method.toUpperCase());
-    mPattern = Pattern.compile(regex);
+    methods = Collections.singletonList(method.toUpperCase());
+    pattern = Pattern.compile(regex);
   }
 
   @Override public Handler setup() { return this; }
 
   @Override
   public String[] matches(final String method, final HttpUrl url) {
-    if (mMethods.contains(method)) {
+    if (methods.contains(method)) {
       final String encodedPath = url.encodedPath();
-      final Matcher matcher = mPattern.matcher(url.encodedPath());
+      final Matcher matcher = pattern.matcher(url.encodedPath());
       if (matcher.find()) {
         if (matcher.start() > 0) return null;
         if (matcher.end() < encodedPath.length()) return null;
@@ -97,9 +97,9 @@ public abstract class RegexHandler implements Handler {
     return new RegexHandlerWrapper(method, regex, delegate);
   }
 
-  private static class RegexHandlerWrapper extends RegexHandler {
+  static class RegexHandlerWrapper extends RegexHandler {
 
-    private final Handler delegate;
+    final Handler delegate;
 
     protected RegexHandlerWrapper(final Collection<String> methods, final String regex, final Handler delegate) {
       super(methods, regex);

@@ -25,12 +25,12 @@ import okio.Timeout;
 @SuppressWarnings("WeakerAccess")
 public class FileRequestHandler extends RegexHandler {
 
-  private final File mWebRoot;
-  private final Collection<MediaType> mAllowedMediaTypes = new ArrayList<MediaType>(48);
-  private final List<String> mIndexNames;
+  final File webRoot;
+  final Collection<MediaType> allowedMediaTypes = new ArrayList<MediaType>(48);
+  final List<String> indexNames;
 
 
-  protected static class MediaTypeConfig {
+  public static class MediaTypeConfig {
     final boolean ranges;
     final boolean immutable;
     final int maxAge;
@@ -147,7 +147,7 @@ public class FileRequestHandler extends RegexHandler {
   @Override
   public Handler setup() {
     super.setup();
-    mAllowedMediaTypes.addAll(allowedMediaTypes());
+    allowedMediaTypes.addAll(allowedMediaTypes());
     return this;
   }
 
@@ -192,8 +192,8 @@ public class FileRequestHandler extends RegexHandler {
   public FileRequestHandler(final String regex,
                             final File webRoot, final List<String> indexNames) {
     super("GET", regex);
-    mWebRoot = webRoot;
-    mIndexNames = indexNames;
+    this.webRoot = webRoot;
+    this.indexNames = indexNames;
   }
 
   @Override
@@ -201,7 +201,7 @@ public class FileRequestHandler extends RegexHandler {
     final int n = params.length;
     if (n < 1) return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
     final String path = params[n-1];
-    final File file = new File(mWebRoot, path.startsWith("/") ? path.substring(1) : path);
+    final File file = new File(webRoot, path.startsWith("/") ? path.substring(1) : path);
     if (file.isDirectory()) {
       final int pathLength = path.length();
       if (pathLength > 0 && path.charAt(pathLength - 1) != '/') {
@@ -220,7 +220,7 @@ public class FileRequestHandler extends RegexHandler {
       }
     }
     final String filename = file.getName();
-    if (file.isFile() && mIndexNames.contains(filename)) {
+    if (file.isFile() && indexNames.contains(filename)) {
       final File index = index(file.getParentFile());
       if (index != null && index.getName().equals(filename)) {
         return new Response.Builder().
@@ -243,7 +243,7 @@ public class FileRequestHandler extends RegexHandler {
       }
       else {
         f = file;
-        if (mAllowedMediaTypes.size() > 0 && !mAllowedMediaTypes.contains(mediaType)) {
+        if (allowedMediaTypes.size() > 0 && !allowedMediaTypes.contains(mediaType)) {
           return new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody();
         }
         m = mediaType;
@@ -499,7 +499,7 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   private File index(final File file) {
-    for (final String name: mIndexNames) {
+    for (final String name: indexNames) {
       final File index = new File(file, name);
       if (index.exists()) {
         return index;
@@ -511,19 +511,19 @@ public class FileRequestHandler extends RegexHandler {
 
   private class RandomAccessFileSource implements Source {
 
-    private final Timeout mTimeout = new Timeout();
-    private final RandomAccessFile mRandomAccessFile;
+    private final Timeout timeout = new Timeout();
+    private final RandomAccessFile randomAccessFile;
     private final byte[] buffer = new byte[8192];
     private int pos = 0;
     private int len = 0;
 
     public RandomAccessFileSource(final File f) throws FileNotFoundException {
-      mRandomAccessFile = new RandomAccessFile(f, "r");
+      randomAccessFile = new RandomAccessFile(f, "r");
     }
 
     public RandomAccessFileSource(final File f, final long offset) throws IOException {
-      mRandomAccessFile = new RandomAccessFile(f, "r");
-      mRandomAccessFile.seek(offset);
+      randomAccessFile = new RandomAccessFile(f, "r");
+      randomAccessFile.seek(offset);
     }
 
     @Override
@@ -539,7 +539,7 @@ public class FileRequestHandler extends RegexHandler {
         }
         return n;
       }
-      len = mRandomAccessFile.read(buffer, 0, buffer.length);
+      len = randomAccessFile.read(buffer, 0, buffer.length);
       if (len == -1) return -1;
       final int n = (int)Math.min(len, byteCount);
       sink.write(buffer, 0, n);
@@ -548,12 +548,12 @@ public class FileRequestHandler extends RegexHandler {
 
     @Override
     public Timeout timeout() {
-      return mTimeout;
+      return timeout;
     }
 
     @Override
     public void close() throws IOException {
-      mRandomAccessFile.close();
+      randomAccessFile.close();
     }
 
   }

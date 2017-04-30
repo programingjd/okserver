@@ -49,11 +49,11 @@ public class DigestAuthHandler extends AuthHandler {
     }
   }
 
-  private final String mName;
-  private final Map<String, String> mCredentials;
-  private final SecretKey mKey;
-  private final byte[] mNonceIv;
-  private final String mOpaque;
+  final String name;
+  final Map<String, String> credentials;
+  final SecretKey key;
+  final byte[] nonceIv;
+  final String opaque;
 
   //private final MessageDigest MD5 = MessageDigest.getInstance("MD5");
 
@@ -84,16 +84,16 @@ public class DigestAuthHandler extends AuthHandler {
                            final byte[] seed,
                            final Handler delegate) {
     super(delegate);
-    mName = digestName;
+    name = digestName;
     final SecureRandom secureRandom = new SecureRandom(seed);
     final byte[] bytes = new byte[16];
     secureRandom.nextBytes(bytes);
-    mKey = secretKey(bytes);
+    key = secretKey(bytes);
     secureRandom.nextBytes(bytes);
-    mOpaque = opaque(mName, mKey, iv(bytes));
+    opaque = opaque(name, key, iv(bytes));
     secureRandom.nextBytes(bytes);
-    mNonceIv = iv(bytes);
-    mCredentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
+    nonceIv = iv(bytes);
+    this.credentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
   }
 
   @Override
@@ -103,10 +103,10 @@ public class DigestAuthHandler extends AuthHandler {
       return handleAuthenticated(request, params);
     }
     else {
-      final String realm = mName + "@" + request.url.host();
-      final String nonce = nonce(request, mKey, mNonceIv);
+      final String realm = name + "@" + request.url.host();
+      final String nonce = nonce(request, key, nonceIv);
       //noinspection UnnecessaryLocalVariable
-      final String opaque = mOpaque;
+      final String opaque = this.opaque;
       final String digest =
         "Digest " +
         "realm=\"" + realm + "\", " +
@@ -127,7 +127,7 @@ public class DigestAuthHandler extends AuthHandler {
    * @return the password or null if the username doesn't exist.
    */
   protected String getPassword(final String username) {
-    return mCredentials.get(username);
+    return credentials.get(username);
   }
 
   private static String nonce(final Request request, final SecretKey key, final byte[] iv) {
@@ -180,7 +180,7 @@ public class DigestAuthHandler extends AuthHandler {
     final String password = getPassword(username);
     if (password == null) return false;
     final String realm = map.get("realm");
-    if (!(mName + "@" + request.url.host()).equals(realm)) return false;
+    if (!(name + "@" + request.url.host()).equals(realm)) return false;
     final String nonce = map.get("nonce");
     if (nonce == null) return false;
     final String uri = map.get("uri");
@@ -194,8 +194,8 @@ public class DigestAuthHandler extends AuthHandler {
     final String response = map.get("response");
     if (response == null) return false;
     final String opaque = map.get("opaque");
-    if (!mOpaque.equals(opaque)) return false;
-    final String decrypted = string(decrypt(mKey, mNonceIv, nonce));
+    if (!this.opaque.equals(opaque)) return false;
+    final String decrypted = string(decrypt(key, nonceIv, nonce));
     final long time = Long.parseLong(decrypted.substring(0, 12), 16);
     if ((System.currentTimeMillis() - time) > 600000) return false; // 10 mins old at the most.
     final String hostAndPath = decrypted.substring(28);

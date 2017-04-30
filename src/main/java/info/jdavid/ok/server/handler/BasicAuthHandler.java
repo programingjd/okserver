@@ -20,7 +20,7 @@ public class BasicAuthHandler extends AuthHandler {
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
   private static final String DIGEST = "Basic realm=\"User Visible Realm\"";
 
-  private Set<String> mCredentials;
+  Set<String> credentials;
 
   /**
    * Creates a new handler with basic auth for the specified list of username/password that delegates to the
@@ -30,7 +30,7 @@ public class BasicAuthHandler extends AuthHandler {
    */
   public BasicAuthHandler(final Map<String, String> credentials, final Handler delegate) {
     super(delegate);
-    mCredentials = credentials == null ? Collections.<String>emptySet() : credentials(credentials);
+    this.credentials = credentials == null ? Collections.<String>emptySet() : credentials(credentials);
   }
 
   /**
@@ -39,7 +39,7 @@ public class BasicAuthHandler extends AuthHandler {
    * @return true if the credentials are valid.
    */
   protected boolean areCredentialsValid(final String auth) {
-    return mCredentials.contains(auth);
+    return credentials.contains(auth);
   }
 
   @Override
