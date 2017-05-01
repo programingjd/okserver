@@ -510,13 +510,13 @@ public class FileRequestHandler extends RegexHandler {
   }
 
 
-  private class RandomAccessFileSource implements Source {
+  class RandomAccessFileSource implements Source {
 
-    private final Timeout timeout = new Timeout();
-    private final RandomAccessFile randomAccessFile;
-    private final byte[] buffer = new byte[8192];
-    private int pos = 0;
-    private int len = 0;
+    final Timeout timeout = new Timeout();
+    final RandomAccessFile randomAccessFile;
+    final byte[] buffer = new byte[8192];
+    int pos = 0;
+    int len = 0;
 
     public RandomAccessFileSource(final File f) throws FileNotFoundException {
       randomAccessFile = new RandomAccessFile(f, "r");

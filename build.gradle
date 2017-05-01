@@ -87,10 +87,24 @@ dependencies {
   cli 'org.slf4j:slf4j-jdk14:1.7.24'
 }
 
+task bigJar(type: Jar) {
+  archiveName "${project.name}-${project.version}-all.jar"
+  from files(sourceSets.main.output.classesDir)
+  from {
+    configurations.compile.collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
+  }.exclude "META-INF/**"
+  manifest {
+    attributes 'Main-Class': 'info.jdavid.ok.server.RequestHandlerChain'
+  }
+}
+
 jar {
   manifest {
     attributes Sealed: true
   }
+  finalizedBy tasks.bigJar
 }
 
 jacoco {
