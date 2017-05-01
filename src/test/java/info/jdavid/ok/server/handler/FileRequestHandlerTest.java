@@ -300,6 +300,29 @@ public class FileRequestHandlerTest {
     assertEquals(text(new File(root, "script.js")), response4.body().string().trim());
   }
 
+  @Test
+  public void testRangeHttp() throws IOException {
+    testRange("http://localhost:8080/");
+  }
+
+  @Test
+  public void testRangeHttps() throws IOException {
+    testRange("https://localhost:8181/");
+  }
+
+  private void testRange(final String baseUrl) throws IOException {
+    final File root = getWebRoot();
+    final HttpUrl url = HttpUrl.parse(baseUrl);
+    final OkHttpClient client = client();
+    final okhttp3.Response response1 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        head().build()).execute();
+    assertEquals(200, response1.code());
+    assertTrue(response1.header("Content-Type").startsWith(MediaTypes.MP4.type()));
+    assertEquals("bytes", response1.header("Accept-Ranges"));
+    response1.close();
+  }
+
   private static WebRequest req(final String url) {
     try {
       return new WebRequest(new URL(url));

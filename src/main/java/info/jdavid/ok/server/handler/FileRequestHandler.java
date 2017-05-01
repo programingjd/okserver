@@ -115,7 +115,7 @@ public class FileRequestHandler extends RegexHandler {
       return new MediaTypeConfig(false, false, jsMaxAge());
     }
     else if ("image".equals(type)) {
-      return new MediaTypeConfig(true /*false*/, true, imageMaxAge());
+      return new MediaTypeConfig(false, true, imageMaxAge());
     }
     else if ("font-woff".equals(subType) || "woff2".equals(subType) || "opentype".equals(subType) ||
              "truetype".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
@@ -191,7 +191,7 @@ public class FileRequestHandler extends RegexHandler {
    */
   public FileRequestHandler(final String regex,
                             final File webRoot, final List<String> indexNames) {
-    super("GET", regex);
+    super(Arrays.asList("HEAD", "GET"), regex);
     this.webRoot = webRoot;
     this.indexNames = indexNames;
   }
