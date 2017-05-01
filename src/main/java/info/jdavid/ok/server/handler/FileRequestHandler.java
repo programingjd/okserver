@@ -544,6 +544,7 @@ public class FileRequestHandler extends RegexHandler {
       if (len == -1) return -1;
       final int n = (int)Math.min(len, byteCount);
       sink.write(buffer, 0, n);
+      len -= n;
       return n;
     }
 

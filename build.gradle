@@ -53,6 +53,7 @@ ext {
 configurations {
   samplesCompile.extendsFrom compile
   samplesRuntime.extendsFrom runtime
+  testRuntime.extendsFrom samplesRuntime
   alpn
   cli
 }
