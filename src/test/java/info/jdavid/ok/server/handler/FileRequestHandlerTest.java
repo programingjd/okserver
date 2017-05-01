@@ -25,10 +25,10 @@ import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.header.AcceptRanges;
 import okhttp3.ConnectionPool;
 import okhttp3.HttpUrl;
-import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
+import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 import org.junit.AfterClass;
@@ -385,9 +385,64 @@ public class FileRequestHandlerTest {
         header("Range", "bytes=200-300, 500-700").
         get().build()).execute();
     assertEquals(206, response7.code());
-    assertTrue(response7.header("Content-Type").startsWith(AcceptRanges.MULTIPART_TYPE.toString()));
-    System.out.println(response7.headers().toString());
+    final String contentType = response7.header("Content-Type");
+    assertTrue(contentType.startsWith(AcceptRanges.MULTIPART_TYPE.toString()));
+    final int index = contentType.indexOf("boundary=");
+    assertTrue(index != -1);
+    final String boundary = contentType.substring(index + 9);
+    final BufferedSource source = response7.body().source();
+    int i=0;
+    while (!source.readUtf8LineStrict().equals("--" + boundary)) {
+      if (++i == 3) fail();
+    }
+    assertEquals("Content-Type: video/mp4", source.readUtf8LineStrict());
+    assertEquals("Content-Range: bytes 200-300/" + bytes.length, source.readUtf8LineStrict());
+    assertEquals("", source.readUtf8LineStrict());
+    assertEquals(ByteString.of(bytes, 200, 100), source.readByteString(100));
+    assertEquals("", source.readUtf8LineStrict());
+    i=0;
+    while (!source.readUtf8LineStrict().equals("--" + boundary)) {
+      if (++i == 3) fail();
+    }
+    assertEquals("Content-Type: video/mp4", source.readUtf8LineStrict());
+    assertEquals("Content-Range: bytes 500-700/" + bytes.length, source.readUtf8LineStrict());
+    assertEquals("", source.readUtf8LineStrict());
+    assertEquals(ByteString.of(bytes, 500, 200), source.readByteString(200));
+    assertEquals("", source.readUtf8LineStrict());
+    assertEquals("--" + boundary + "--", source.readUtf8LineStrict());
     response7.close();
+
+    final okhttp3.Response response8 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "bytes=16000-36000, -15000").
+        get().build()).execute();
+    assertEquals(206, response8.code());
+    final String contentType2 = response8.header("Content-Type");
+    assertTrue(contentType2.startsWith(AcceptRanges.MULTIPART_TYPE.toString()));
+    final int index2 = contentType2.indexOf("boundary=");
+    assertTrue(index2 != -1);
+    final String boundary2 = contentType2.substring(index2 + 9);
+    final BufferedSource source2 = response8.body().source();
+    i=0;
+    while (!source2.readUtf8LineStrict().equals("--" + boundary2)) {
+      if (++i == 3) fail();
+    }
+    assertEquals("Content-Type: video/mp4", source2.readUtf8LineStrict());
+    assertEquals("Content-Range: bytes 16000-36000/" + bytes.length, source2.readUtf8LineStrict());
+    assertEquals("", source2.readUtf8LineStrict());
+    assertEquals(ByteString.of(bytes, 16000, 20000), source2.readByteString(20000));
+    assertEquals("", source2.readUtf8LineStrict());
+    i=0;
+    while (!source2.readUtf8LineStrict().equals("--" + boundary2)) {
+      if (++i == 3) fail();
+    }
+    assertEquals("Content-Type: video/mp4", source2.readUtf8LineStrict());
+    assertEquals("Content-Range: bytes 0-15000/" + bytes.length, source2.readUtf8LineStrict());
+    assertEquals("", source2.readUtf8LineStrict());
+    assertEquals(ByteString.of(bytes, 0, 15000), source2.readByteString(15000));
+    assertEquals("", source2.readUtf8LineStrict());
+    assertEquals("--" + boundary2 + "--", source2.readUtf8LineStrict());
+    response8.close();
   }
 
   private static WebRequest req(final String url) {

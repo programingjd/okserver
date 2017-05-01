@@ -44,11 +44,13 @@ public final class AcceptRanges {
 
   public static class ByteRangesBody extends ResponseBody {
 
+    final String boundary;
     final List<Part> parts;
     final long length;
 
-    ByteRangesBody(final List<Part> parts) {
+    ByteRangesBody(final ByteString boundary, final List<Part> parts) {
       if (parts.isEmpty()) throw new IllegalArgumentException();
+      this.boundary = boundary.utf8();
       this.parts = parts;
       long n = 0;
       for (final Part part: parts) {
@@ -58,7 +60,7 @@ public final class AcceptRanges {
     }
 
     @Override public MediaType contentType() {
-      return MULTIPART_TYPE;
+      return MediaType.parse(MULTIPART_TYPE.toString() + "; boundary=" + boundary);
     }
 
     @Override public long contentLength() {
@@ -93,8 +95,9 @@ public final class AcceptRanges {
 
       public void addRange(final Source source, final long start, final long end, final long total) {
         final Buffer buffer = new Buffer();
-        buffer.write(boundary);
+        buffer.write(CRLF);
         buffer.write(DASHES);
+        buffer.write(boundary);
         buffer.write(CRLF);
         buffer.write(CONTENT_TYPE_PREFIX);
         buffer.writeUtf8(contentType.toString());
@@ -106,12 +109,20 @@ public final class AcceptRanges {
         buffer.write(SLASH);
         buffer.writeUtf8(String.valueOf(total));
         buffer.write(CRLF);
+        buffer.write(CRLF);
         parts.add(new Part(buffer, (int)buffer.size()));
         parts.add(new Part(source, (int)(end - start)));
       }
 
       public ByteRangesBody build() {
-        return new ByteRangesBody(parts);
+        final Buffer buffer = new Buffer();
+        buffer.write(CRLF);
+        buffer.write(DASHES);
+        buffer.write(boundary);
+        buffer.write(DASHES);
+        buffer.write(CRLF);
+        parts.add(new Part(buffer, (int)buffer.size()));
+        return new ByteRangesBody(boundary, parts);
       }
 
     }
