@@ -121,7 +121,7 @@ public final class AcceptRanges {
       final Timeout timeout = new Timeout();
       final ListIterator<Part> iterator;
       private Part part;
-      private long pos = 0;
+      private long pos = 0L;
 
       PartsSource(final List<Part> parts) {
         if (parts.isEmpty()) throw new IllegalArgumentException();
@@ -136,6 +136,7 @@ public final class AcceptRanges {
         pos += n;
         if (pos == part.size) {
           part.close();
+          pos = 0L;
           part = iterator.hasNext() ? iterator.next() : null;
         }
         return n;
