@@ -27,6 +27,8 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
+import okio.ByteString;
+import okio.Okio;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -320,7 +322,37 @@ public class FileRequestHandlerTest {
     assertEquals(200, response1.code());
     assertTrue(response1.header("Content-Type").startsWith(MediaTypes.MP4.type()));
     assertEquals("bytes", response1.header("Accept-Ranges"));
+    final File file = new File(root, "video.mp4");
+    final byte[] bytes = Okio.buffer(Okio.source(file)).readByteArray();
+    assertEquals(String.valueOf(bytes.length), response1.header("Content-Length"));
     response1.close();
+
+    final okhttp3.Response response2 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/script.js").build()).
+        head().build()).execute();
+    assertEquals(200, response2.code());
+    assertTrue(response2.header("Content-Type").startsWith(MediaTypes.JAVASCRIPT.type()));
+    assertNull(response2.header("Accept-Ranges"));
+    response2.close();
+
+    final okhttp3.Response response3 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "100-200").
+        get().build()).execute();
+    assertEquals(400, response3.code());
+    response3.close();
+
+    final okhttp3.Response response4 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "bytes=100-200").
+        get().build()).execute();
+    assertEquals(206, response4.code());
+    assertTrue(response4.header("Content-Type").startsWith(MediaTypes.MP4.type()));
+    assertEquals("100", response4.header("Content-Length"));
+    assertEquals("bytes 100-200/" + bytes.length, response4.header("Content-Range"));
+    assertEquals(ByteString.of(bytes, 100, 100), response4.body().source().readByteString());
+    response4.close();
+
   }
 
   private static WebRequest req(final String url) {
