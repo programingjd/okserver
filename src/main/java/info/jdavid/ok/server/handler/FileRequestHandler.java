@@ -428,7 +428,7 @@ public class FileRequestHandler extends RegexHandler {
                     }
                   }
                   try {
-                    final BufferedSource source = source(f, start);
+                    final Source source = source(f, start);
                     multipart.addRange(source, start, end, fileLength);
                   }
                   catch (final FileNotFoundException ignore) {
@@ -545,6 +545,7 @@ public class FileRequestHandler extends RegexHandler {
       final int n = (int)Math.min(len, byteCount);
       sink.write(buffer, 0, n);
       len -= n;
+      pos += n;
       return n;
     }
 

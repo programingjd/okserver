@@ -81,7 +81,6 @@ public final class AcceptRanges {
       final MediaType contentType;
       final List<Part> parts = new ArrayList<Part>(8);
       final ByteString boundary;
-      final Buffer buffer = new Buffer();
 
       public Builder(final MediaType contentType) {
         this(contentType, null);
@@ -92,7 +91,8 @@ public final class AcceptRanges {
         this.boundary = ByteString.encodeUtf8(boundary == null ? UUID.randomUUID().toString() : boundary);
       }
 
-      public void addRange(final BufferedSource source, final long start, final long end, final long total) {
+      public void addRange(final Source source, final long start, final long end, final long total) {
+        final Buffer buffer = new Buffer();
         buffer.write(boundary);
         buffer.write(DASHES);
         buffer.write(CRLF);
@@ -160,10 +160,10 @@ public final class AcceptRanges {
 
     static class Part {
 
-      final BufferedSource source;
+      final Source source;
       final int size;
 
-      private Part(final BufferedSource source, final int size) {
+      private Part(final Source source, final int size) {
         this.source = source;
         this.size = size;
       }

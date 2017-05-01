@@ -22,8 +22,10 @@ import info.jdavid.ok.server.Https;
 import info.jdavid.ok.server.HttpsTest;
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.RequestHandlerChain;
+import info.jdavid.ok.server.header.AcceptRanges;
 import okhttp3.ConnectionPool;
 import okhttp3.HttpUrl;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
@@ -314,16 +316,17 @@ public class FileRequestHandlerTest {
 
   private void testRange(final String baseUrl) throws IOException {
     final File root = getWebRoot();
+    final File file = new File(root, "video.mp4");
+    final byte[] bytes = Okio.buffer(Okio.source(file)).readByteArray();
     final HttpUrl url = HttpUrl.parse(baseUrl);
     final OkHttpClient client = client();
+    /*
     final okhttp3.Response response1 =
       client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
         head().build()).execute();
     assertEquals(200, response1.code());
     assertTrue(response1.header("Content-Type").startsWith(MediaTypes.MP4.type()));
     assertEquals("bytes", response1.header("Accept-Ranges"));
-    final File file = new File(root, "video.mp4");
-    final byte[] bytes = Okio.buffer(Okio.source(file)).readByteArray();
     assertEquals(String.valueOf(bytes.length), response1.header("Content-Length"));
     response1.close();
 
@@ -353,6 +356,38 @@ public class FileRequestHandlerTest {
     assertEquals(ByteString.of(bytes, 100, 100), response4.body().source().readByteString());
     response4.close();
 
+    final okhttp3.Response response5 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "bytes=-200").
+        get().build()).execute();
+    assertEquals(206, response5.code());
+    assertTrue(response5.header("Content-Type").startsWith(MediaTypes.MP4.type()));
+    assertEquals("200", response5.header("Content-Length"));
+    assertEquals("bytes 0-200/" + bytes.length, response5.header("Content-Range"));
+    assertEquals(ByteString.of(bytes, 0, 200), response5.body().source().readByteString());
+    response5.close();
+
+    final okhttp3.Response response6 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "bytes=" + (bytes.length - 100) + "-").
+        get().build()).execute();
+    assertEquals(206, response6.code());
+    assertTrue(response6.header("Content-Type").startsWith(MediaTypes.MP4.type()));
+    assertEquals("100", response6.header("Content-Length"));
+    assertEquals("bytes " + (bytes.length - 100) + "-" + bytes.length + "/" + bytes.length,
+                 response6.header("Content-Range"));
+    assertEquals(ByteString.of(bytes, bytes.length - 100, 100),
+                 response6.body().source().readByteString());
+    response6.close();*/
+
+    final okhttp3.Response response7 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
+        header("Range", "bytes=200-300, 500-700").
+        get().build()).execute();
+    assertEquals(206, response7.code());
+    assertTrue(response7.header("Content-Type").startsWith(AcceptRanges.MULTIPART_TYPE.toString()));
+    System.out.println(response7.headers().toString());
+    response7.close();
   }
 
   private static WebRequest req(final String url) {
