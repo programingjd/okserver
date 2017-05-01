@@ -320,7 +320,7 @@ public class FileRequestHandlerTest {
     final byte[] bytes = Okio.buffer(Okio.source(file)).readByteArray();
     final HttpUrl url = HttpUrl.parse(baseUrl);
     final OkHttpClient client = client();
-    /*
+
     final okhttp3.Response response1 =
       client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
         head().build()).execute();
@@ -378,7 +378,7 @@ public class FileRequestHandlerTest {
                  response6.header("Content-Range"));
     assertEquals(ByteString.of(bytes, bytes.length - 100, 100),
                  response6.body().source().readByteString());
-    response6.close();*/
+    response6.close();
 
     final okhttp3.Response response7 =
       client.newCall(new Request.Builder().url(url.newBuilder("/video.mp4").build()).
