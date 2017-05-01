@@ -115,7 +115,7 @@ public class FileRequestHandler extends RegexHandler {
       return new MediaTypeConfig(false, false, jsMaxAge());
     }
     else if ("image".equals(type)) {
-      return new MediaTypeConfig(false, true, imageMaxAge());
+      return new MediaTypeConfig(true /*false*/, true, imageMaxAge());
     }
     else if ("font-woff".equals(subType) || "woff2".equals(subType) || "opentype".equals(subType) ||
              "truetype".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
