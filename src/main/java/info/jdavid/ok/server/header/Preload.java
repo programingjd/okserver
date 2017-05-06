@@ -38,6 +38,31 @@ public final class Preload {
   }
 
   /**
+   * Adds a preload link header. This is used to tell the server which urls to send via http 2 server push.
+   * @param responseBuilder the builder for the response.
+   * @param url the request url.
+   * @param type the link type (can be null, for urls called via xhr or fetch).
+   * @param noPush to specify that the preload link is not to be used for server push.
+   * @return the response builder.
+   */
+  public static Response.Builder addLink(final Response.Builder responseBuilder, final HttpUrl url,
+                                         final TYPE type, final boolean noPush) {
+    if (type == null) {
+      responseBuilder.addHeader(
+        LINK,
+        "<" + url.toString() + (noPush ? ">; rel=preload; nopush" : ">; rel=preload")
+      );
+    }
+    else {
+      responseBuilder.addHeader(
+        LINK,
+        "<" + url.toString() + ">; rel=preload; as=" + (noPush ? type.name + "; nopush" : type.name)
+      );
+    }
+    return responseBuilder;
+  }
+
+  /**
    * Gets the list of urls to send via http 2 server push based on the link header values.
    * @param responseBuilder the response builder.
    * @return the list of urls.
