@@ -11,6 +11,7 @@ import java.util.Map;
 import info.jdavid.ok.server.handler.FileRequestHandler;
 import info.jdavid.ok.server.handler.Handler;
 import info.jdavid.ok.server.handler.Request;
+import info.jdavid.ok.server.header.Preload;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -222,7 +223,13 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   protected void decorateResponse(final Response.Builder responseBuilder,
                                   final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
-                                  final Headers requestHeaders) {}
+                                  final Headers requestHeaders) {
+    if (http2) {
+      for (final HttpUrl push: Preload.getPushUrls(responseBuilder)) {
+        responseBuilder.push(push);
+      }
+    }
+  }
 
   /**
    * Handles the requests that were not accepted by any Handler in the chain.
