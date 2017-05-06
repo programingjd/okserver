@@ -45,7 +45,7 @@ ext {
   bintrayApiKey = new File("$projectDir/local.properties").with {
     it.text.splitEachLine('=', { if (it && it[0] == 'bintrayApiKey') return it[1] })
   }
-  jdkVersion = Runtime.class.getPackage().getImplementationVersion().
+  jdkVersion = Runtime.class.getPackage().getImplementationVersion()?.
     replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
   println jdkVersion
 }
@@ -81,7 +81,7 @@ dependencies {
   //compile 'com.squareup.okio:okio:1.12.0'
   compile 'com.squareup.okhttp3:okhttp:3.7.0'
   compile 'org.slf4j:slf4j-api:1.7.24'
-  alpn "info.jdavid.alpn:alpn-boot:${jdkVersion}"
+  jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
   testCompile 'junit:junit:4.12'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'

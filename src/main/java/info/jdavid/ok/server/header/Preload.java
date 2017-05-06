@@ -73,7 +73,7 @@ public final class Preload {
   public static final String LINK = "Link";
 
   /**
-   * Link preload types (<q>as</q> attribute values).
+   * Link preload types (<code>as</code> attribute values).
    */
   public static enum TYPE {
 
