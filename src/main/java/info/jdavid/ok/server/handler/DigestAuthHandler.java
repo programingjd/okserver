@@ -53,7 +53,6 @@ public class DigestAuthHandler extends AuthHandler {
   final Map<String, String> credentials;
   final SecretKey key;
   final byte[] nonceIv;
-  final String opaque;
 
   //private final MessageDigest MD5 = MessageDigest.getInstance("MD5");
 
@@ -85,14 +84,9 @@ public class DigestAuthHandler extends AuthHandler {
                            final Handler delegate) {
     super(delegate);
     name = digestName;
-    final SecureRandom secureRandom = new SecureRandom(seed);
-    final byte[] bytes = new byte[16];
-    secureRandom.nextBytes(bytes);
+    final byte[] bytes = new SecureRandom(seed).generateSeed(16);
     key = secretKey(bytes);
-    secureRandom.nextBytes(bytes);
-    opaque = opaque(name, key, iv(bytes));
-    secureRandom.nextBytes(bytes);
-    nonceIv = iv(bytes);
+    nonceIv = iv(seed);
     this.credentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
   }
 
@@ -106,7 +100,7 @@ public class DigestAuthHandler extends AuthHandler {
       final String realm = name + "@" + request.url.host();
       final String nonce = nonce(request, key, nonceIv);
       //noinspection UnnecessaryLocalVariable
-      final String opaque = this.opaque;
+      final String opaque = opaque(request);
       final String digest =
         "Digest " +
         "realm=\"" + realm + "\", " +
@@ -130,16 +124,21 @@ public class DigestAuthHandler extends AuthHandler {
     return credentials.get(username);
   }
 
+  /**
+   * Calculates the opaque from the request object. The opaque can be used to carry state if necessary.
+   * @param request the request object.
+   * @return the opaque string.
+   */
+  protected String opaque(final Request request) {
+    return new Base64Helper().encode( name+ "@" + request.url.host());
+  }
+
   private static String nonce(final Request request, final SecretKey key, final byte[] iv) {
     final String time = hex(BigInteger.valueOf(System.currentTimeMillis()));
     final String random = hex(new SecureRandom().generateSeed(8));
     final String host = request.url.host();
     final String path = request.url.encodedPath();
     return encrypt(key, iv, bytes(time + random + host + path));
-  }
-
-  private static String opaque(final String name, final Key key, final byte[] iv) {
-    return encrypt(key, md5(name), iv);
   }
 
   private static final Pattern AUTHORIZATION_VALUE_REGEX =
@@ -194,7 +193,7 @@ public class DigestAuthHandler extends AuthHandler {
     final String response = map.get("response");
     if (response == null) return false;
     final String opaque = map.get("opaque");
-    if (!this.opaque.equals(opaque)) return false;
+    if (!opaque(request).equals(opaque)) return false;
     final String decrypted = string(decrypt(key, nonceIv, nonce));
     final long time = Long.parseLong(decrypted.substring(0, 12), 16);
     if ((System.currentTimeMillis() - time) > 600000) return false; // 10 mins old at the most.
@@ -210,6 +209,10 @@ public class DigestAuthHandler extends AuthHandler {
 
   private static byte[] md5(final String name) {
     return digest(MD5).digest(bytes(name));
+  }
+
+  private static String md5(final byte[] bytes) {
+    return string(digest(MD5).digest(bytes));
   }
 
   private static final String ZERO = "0";
@@ -253,16 +256,23 @@ public class DigestAuthHandler extends AuthHandler {
     }
   }
 
-  private static byte[] iv(final byte[] seed) {
+  private static byte[] iv(final byte[] seed /*, final boolean secure*/) {
     final byte[] bytes = new byte[16];
-    new SecureRandom(seed).nextBytes(bytes);
+//    if (secure) {
+      new SecureRandom(seed).nextBytes(bytes);
+//    }
+//    else {
+//      final long l = seed == null ? System.currentTimeMillis() :
+//                                    new BigInteger(md5(seed).getBytes()).longValue();
+//      new Random(l).nextBytes(bytes);
+//    }
     return bytes;
   }
 
-  private static SecretKey secretKey(final byte[] seed) {
+  private static SecretKey secretKey(final byte[] iv) {
     try {
       final KeyGenerator keygen = KeyGenerator.getInstance(AES);
-      keygen.init(new SecureRandom(seed));
+      keygen.init(new SecureRandom(iv));
       return keygen.generateKey();
     }
     catch (final NoSuchAlgorithmException e) {

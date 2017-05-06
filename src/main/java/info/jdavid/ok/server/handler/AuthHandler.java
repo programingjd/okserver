@@ -1,8 +1,12 @@
 package info.jdavid.ok.server.handler;
 
+import java.util.prefs.AbstractPreferences;
+import java.util.prefs.BackingStoreException;
+
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.header.CacheControls;
 import okhttp3.HttpUrl;
+import okio.Buffer;
 
 
 /**
@@ -96,6 +100,37 @@ public abstract class AuthHandler implements Handler {
 
   protected boolean cacheableByDefaultRequestMethod(final String method) {
     return "GET".equals(method);
+  }
+
+  static class Base64Helper extends AbstractPreferences {
+
+    Base64Helper() {
+      super(null, "");
+    }
+
+    private String mValue = null;
+    private Buffer buffer = new Buffer();
+
+    String encode(final String str) {
+      putByteArray(null, buffer.writeUtf8(str).readByteArray());
+      final String value = mValue;
+      mValue = null;
+      return value;
+    }
+
+    @Override public void put(final String key, final String value) {
+      mValue = value;
+    }
+
+    @Override protected void putSpi(final String key, final String value) {}
+    @Override protected String getSpi(final String key) { return null; }
+    @Override protected void removeSpi(final String key) {}
+    @Override protected void removeNodeSpi() throws BackingStoreException {}
+    @Override protected String[] keysSpi() throws BackingStoreException { return new String[0]; }
+    @Override protected String[] childrenNamesSpi() throws BackingStoreException { return new String[0]; }
+    @Override protected AbstractPreferences childSpi(final String name) { return null; }
+    @Override protected void syncSpi() throws BackingStoreException {}
+    @Override protected void flushSpi() throws BackingStoreException {}
   }
 
 }

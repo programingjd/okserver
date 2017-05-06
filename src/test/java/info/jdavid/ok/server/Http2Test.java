@@ -128,7 +128,7 @@ public class Http2Test {
     assertEquals("false", split1[3]);
   }
 
-  //@Test // requires jdk9
+  @Test
   public void testHttp2() throws IOException {
     pushCounter.set(0);
     final okhttp3.Response r = http2Client().newCall(request()).execute();
