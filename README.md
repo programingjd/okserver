@@ -84,8 +84,8 @@ new HttpServer().
   start();
 ```
 
-Requests are handled by a dispatcher. The default implementation uses a cached thread pool.
-You can change the dispatcher with the `dispatcher(Dispatcher)` method. The Dispatcher class includes
+Requests are handled by a `Dispatcher`. The default implementation uses a cached thread pool.
+You can change the dispatcher with the `dispatcher(Dispatcher)` method. The `Dispatcher` class includes
 various implementations that are ready to use. You can also provide your own implementation.
 
 Here's an example that sets a dispatcher with a single thread executor rather than a cached thread pool.
@@ -114,6 +114,24 @@ final HttpServer server = new HttpServer().dispatcher(
     }
   }
 );
+```
+
+The easiest way to implement request handlers is to use a `RequestHandlerChain`, and add predefined handlers
+to it.
+
+```java
+     final Map<String, String> credentials = new HashMap<String, String>();
+     credentials.put("user1", "password1");
+     final File webRoot = new File(new File(System.getProperty("user.home")), "www");
+ 
+     new HttpServer().
+       requestHandler(
+         new RequestHandlerChain().
+           add(new BasicAuthHandler(credentials, new FileRequestHandler(webRoot)))
+       ).
+       dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
+       port(8080).
+       start();
 ```
 
 You can find more examples in the ***samples*** directory.
