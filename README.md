@@ -43,24 +43,26 @@ Here's a very simple example:
   - For any other request, we return a **404 Not Found** with no content.
 
 ```java
-new HttpServer().requestHandler(
-  new RequestHandler() {
-    @Override
-    protected Response handle(final String clientIp, final boolean secure,
-                              final String method, final String path,
-                              final Headers requestHeaders,
-                              final Buffer requestBody) {
-      final Response.Builder builder = new Response.Builder();
-      if ("GET".equals(method) && "/ok".equals(path) {
-        builder.statusLine(StatusLines.OK).body("ok");
+    new HttpServer().requestHandler(
+      new RequestHandler() {
+        @Override
+        public Response handle(final String clientIp, final boolean secure,
+                               final boolean insecureOnly, final boolean http2,
+                               final String method, final HttpUrl url,
+                               final Headers requestHeaders,
+                               final Buffer requestBody) {
+          final String path = url.encodedPath();
+          final Response.Builder builder = new Response.Builder();
+          if ("GET".equals(method) && "/ok".equals(path)) {
+            builder.statusLine(StatusLines.OK).body("ok");
+          }
+          else {
+            builder.statusLine(StatusLines.NOT_FOUND).noBody();
+          }
+          return builder.build();
+        }
       }
-      else {
-        builder.statusLine(StatusLines.NOT_FOUND).noBody();
-      }
-      return builder.build();
-    }
-  }
-);
+    );
 ```
 
 To start the server, you simply call `start()`. It defaults to port 8080, but you can change that easily
@@ -72,8 +74,19 @@ change that easily with the `hostname(String)` method.
 new HttpServer().hostname("localhost").port(80).start();
 ```
 
+If you want to use https, you can specify another port and the certificate to use for tls.
+
+```java
+new HttpServer().
+  hostname("example.com").
+  ports(8080, 8181).
+  https(new Https.Builder().certificate(p12, useHttp2).build()).
+  start();
+```
+
 Requests are handled by a dispatcher. The default implementation uses a cached thread pool.
-You can change the dispatcher with the `dispatcher(Dispatcher)` method.
+You can change the dispatcher with the `dispatcher(Dispatcher)` method. The Dispatcher class includes
+various implementations that are ready to use. You can also provide your own implementation.
 
 Here's an example that sets a dispatcher with a single thread executor rather than a cached thread pool.
 
