@@ -130,19 +130,25 @@ public class Http2Test {
 
   @Test
   public void testHttp2() throws IOException {
-    pushCounter.set(0);
-    final okhttp3.Response r = http2Client().newCall(request()).execute();
-    assertNotNull(r.handshake());
-    assertEquals(Protocol.HTTP_2, r.protocol());
-    assertEquals(200, r.code());
-    final String[] split1 = r.body().string().split("\n");
-    assertEquals(4, split1.length);
-    assertEquals("https://localhost:8181/", split1[0]);
-    assertEquals("true", split1[1]);
-    assertEquals("false", split1[2]);
-    assertEquals("true", split1[3]);
-    try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
-    assertEquals(1, pushCounter.get());
+    if (Platform.findPlatform().supportsHttp2()) {
+      pushCounter.set(0);
+      final okhttp3.Response r = http2Client().newCall(request()).execute();
+      assertNotNull(r.handshake());
+      assertEquals(Protocol.HTTP_2, r.protocol());
+      assertEquals(200, r.code());
+      final String[] split1 = r.body().string().split("\n");
+      assertEquals(4, split1.length);
+      assertEquals("https://localhost:8181/", split1[0]);
+      assertEquals("true", split1[1]);
+      assertEquals("false", split1[2]);
+      assertEquals("true", split1[3]);
+      try {
+        Thread.sleep(1000L);
+      }
+      catch (final InterruptedException ignore) {
+      }
+      assertEquals(1, pushCounter.get());
+    }
   }
 
 }
