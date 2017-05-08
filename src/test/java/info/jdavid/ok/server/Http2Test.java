@@ -130,7 +130,8 @@ public class Http2Test {
 
   @Test
   public void testHttp2() throws IOException {
-    if (Platform.findPlatform().supportsHttp2()) {
+    if (Platform.findPlatform() instanceof Platform.Jdk9Platform) {
+      // other platforms are not supported by the okhttp client.
       pushCounter.set(0);
       final okhttp3.Response r = http2Client().newCall(request()).execute();
       assertNotNull(r.handshake());
