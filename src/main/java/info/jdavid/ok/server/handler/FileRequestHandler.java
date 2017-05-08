@@ -270,7 +270,7 @@ public class FileRequestHandler extends RegexHandler {
         }
         m = mediaType;
       }
-      final String etag = etag(file);
+      final String etag = etag(f, webRoot);
       if (etag != null && etag.equalsIgnoreCase(request.headers.get(ETag.IF_NONE_MATCH))) {
           return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
       }
@@ -598,10 +598,14 @@ public class FileRequestHandler extends RegexHandler {
    * Calculates the E-Tag for the specified file. It can return null for unsupported files (files that are
    * not supposed to be served by the server).
    * @param file the file.
+   * @param webRoot the web root directory.
    * @return the E-Tag (can be null).
    */
-  protected String etag(final File file) {
-    return String.format("%012x", file.lastModified());
+  protected String etag(final File file, final File webRoot) {
+    final String path = file.getAbsolutePath().
+      substring(webRoot.getAbsolutePath().length()).
+      replace('\\','/');
+    return new AuthHandler.Base64Helper().encode(path) + String.format("%012x", file.lastModified());
   }
 
   /**
