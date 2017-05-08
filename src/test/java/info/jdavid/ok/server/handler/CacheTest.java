@@ -1,6 +1,7 @@
 package info.jdavid.ok.server.handler;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -12,6 +13,8 @@ import info.jdavid.ok.server.InMemoryFileSystem;
 import okhttp3.*;
 import okhttp3.Request;
 import okhttp3.internal.io.FileSystem;
+import okio.Buffer;
+import okio.Okio;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -106,10 +109,8 @@ public class CacheTest {
     response1.body().close();
     final Response response2 = getResponse(cache, url);
     assertNotNull(response2);
-    assertEquals(new File(root, "index.html").length(),
-                 Integer.parseInt(response2.header("Content-Length")));
+    assertEquals(content(new File(root, "index.html")), response2.body().string());
     assertEquals("no-cache", response2.header("Cache-Control"));
-    response2.close();
     cache.evictAll();
     assertNull(getResponse(cache, url));
 
@@ -157,12 +158,11 @@ public class CacheTest {
     response1.body().close();
     final Response response2 = getResponse(cache, url);
     assertNotNull(response2);
-    assertEquals(new File(root, "img.png").length(),
-                 Integer.parseInt(response2.header("Content-Length")));
+    assertEquals(bytes(new File(root, "img.png")).length,
+                 response2.body().bytes().length);
     final String cacheControl = response2.header("Cache-Control");
     assertTrue(cacheControl.contains("max-age="));
     assertTrue(cacheControl.contains("immutable"));
-    response2.close();
     cache.evictAll();
     assertNull(getResponse(cache, url));
 
@@ -207,8 +207,7 @@ public class CacheTest {
 
     final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
     assertEquals(200, response1.code());
-    assertEquals(new File(root, "data.json").length(),
-                 Integer.parseInt(response1.header("Content-Length")));
+    assertEquals(content(new File(root, "data.json")), response1.body().string());
     assertEquals("no-store", response1.header("Cache-Control"));
     final String etag = response1.header("ETag");
     assertNull(etag);
@@ -238,8 +237,8 @@ public class CacheTest {
     response1.body().close();
     final Response response2 = getResponse(cache, url);
     assertNotNull(response2);
-    assertEquals(new File(new File(root, "noindex"), "file.txt").length(),
-                 Integer.parseInt(response2.header("Content-Length")));
+    assertEquals(content(new File(new File(root, "noindex"), "file.txt")),
+                 response2.body().string());
     assertEquals("no-cache", response2.header("Cache-Control"));
     response2.close();
     cache.evictAll();
@@ -266,6 +265,28 @@ public class CacheTest {
     assertEquals(304, response4.code());
     response4.close();
     assertNull(getResponse(cache, url));
+  }
+
+  private static String content(final File f) {
+    final Buffer buffer = new Buffer();
+    try {
+      Okio.source(f).read(buffer, f.length());
+      return buffer.readUtf8();
+    }
+    catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static byte[] bytes(final File f) {
+    final Buffer buffer = new Buffer();
+    try {
+      Okio.source(f).read(buffer, f.length());
+      return buffer.readByteArray();
+    }
+    catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }
