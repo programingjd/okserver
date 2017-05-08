@@ -104,7 +104,9 @@ public class CacheTest {
     final Cache cache = client.cache();
     final HttpUrl url = HttpUrl.parse(baseUrl);
 
-    final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
+    final Response response1 = client.newCall(
+      new Request.Builder().url(url).header("Accept-Encoding", "identity").build()
+    ).execute();
     assertEquals(200, response1.code());
     response1.body().close();
     final Response response2 = getResponse(cache, url);
@@ -153,7 +155,9 @@ public class CacheTest {
     final Cache cache = client.cache();
     final HttpUrl url = HttpUrl.parse(baseUrl).newBuilder("img.png").build();
 
-    final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
+    final Response response1 = client.newCall(
+      new Request.Builder().url(url).header("Accept-Encoding", "identity").build()
+    ).execute();
     assertEquals(200, response1.code());
     response1.body().close();
     final Response response2 = getResponse(cache, url);
@@ -232,7 +236,9 @@ public class CacheTest {
     final Cache cache = client.cache();
     final HttpUrl url = HttpUrl.parse(baseUrl).newBuilder("noindex/file.txt").build();
 
-    final Response response1 = client.newCall(new Request.Builder().url(url).build()).execute();
+    final Response response1 = client.newCall(
+      new Request.Builder().url(url).header("Accept-Encoding", "identity").build()
+    ).execute();
     assertEquals(200, response1.code());
     response1.body().close();
     final Response response2 = getResponse(cache, url);
