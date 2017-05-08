@@ -535,13 +535,13 @@ public class FileRequestHandler extends RegexHandler {
     final RandomAccessFileSource source = new RandomAccessFileSource(f);
     if (gzip) {
       final ByteCountingSink counting = new ByteCountingSink();
-      final BufferedSource buffered = Okio.buffer(new CompressedSource(source));
+      final BufferedSource buffered = Okio.buffer(new CompressedSource(source, false));
       try {
         buffered.readAll(counting);
         buffered.close();
         source.reset(0L);
         return new BufferedSourceWithSize(
-          Okio.buffer(new CompressedSource(source)),
+          Okio.buffer(new CompressedSource(source, true)),
           counting.length
         );
       }
@@ -565,13 +565,13 @@ public class FileRequestHandler extends RegexHandler {
     final RandomAccessFileSource source = new RandomAccessFileSource(f, start, end);
     if (gzip) {
       final ByteCountingSink counting = new ByteCountingSink();
-      final BufferedSource buffered = Okio.buffer(new CompressedSource(source));
+      final BufferedSource buffered = Okio.buffer(new CompressedSource(source, false));
       try {
         buffered.readAll(counting);
         buffered.close();
         source.reset(start);
         return new BufferedSourceWithSize(
-          Okio.buffer(new CompressedSource(source)),
+          Okio.buffer(new CompressedSource(source, true)),
           counting.length
         );
       }
@@ -729,14 +729,16 @@ public class FileRequestHandler extends RegexHandler {
 
   class CompressedSource implements Source {
 
+    final boolean closeSourceOnClose;
     final Source source;
     final Buffer sourceBuffer = new Buffer();
     final Buffer sinkBuffer = new Buffer();
     final GzipSink sink = new GzipSink(sinkBuffer);
     boolean closed = false;
 
-    CompressedSource(final Source uncompressed) {
+    CompressedSource(final Source uncompressed, final boolean closeSourceOnClose) {
       this.source = uncompressed;
+      this.closeSourceOnClose = closeSourceOnClose;
     }
 
     @Override
@@ -767,7 +769,7 @@ public class FileRequestHandler extends RegexHandler {
 
     @Override
     public void close() throws IOException {
-      source.close();
+      if (closeSourceOnClose) source.close();
       if (!closed) sink.close();
     }
 
