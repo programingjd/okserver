@@ -31,6 +31,7 @@ public class FileRequestHandler extends RegexHandler {
 
 
   public static class MediaTypeConfig {
+    final boolean compress;
     final boolean ranges;
     final boolean immutable;
     final int maxAge;
@@ -41,7 +42,9 @@ public class FileRequestHandler extends RegexHandler {
      * @param immutable whether the content is immutable (will never change).
      * @param maxAge time (secs) before the content is considered stale (-1 means don't cache).
      */
-    public MediaTypeConfig(final boolean ranges, final boolean immutable, final int maxAge) {
+    public MediaTypeConfig(final boolean compress, final boolean ranges,
+                           final boolean immutable, final int maxAge) {
+      this.compress = compress;
       this.ranges = ranges;
       this.immutable = immutable;
       this.maxAge = maxAge;
@@ -106,33 +109,35 @@ public class FileRequestHandler extends RegexHandler {
     final String type = mediaType.type();
     final String subType = mediaType.subtype();
     if ("html".equals(subType) || "xhtml+xml".equals(subType) || "manifest+json".equals(subType)) {
-      return new MediaTypeConfig(false, false, htmlMaxAge());
+      return new MediaTypeConfig(true, false, false, htmlMaxAge());
     }
     else if ("css".equals(subType)) {
-      return new MediaTypeConfig(false, false, cssMaxAge());
+      return new MediaTypeConfig(true, false, false, cssMaxAge());
     }
     else if ("javascript".equals(subType)) {
-      return new MediaTypeConfig(false, false, jsMaxAge());
+      return new MediaTypeConfig(true, false, false, jsMaxAge());
     }
     else if ("image".equals(type)) {
-      return new MediaTypeConfig(false, true, imageMaxAge());
+      return new MediaTypeConfig(false, false, true, imageMaxAge());
     }
-    else if ("font-woff".equals(subType) || "woff2".equals(subType) || "opentype".equals(subType) ||
-             "truetype".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
-      return new MediaTypeConfig(false, true, 31536000); // one year
+    else if ("font-woff".equals(subType) || "woff2".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
+      return new MediaTypeConfig(false,false, true, 31536000); // one year
+    }
+    else if ("opentype".equals(subType) || "truetype".equals(subType)) {
+      return new MediaTypeConfig(true,false, true, 31536000); // one year
     }
     else if ("json".equals(subType) || "xml".equals(subType) || "atom+xml".equals(subType) ||
              "csv".equals(subType)) {
-      return new MediaTypeConfig(false, false, smallFileMaxAge());
+      return new MediaTypeConfig(true,false, false, smallFileMaxAge());
     }
     else if ("video".equals(type) || "audio".equals(type) ||
              "gzip".equals(subType) || "x-gtar".equals(subType) || "x-xz".equals(subType) ||
              "x-7z-compressed".equals(subType) || "zip".equals(subType) ||
              "octet-stream".equals(subType) || "pdf".equals(subType)) {
-      return new MediaTypeConfig(true, false, largeFileMaxAge());
+      return new MediaTypeConfig(false,true, false, largeFileMaxAge());
     }
     else {
-      return new MediaTypeConfig(false, false, 0);
+      return new MediaTypeConfig(type.equals("text"), false, false, 0);
     }
   }
 
@@ -275,7 +280,7 @@ public class FileRequestHandler extends RegexHandler {
             response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
             final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
             if (rangeHeaderValue == null) {
-              return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
+              return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
             }
             else {
               if (!rangeHeaderValue.startsWith(AcceptRanges.BYTES)) {
@@ -286,7 +291,7 @@ public class FileRequestHandler extends RegexHandler {
                   return response.statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                 }
                 if (!ifRangeMatch(request, etag)) {
-                  return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
+                  return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
                 }
               }
               final String bytesRanges = rangeHeaderValue.substring(AcceptRanges.BYTES.length() + 1);
@@ -340,7 +345,7 @@ public class FileRequestHandler extends RegexHandler {
                   return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                 }
                 try {
-                  final BufferedSource source = source(f, start);
+                  final BufferedSource source = source(f, etag, start, end);
                   return response.statusLine(StatusLines.PARTIAL).
                     header(AcceptRanges.CONTENT_RANGE,
                            AcceptRanges.BYTES + " " + start + "-" + end + "/" + fileLength).
@@ -428,7 +433,7 @@ public class FileRequestHandler extends RegexHandler {
                     }
                   }
                   try {
-                    final Source source = source(f, start);
+                    final Source source = source(f, etag, start, end);
                     multipart.addRange(source, start, end, fileLength);
                   }
                   catch (final FileNotFoundException ignore) {
@@ -443,7 +448,7 @@ public class FileRequestHandler extends RegexHandler {
             }
           }
           else {
-            return response.statusLine(StatusLines.OK).body(m, source(f), (int)f.length());
+            return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
           }
         }
         catch (final FileNotFoundException ignore) {
@@ -454,6 +459,16 @@ public class FileRequestHandler extends RegexHandler {
         return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
       }
     }
+  }
+
+  private File index(final File file) {
+    for (final String name: indexNames) {
+      final File index = new File(file, name);
+      if (index.exists()) {
+        return index;
+      }
+    }
+    return null;
   }
 
   private boolean ifRangeMatch(final Request request, final String etag) {
@@ -483,32 +498,86 @@ public class FileRequestHandler extends RegexHandler {
     return true;
   }
 
-  protected BufferedSource source(final File f) throws FileNotFoundException {
+  private BufferedSource source(final File f, final String etag) throws FileNotFoundException {
+    final BufferedSource source1 = fromCache(etag);
+    if (source1 != null) return source1;
+    final BufferedSource source2 = cache(f, etag);
+    if (source2 != null) return source2;
     return Okio.buffer(new RandomAccessFileSource(f));
   }
 
-  protected BufferedSource source(final File f, final long offset) throws IOException {
-    return Okio.buffer(new RandomAccessFileSource(f, offset));
+  private BufferedSource source(final File f, final String etag,
+                                final long start, final long end) throws IOException {
+    final BufferedSource source1 = fromCache(etag, start, end);
+    if (source1 != null) return source1;
+    final BufferedSource source2 = cache(f, etag, start, end);
+    if (source2 != null) return source2;
+    return Okio.buffer(new RandomAccessFileSource(f, start, end));
   }
 
+  /**
+   * Returns the media type of the specified file. It can return null for unsupported files (files that are
+   * not supposed to be served by the server).
+   * @param file the file.
+   * @return the media type (can be null).
+   */
   protected MediaType mediaType(final File file) {
     return MediaTypes.fromFile(file);
   }
 
+  /**
+   * Calculates the E-Tag for the specified file. It can return null for unsupported files (files that are
+   * not supposed to be served by the server).
+   * @param file the file.
+   * @return the E-Tag (can be null).
+   */
   protected String etag(final File file) {
     return String.format("%012x", file.lastModified());
   }
 
-  private File index(final File file) {
-    for (final String name: indexNames) {
-      final File index = new File(file, name);
-      if (index.exists()) {
-        return index;
-      }
-    }
+  /**
+   * Gets the content from the cache if it's available, returns null otherwise.
+   * @param etag the content E-Tag.
+   * @return the cached content.
+   */
+  protected BufferedSource fromCache(final String etag) {
     return null;
   }
 
+  /**
+   * Gets the partial content from the cache if it's available, returns null otherwise.
+   * @param etag the content E-Tag.
+   * @param start the range start byte index.
+   * @param end the range end byte index.
+   * @return the cached content.
+   */
+  protected BufferedSource fromCache(final String etag, final long start, final long end) {
+    return null;
+  }
+
+  /**
+   * Potentially caches the file with the specified etag, and returns the cached content. This can return
+   * null if no cache is used (the default).
+   * @param f the file.
+   * @param etag the E-Tag.
+   * @return the cached content.
+   */
+  protected BufferedSource cache(final File f, final String etag) {
+    return null;
+  }
+
+  /**
+   * Potentially caches the file with the specified etag, and returns the partial cached content.
+   * This can return null if no cache is used (the default).
+   * @param f the file.
+   * @param etag the E-Tag.
+   * @param start the range start byte index.
+   * @param end the range end byte index.
+   * @return the cached content.
+   */
+  protected BufferedSource cache(final File f, final String etag, final long start, final long end) {
+    return null;
+  }
 
   class RandomAccessFileSource implements Source {
 
@@ -522,9 +591,9 @@ public class FileRequestHandler extends RegexHandler {
       randomAccessFile = new RandomAccessFile(f, "r");
     }
 
-    public RandomAccessFileSource(final File f, final long offset) throws IOException {
+    public RandomAccessFileSource(final File f, final long start, final long end) throws IOException {
       randomAccessFile = new RandomAccessFile(f, "r");
-      randomAccessFile.seek(offset);
+      randomAccessFile.seek(start);
     }
 
     @Override
