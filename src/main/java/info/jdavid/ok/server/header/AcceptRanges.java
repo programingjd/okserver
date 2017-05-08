@@ -110,8 +110,8 @@ public final class AcceptRanges {
         buffer.writeUtf8(String.valueOf(total));
         buffer.write(CRLF);
         buffer.write(CRLF);
-        parts.add(new Part(buffer, (int)buffer.size()));
-        parts.add(new Part(source, (int)(end - start)));
+        parts.add(new Part(buffer, buffer.size()));
+        parts.add(new Part(source, end - start));
       }
 
       public ByteRangesBody build() {
@@ -121,7 +121,7 @@ public final class AcceptRanges {
         buffer.write(boundary);
         buffer.write(DASHES);
         buffer.write(CRLF);
-        parts.add(new Part(buffer, (int)buffer.size()));
+        parts.add(new Part(buffer, buffer.size()));
         return new ByteRangesBody(boundary, parts);
       }
 
@@ -141,7 +141,7 @@ public final class AcceptRanges {
       }
 
       @Override public long read(final Buffer sink, final long byteCount) throws IOException {
-        if (part == null) return -1;
+        if (part == null) return -1L;
         final long n = Math.min(byteCount, part.size - pos);
         sink.write(part.source, n);
         pos += n;
@@ -172,9 +172,9 @@ public final class AcceptRanges {
     static class Part {
 
       final Source source;
-      final int size;
+      final long size;
 
-      private Part(final Source source, final int size) {
+      private Part(final Source source, final long size) {
         this.source = source;
         this.size = size;
       }

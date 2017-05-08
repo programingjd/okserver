@@ -3,9 +3,9 @@ package info.jdavid.ok.server.header;
 /**
  * ETag header.
  */
-public final class ETags {
+public final class ETag {
 
-  private ETags() {}
+  private ETag() {}
 
   public static final String HEADER = "ETag";
 

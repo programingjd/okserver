@@ -12,12 +12,16 @@ import java.util.List;
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
+import info.jdavid.ok.server.header.AcceptEncoding;
 import info.jdavid.ok.server.header.AcceptRanges;
-import info.jdavid.ok.server.header.ETags;
+import info.jdavid.ok.server.header.ETag;
 import okhttp3.MediaType;
 import okio.Buffer;
+import okio.BufferedSink;
 import okio.BufferedSource;
+import okio.GzipSink;
 import okio.Okio;
+import okio.Sink;
 import okio.Source;
 import okio.Timeout;
 
@@ -48,6 +52,19 @@ public class FileRequestHandler extends RegexHandler {
       this.ranges = ranges;
       this.immutable = immutable;
       this.maxAge = maxAge;
+    }
+  }
+
+  /**
+   * Container object for a BufferedSource and its size in bytes.
+   */
+  public static class BufferedSourceWithSize {
+    public final BufferedSource source;
+    public final long size;
+
+    public BufferedSourceWithSize(final BufferedSource source, final long size) {
+      this.source = source;
+      this.size = size;
     }
   }
 
@@ -254,7 +271,7 @@ public class FileRequestHandler extends RegexHandler {
         m = mediaType;
       }
       final String etag = etag(file);
-      if (etag != null && etag.equalsIgnoreCase(request.headers.get(ETags.IF_NONE_MATCH))) {
+      if (etag != null && etag.equalsIgnoreCase(request.headers.get(ETag.IF_NONE_MATCH))) {
           return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
       }
       if (f.exists()) {
@@ -263,6 +280,8 @@ public class FileRequestHandler extends RegexHandler {
           if (config == null) {
             return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
           }
+          final boolean compress = config.compress;
+          final boolean gzip = compress && AcceptEncoding.supportsGZipEncoding(request.headers);
           final Response.Builder response = new Response.Builder().etag(etag);
           switch (config.maxAge) {
             case -1:
@@ -280,7 +299,9 @@ public class FileRequestHandler extends RegexHandler {
             response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
             final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
             if (rangeHeaderValue == null) {
-              return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
+              final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+              if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
+              return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
             }
             else {
               if (!rangeHeaderValue.startsWith(AcceptRanges.BYTES)) {
@@ -291,7 +312,9 @@ public class FileRequestHandler extends RegexHandler {
                   return response.statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                 }
                 if (!ifRangeMatch(request, etag)) {
-                  return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
+                  final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+                  if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
+                  return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
                 }
               }
               final String bytesRanges = rangeHeaderValue.substring(AcceptRanges.BYTES.length() + 1);
@@ -345,11 +368,12 @@ public class FileRequestHandler extends RegexHandler {
                   return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                 }
                 try {
-                  final BufferedSource source = source(f, etag, start, end);
+                  final BufferedSourceWithSize buffered = source(f, etag, start, end, compress, gzip);
+                  if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
                   return response.statusLine(StatusLines.PARTIAL).
                     header(AcceptRanges.CONTENT_RANGE,
                            AcceptRanges.BYTES + " " + start + "-" + end + "/" + fileLength).
-                    body(m, source, (int)(end - start));
+                    body(m, buffered.source, buffered.size);
                 }
                 catch (final FileNotFoundException ignore) {
                   return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
@@ -433,8 +457,9 @@ public class FileRequestHandler extends RegexHandler {
                     }
                   }
                   try {
-                    final Source source = source(f, etag, start, end);
-                    multipart.addRange(source, start, end, fileLength);
+                    // never use gzip compression for multipart ranges.
+                    final BufferedSourceWithSize buffered = source(f, etag, start, end, compress, false);
+                    multipart.addRange(buffered.source, start, end, fileLength);
                   }
                   catch (final FileNotFoundException ignore) {
                     return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
@@ -448,7 +473,9 @@ public class FileRequestHandler extends RegexHandler {
             }
           }
           else {
-            return response.statusLine(StatusLines.OK).body(m, source(f, etag), (int)f.length());
+            final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+            if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
+            return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
           }
         }
         catch (final FileNotFoundException ignore) {
@@ -484,7 +511,7 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   private boolean ifMatch(final Request request, final String etag) {
-    final String value = request.headers.get(ETags.IF_MATCH);
+    final String value = request.headers.get(ETag.IF_MATCH);
     if (value != null) {
       final String[] values = value.split(", ");
       for (final String v: values) {
@@ -498,21 +525,63 @@ public class FileRequestHandler extends RegexHandler {
     return true;
   }
 
-  private BufferedSource source(final File f, final String etag) throws FileNotFoundException {
-    final BufferedSource source1 = fromCache(etag);
+  private BufferedSourceWithSize source(final File f, final String etag,
+                                        final boolean compress,
+                                        final boolean gzip) throws FileNotFoundException {
+    final BufferedSourceWithSize source1 = fromCache(etag, compress, gzip);
     if (source1 != null) return source1;
-    final BufferedSource source2 = cache(f, etag);
+    final BufferedSourceWithSize source2 = cache(f, etag, compress, gzip);
     if (source2 != null) return source2;
-    return Okio.buffer(new RandomAccessFileSource(f));
+    final RandomAccessFileSource source = new RandomAccessFileSource(f);
+    if (gzip) {
+      final ByteCountingSink counting = new ByteCountingSink();
+      final BufferedSink sink = Okio.buffer(new GzipSink(counting));
+      try {
+        sink.writeAll(source);
+        sink.close();
+        source.reset(0L);
+        return new BufferedSourceWithSize(
+          Okio.buffer(new CompressedSource(source)),
+          counting.length
+        );
+      }
+      catch (final IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    else {
+      return new BufferedSourceWithSize(Okio.buffer(source), f.length());
+    }
   }
 
-  private BufferedSource source(final File f, final String etag,
-                                final long start, final long end) throws IOException {
-    final BufferedSource source1 = fromCache(etag, start, end);
+  private BufferedSourceWithSize source(final File f, final String etag,
+                                        final long start, final long end,
+                                        final boolean compress,
+                                        final boolean gzip) throws IOException {
+    final BufferedSourceWithSize source1 = fromCache(etag, start, end, compress, gzip);
     if (source1 != null) return source1;
-    final BufferedSource source2 = cache(f, etag, start, end);
+    final BufferedSourceWithSize source2 = cache(f, etag, start, end, compress, gzip);
     if (source2 != null) return source2;
-    return Okio.buffer(new RandomAccessFileSource(f, start, end));
+    final RandomAccessFileSource source = new RandomAccessFileSource(f, start, end);
+    if (gzip) {
+      final ByteCountingSink counting = new ByteCountingSink();
+      final BufferedSink sink = Okio.buffer(new GzipSink(counting));
+      try {
+        sink.writeAll(source);
+        sink.close();
+        source.reset(start);
+        return new BufferedSourceWithSize(
+          Okio.buffer(new CompressedSource(source)),
+          counting.length
+        );
+      }
+      catch (final IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    else {
+      return new BufferedSourceWithSize(Okio.buffer(source), end - start);
+    }
   }
 
   /**
@@ -538,9 +607,11 @@ public class FileRequestHandler extends RegexHandler {
   /**
    * Gets the content from the cache if it's available, returns null otherwise.
    * @param etag the content E-Tag.
+   * @param compress true if the content media type should be compressed (according to the config).
+   * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSource fromCache(final String etag) {
+  protected BufferedSourceWithSize fromCache(final String etag, final boolean compress, final boolean gzip) {
     return null;
   }
 
@@ -549,9 +620,12 @@ public class FileRequestHandler extends RegexHandler {
    * @param etag the content E-Tag.
    * @param start the range start byte index.
    * @param end the range end byte index.
+   * @param compress true if the content media type should be compressed (according to the config).
+   * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSource fromCache(final String etag, final long start, final long end) {
+  protected BufferedSourceWithSize fromCache(final String etag, final long start, final long end,
+                                             final boolean compress, final boolean gzip) {
     return null;
   }
 
@@ -560,9 +634,12 @@ public class FileRequestHandler extends RegexHandler {
    * null if no cache is used (the default).
    * @param f the file.
    * @param etag the E-Tag.
+   * @param compress true if the content media type should be compressed (according to the config).
+   * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSource cache(final File f, final String etag) {
+  protected BufferedSourceWithSize cache(final File f, final String etag,
+                                         final boolean compress, final boolean gzip) {
     return null;
   }
 
@@ -573,9 +650,12 @@ public class FileRequestHandler extends RegexHandler {
    * @param etag the E-Tag.
    * @param start the range start byte index.
    * @param end the range end byte index.
+   * @param compress true if the content media type should be compressed (according to the config).
+   * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSource cache(final File f, final String etag, final long start, final long end) {
+  protected BufferedSourceWithSize cache(final File f, final String etag, final long start, final long end,
+                                         final boolean compress, final boolean gzip) {
     return null;
   }
 
@@ -610,7 +690,7 @@ public class FileRequestHandler extends RegexHandler {
         return n;
       }
       len = randomAccessFile.read(buffer, 0, buffer.length);
-      if (len == -1) return -1;
+      if (len == -1) return -1L;
       final int n = (int)Math.min(len, byteCount);
       sink.write(buffer, 0, n);
       len -= n;
@@ -626,6 +706,53 @@ public class FileRequestHandler extends RegexHandler {
     @Override
     public void close() throws IOException {
       randomAccessFile.close();
+    }
+
+    public void reset(final long start) throws IOException {
+      randomAccessFile.seek(start);
+      pos = 0;
+      len = 0;
+    }
+
+  }
+
+  class ByteCountingSink implements Sink {
+    int length = 0;
+    @Override public void write(final Buffer source, final long byteCount) throws IOException {
+      source.skip(byteCount);
+      length += byteCount;
+    }
+    @Override public void flush() {}
+    @Override public Timeout timeout() { return null; }
+    @Override public void close() {}
+  }
+
+  class CompressedSource implements Source {
+
+    final Source source;
+    final Buffer buffer = new Buffer();
+    final GzipSink sink = new GzipSink(buffer);
+    boolean closed = false;
+
+    CompressedSource(final Source uncompressed) {
+      this.source = uncompressed;
+    }
+
+    @Override
+    public long read(final Buffer sink, final long byteCount) throws IOException {
+      if (closed) return -1L;
+      return 0;
+    }
+
+    @Override
+    public Timeout timeout() {
+      return source.timeout();
+    }
+
+    @Override
+    public void close() throws IOException {
+      source.close();
+      if (!closed) sink.close();
     }
 
   }

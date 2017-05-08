@@ -4,9 +4,9 @@ package info.jdavid.ok.server.header;
 /**
  * Cache-Control header.
  */
-public final class CacheControls {
+public final class CacheControl {
 
-  private CacheControls() {}
+  private CacheControl() {}
 
   /**
    * Cache-Control header field name.
