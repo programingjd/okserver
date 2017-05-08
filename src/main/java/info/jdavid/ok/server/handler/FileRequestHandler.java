@@ -535,10 +535,10 @@ public class FileRequestHandler extends RegexHandler {
     final RandomAccessFileSource source = new RandomAccessFileSource(f);
     if (gzip) {
       final ByteCountingSink counting = new ByteCountingSink();
-      final BufferedSink sink = Okio.buffer(new GzipSink(counting));
+      final BufferedSource buffered = Okio.buffer(new CompressedSource(source));
       try {
-        sink.writeAll(source);
-        sink.close();
+        buffered.readAll(counting);
+        buffered.close();
         source.reset(0L);
         return new BufferedSourceWithSize(
           Okio.buffer(new CompressedSource(source)),
@@ -565,10 +565,10 @@ public class FileRequestHandler extends RegexHandler {
     final RandomAccessFileSource source = new RandomAccessFileSource(f, start, end);
     if (gzip) {
       final ByteCountingSink counting = new ByteCountingSink();
-      final BufferedSink sink = Okio.buffer(new GzipSink(counting));
+      final BufferedSource buffered = Okio.buffer(new CompressedSource(source));
       try {
-        sink.writeAll(source);
-        sink.close();
+        buffered.readAll(counting);
+        buffered.close();
         source.reset(start);
         return new BufferedSourceWithSize(
           Okio.buffer(new CompressedSource(source)),
