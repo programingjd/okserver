@@ -135,7 +135,7 @@ public class FileRequestHandler extends RegexHandler {
       return new MediaTypeConfig(true, false, false, jsMaxAge());
     }
     else if ("image".equals(type)) {
-      return new MediaTypeConfig(false, false, true, imageMaxAge());
+      return new MediaTypeConfig(subType.equals("svg+xml"), false, true, imageMaxAge());
     }
     else if ("font-woff".equals(subType) || "woff2".equals(subType) || "vnd.ms-fontobject".equals(subType)) {
       return new MediaTypeConfig(false,false, true, 31536000); // one year
@@ -730,8 +730,9 @@ public class FileRequestHandler extends RegexHandler {
   class CompressedSource implements Source {
 
     final Source source;
-    final Buffer buffer = new Buffer();
-    final GzipSink sink = new GzipSink(buffer);
+    final Buffer sourceBuffer = new Buffer();
+    final Buffer sinkBuffer = new Buffer();
+    final GzipSink sink = new GzipSink(sinkBuffer);
     boolean closed = false;
 
     CompressedSource(final Source uncompressed) {
@@ -741,7 +742,22 @@ public class FileRequestHandler extends RegexHandler {
     @Override
     public long read(final Buffer sink, final long byteCount) throws IOException {
       if (closed) return -1L;
-      return 0;
+      if (sinkBuffer.size() > 0) {
+        final long count = Math.min(byteCount, sinkBuffer.size());
+        sink.write(sinkBuffer, count);
+        return count;
+      }
+      if (source.read(sourceBuffer, 262144L) == -1L) {
+        this.sink.write(sourceBuffer, sourceBuffer.size());
+        closed = true;
+        this.sink.close();
+      }
+      else {
+        this.sink.flush();
+      }
+      final long count = Math.min(byteCount, sinkBuffer.size());
+      sink.write(sinkBuffer, count);
+      return count;
     }
 
     @Override
