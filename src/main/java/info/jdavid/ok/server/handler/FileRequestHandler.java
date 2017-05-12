@@ -17,7 +17,6 @@ import info.jdavid.ok.server.header.AcceptRanges;
 import info.jdavid.ok.server.header.ETag;
 import okhttp3.MediaType;
 import okio.Buffer;
-import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.GzipSink;
 import okio.Okio;
@@ -41,7 +40,7 @@ public class FileRequestHandler extends RegexHandler {
     final int maxAge;
 
     /**
-     *
+     * @param compress whether compression should be used.
      * @param ranges whether range requests are allowed.
      * @param immutable whether the content is immutable (will never change).
      * @param maxAge time (secs) before the content is considered stale (-1 means don't cache).
@@ -66,6 +65,39 @@ public class FileRequestHandler extends RegexHandler {
       this.source = source;
       this.size = size;
     }
+  }
+
+  /**
+   * Gets the web root directory.
+   * @return the web root directory.
+   */
+  protected File getWebRoot() {
+    return webRoot;
+  }
+
+  /**
+   * Finds out if a media type is allowed or not.
+   * @param mediaType the media type.
+   * @return true if the media type is allowed, false if it is not.
+   */
+  protected boolean isAllowed(final MediaType mediaType) {
+    return allowedMediaTypes.contains(mediaType);
+  }
+
+  /**
+   * Finds out if the specified file is a directory index or not.
+   * @param file the file.
+   * @return true if it is a directory index, false if it is not.
+   */
+  protected boolean isIndexFile(final File file) {
+    final String filename = file.getName();
+    if (file.isFile() && indexNames.contains(filename)) {
+      final File index = index(file.getParentFile());
+      if (index != null && index.getName().equals(filename)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -241,15 +273,11 @@ public class FileRequestHandler extends RegexHandler {
         }
       }
     }
-    final String filename = file.getName();
-    if (file.isFile() && indexNames.contains(filename)) {
-      final File index = index(file.getParentFile());
-      if (index != null && index.getName().equals(filename)) {
-        return new Response.Builder().
-          statusLine(StatusLines.MOVED_PERMANENTLY).
-          location(request.url.newBuilder("./").build()).
-          noBody();
-      }
+    if (isIndexFile(file)) {
+      return new Response.Builder().
+        statusLine(StatusLines.MOVED_PERMANENTLY).
+        location(request.url.newBuilder("./").build()).
+        noBody();
     }
     final MediaType mediaType = mediaType(file);
     if (mediaType == null) {
@@ -265,7 +293,7 @@ public class FileRequestHandler extends RegexHandler {
       }
       else {
         f = file;
-        if (allowedMediaTypes.size() > 0 && !allowedMediaTypes.contains(mediaType)) {
+        if (isAllowed(mediaType)) {
           return new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody();
         }
         m = mediaType;
