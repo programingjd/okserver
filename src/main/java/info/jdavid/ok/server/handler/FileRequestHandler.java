@@ -556,7 +556,7 @@ public class FileRequestHandler extends RegexHandler {
   private BufferedSourceWithSize source(final File f, final String etag,
                                         final boolean compress,
                                         final boolean gzip) throws FileNotFoundException {
-    final BufferedSourceWithSize source1 = fromCache(etag, compress, gzip);
+    final BufferedSourceWithSize source1 = fromCache(f, etag, compress, gzip);
     if (source1 != null) return source1;
     final BufferedSourceWithSize source2 = cache(f, etag, compress, gzip);
     if (source2 != null) return source2;
@@ -586,7 +586,7 @@ public class FileRequestHandler extends RegexHandler {
                                         final long start, final long end,
                                         final boolean compress,
                                         final boolean gzip) throws IOException {
-    final BufferedSourceWithSize source1 = fromCache(etag, start, end, compress, gzip);
+    final BufferedSourceWithSize source1 = fromCache(f, etag, start, end, compress, gzip);
     if (source1 != null) return source1;
     final BufferedSourceWithSize source2 = cache(f, etag, start, end, compress, gzip);
     if (source2 != null) return source2;
@@ -637,48 +637,52 @@ public class FileRequestHandler extends RegexHandler {
   }
 
   /**
-   * Gets the content from the cache if it's available, returns null otherwise.
+   * Gets the file content from the cache if it's available, returns null otherwise.
+   * @param file the file.
    * @param etag the content E-Tag.
    * @param compress true if the content media type should be compressed (according to the config).
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSourceWithSize fromCache(final String etag, final boolean compress, final boolean gzip) {
-    return null;
-  }
-
-  /**
-   * Gets the partial content from the cache if it's available, returns null otherwise.
-   * @param etag the content E-Tag.
-   * @param start the range start byte index.
-   * @param end the range end byte index.
-   * @param compress true if the content media type should be compressed (according to the config).
-   * @param gzip true if the content should be compressed and the client supports gzip compression.
-   * @return the cached content.
-   */
-  protected BufferedSourceWithSize fromCache(final String etag, final long start, final long end,
+  protected BufferedSourceWithSize fromCache(final File file, final String etag,
                                              final boolean compress, final boolean gzip) {
     return null;
   }
 
   /**
-   * Potentially caches the file with the specified etag, and returns the cached content. This can return
+   * Gets the partial file content from the cache if it's available, returns null otherwise.
+   * @param file the file.
+   * @param etag the content E-Tag.
+   * @param start the range start byte index.
+   * @param end the range end byte index.
+   * @param compress true if the content media type should be compressed (according to the config).
+   * @param gzip true if the content should be compressed and the client supports gzip compression.
+   * @return the cached content.
+   */
+  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+                                             final long start, final long end,
+                                             final boolean compress, final boolean gzip) {
+    return null;
+  }
+
+  /**
+   * Caches the content of the file with the specified etag, and returns the cached content. This can return
    * null if no cache is used (the default).
-   * @param f the file.
+   * @param file the file.
    * @param etag the E-Tag.
    * @param compress true if the content media type should be compressed (according to the config).
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSourceWithSize cache(final File f, final String etag,
+  protected BufferedSourceWithSize cache(final File file, final String etag,
                                          final boolean compress, final boolean gzip) {
     return null;
   }
 
   /**
-   * Potentially caches the file with the specified etag, and returns the partial cached content.
+   * Caches the partial content of the file with the specified etag, and returns the partial cached content.
    * This can return null if no cache is used (the default).
-   * @param f the file.
+   * @param file the file.
    * @param etag the E-Tag.
    * @param start the range start byte index.
    * @param end the range end byte index.
@@ -686,7 +690,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
-  protected BufferedSourceWithSize cache(final File f, final String etag, final long start, final long end,
+  protected BufferedSourceWithSize cache(final File file, final String etag, final long start, final long end,
                                          final boolean compress, final boolean gzip) {
     return null;
   }
