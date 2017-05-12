@@ -293,7 +293,7 @@ public class FileRequestHandler extends RegexHandler {
       }
       else {
         f = file;
-        if (isAllowed(mediaType)) {
+        if (!isAllowed(mediaType)) {
           return new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody();
         }
         m = mediaType;
