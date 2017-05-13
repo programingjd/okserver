@@ -216,33 +216,42 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
                                          final boolean compress, final boolean gzip) {
     final String relativePath = relativePath(etag);
     final Data data = cache.get(relativePath);
-    if (data == null) {
-      try {
-        final Data d = new Data(file, etag, compress);
-        final byte[] bytes = d.bytes;
-        cache.put(relativePath, d);
-        final Buffer buffer = new Buffer();
-        if (gzip == compress) buffer.write(bytes);
-        else if (compress) return decompress(bytes);
-        else throw new RuntimeException();
-      }
-      catch (final IOException ignore) {}
+    final byte[] bytes = bytes(file, relativePath, etag, data, compress);
+    if (bytes == null) return null;
+    if (gzip == compress) {
+      final Buffer buffer = new Buffer();
+      buffer.write(bytes);
+      return new BufferedSourceWithSize(buffer, buffer.size());
+    }
+    else if (compress) {
+      return decompress(bytes);
     }
     else {
-      try {
-        final byte[] bytes = bytes(file, compress);
-        final Lock lock = data.lock.writeLock();
-        try {
-          data.etag = etag;
-          data.bytes = bytes;
-        }
-        finally {
-          lock.unlock();
-        }
-      }
-      catch (final IOException ignore) {}
+      throw new RuntimeException();
     }
-    return null;
+  }
+
+  @Override
+  protected BufferedSourceWithSize cache(final File file, final String etag,
+                                         final long start, final long end,
+                                         final boolean compress, final boolean gzip) {
+    final String relativePath = relativePath(etag);
+    final Data data = cache.get(relativePath);
+    final byte[] bytes = bytes(file, relativePath, etag, data, compress);
+    if (bytes == null) return null;
+    if (gzip == compress) {
+      final Buffer buffer = new Buffer();
+      buffer.write(bytes, (int)start, (int)(end - start));
+      return new BufferedSourceWithSize(buffer, buffer.size());
+    }
+    else {
+      if (compress) {
+        return null;
+      }
+      else {
+        throw new RuntimeException();
+      }
+    }
   }
 
   private static BufferedSourceWithSize decompress(final byte[] bytes) {
@@ -279,11 +288,36 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
     }
   }
 
-  @Override
-  protected BufferedSourceWithSize cache(final File file, final String etag,
-                                         final long start, final long end,
-                                         final boolean compress, final boolean gzip) {
-    return cache(file, etag, compress, gzip);
+  private byte[] bytes(final File file, final String relativePath, final String etag,
+                       final Data data, final boolean compress) {
+    final byte[] bytes;
+    if (data == null) {
+      try {
+        final Data d = new Data(file, etag, compress);
+        bytes = d.bytes;
+        cache.put(relativePath, d);
+      }
+      catch (final IOException ignore) {
+        return null;
+      }
+    }
+    else {
+      try {
+        bytes = bytes(file, compress);
+        final Lock lock = data.lock.writeLock();
+        try {
+          data.etag = etag;
+          data.bytes = bytes;
+        }
+        finally {
+          lock.unlock();
+        }
+      }
+      catch (final IOException ignore) {
+        return null;
+      }
+    }
+    return bytes;
   }
 
   static class Data {
