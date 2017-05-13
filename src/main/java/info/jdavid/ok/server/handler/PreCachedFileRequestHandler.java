@@ -94,7 +94,6 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
         if (acceptMediaType(mediaType)) {
           if (acceptFile(current)) {
             final boolean compress = config(mediaType).compress;
-            System.out.println(current.getAbsolutePath());
             cache(current, etag(current, webRoot), config(mediaType).compress, compress);
           }
         }
