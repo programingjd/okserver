@@ -95,7 +95,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
           if (acceptFile(current)) {
             final boolean compress = config(mediaType).compress;
             System.out.println(current.getAbsolutePath());
-            cache(webRoot, etag(current, webRoot), config(mediaType).compress, compress);
+            cache(current, etag(current, webRoot), config(mediaType).compress, compress);
           }
         }
       }
@@ -144,7 +144,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   final String relativePath(final String etag) {
     final String prefix = etagPrefix;
-    final String pathPortion = etag.substring(prefix.length(), etag.length() - 8);
+    final String pathPortion = etag.substring(prefix.length(), etag.length() - 12);
     try {
       return new String(Hex.unhex(pathPortion), UTF8);
     }
@@ -155,9 +155,9 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   final String relativePath(final File file) throws IOException {
     final String filePath = file.getCanonicalPath();
-    final String rootPath = file.getCanonicalPath();
+    final String rootPath = webRoot.getCanonicalPath();
     if (!filePath.startsWith(rootPath)) throw new RuntimeException();
-    return filePath.substring(rootPath.length());
+    return filePath.substring(rootPath.length()).replace('\\','/');
   }
 
   @Override

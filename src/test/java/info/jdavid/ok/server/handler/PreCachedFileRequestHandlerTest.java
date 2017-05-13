@@ -18,11 +18,13 @@ import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testFiles;
 import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testIndex;
 import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testRange;
 import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testWeb;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class PreCachedFileRequestHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
+
+  private static PreCachedFileRequestHandler handler;
 
   @BeforeClass
   public static void startServer() throws IOException {
@@ -47,7 +49,7 @@ public class PreCachedFileRequestHandlerTest {
                                         final boolean insecureOnly) {
           return true;
         }
-      }.add(new PreCachedFileRequestHandler(root))).
+      }.add(handler = new PreCachedFileRequestHandler(root))).
       start();
   }
 
@@ -61,6 +63,20 @@ public class PreCachedFileRequestHandlerTest {
     final File root = new File(new File(new File(projectDir, "src"), "test"), "resources");
     assertTrue(root.isDirectory());
     return root;
+  }
+
+  @Test
+  public void testCache() {
+    assertEquals(8, handler.cache.size());
+    final PreCachedFileRequestHandler.Data videoData = handler.cache.get("/video.mp4");
+    assertNotNull(videoData);
+    assertTrue(videoData.bytes.length > 0);
+    final PreCachedFileRequestHandler.Data styleData = handler.cache.get("/style.css");
+    assertNotNull(styleData);
+    assertTrue(styleData.bytes.length > 0);
+    final PreCachedFileRequestHandler.Data textData = handler.cache.get("/noindex/file.txt");
+    assertNotNull(textData);
+    assertTrue(textData.bytes.length > 0);
   }
 
   @Test
