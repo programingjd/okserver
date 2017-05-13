@@ -168,6 +168,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
     if (data != null) {
       final byte[] bytes;
       final Lock lock = data.lock.readLock();
+      lock.lock();
       try {
         bytes = etag.equals(data.etag) ? data.bytes : null;
       }
@@ -195,6 +196,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
       if (data != null) {
         final byte[] bytes;
         final Lock lock = data.lock.readLock();
+        lock.lock();
         try {
           bytes = etag.equals(data.etag) ? data.bytes : null;
         }
@@ -305,6 +307,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
       try {
         bytes = bytes(file, compress);
         final Lock lock = data.lock.writeLock();
+        lock.lock();
         try {
           data.etag = etag;
           data.bytes = bytes;
