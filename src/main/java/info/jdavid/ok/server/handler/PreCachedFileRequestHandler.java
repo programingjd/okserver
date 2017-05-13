@@ -24,7 +24,6 @@ import okio.Okio;
 public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   private static final String UTF8 = "UTF-8";
-  private static final String ASCII = "ASCII";
 
   String etagPrefix = null;
 
@@ -95,6 +94,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
         if (acceptMediaType(mediaType)) {
           if (acceptFile(current)) {
             final boolean compress = config(mediaType).compress;
+            System.out.println(current.getAbsolutePath());
             cache(webRoot, etag(current, webRoot), config(mediaType).compress, compress);
           }
         }
@@ -105,7 +105,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   protected String etagPrefix(final File webRoot) {
     try {
-      return new String(Md5.md5(webRoot.getCanonicalPath().getBytes(UTF8)), ASCII);
+      return Hex.hex(Md5.md5(webRoot.getCanonicalPath().getBytes(UTF8)));
     }
     catch (final IOException e) {
       throw new RuntimeException(e);
@@ -113,7 +113,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   protected boolean acceptDirectory(final File directory) {
-    return directory.getName().charAt(0) == '.';
+    return directory.getName().charAt(0) != '.';
   }
 
   protected boolean acceptMediaType(final MediaType mediaType) {
@@ -144,7 +144,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   final String relativePath(final String etag) {
     final String prefix = etagPrefix;
-    final String pathPortion = etag.substring(prefix.length(), etag.length() - 16);
+    final String pathPortion = etag.substring(prefix.length(), etag.length() - 8);
     try {
       return new String(Hex.unhex(pathPortion), UTF8);
     }
