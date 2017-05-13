@@ -4,6 +4,10 @@ import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
 
+
+/**
+ * Abstract implementation of a request handler with sensible (and overridable) defaults.
+ */
 public abstract class AbstractRequestHandler implements RequestHandler {
 
   @Override
@@ -12,11 +16,19 @@ public abstract class AbstractRequestHandler implements RequestHandler {
                                final String method, final HttpUrl url, final Headers requestHeaders,
                                final Buffer requestBody) {
     if (acceptClientIp(clientIp)) {
-      if (secure || allowInsecure(method, url, insecureOnly)) {
+      if (secure) {
         return handle(clientIp, http2, method, url, requestHeaders, requestBody);
       }
       else {
-        return handleDisallowedInsecureRequest(method, url, insecureOnly);
+        if ("GET".equals(method) && isAcmeChallenge(url)) {
+          return handleAcmeChallenge(url, requestHeaders, requestBody);
+        }
+        else if (allowInsecure(method, url, insecureOnly)) {
+          return handle(clientIp, http2, method, url, requestHeaders, requestBody);
+        }
+        else {
+          return handleDisallowedInsecureRequest(method, url, insecureOnly);
+        }
       }
     }
     else {
@@ -24,6 +36,27 @@ public abstract class AbstractRequestHandler implements RequestHandler {
     }
   }
 
+  /**
+   * Handles an acme challenge request.
+   * @param url the challenge request url.
+   * @param requestHeaders the challenge request headers.
+   * @param requestBody the challenge request body.
+   * @return the challenge response.
+   */
+  protected abstract Response handleAcmeChallenge(final HttpUrl url,
+                                                  final Headers requestHeaders,
+                                                  final Buffer requestBody);
+
+  /**
+   *
+   * @param clientIp
+   * @param http2
+   * @param method
+   * @param url
+   * @param requestHeaders
+   * @param requestBody
+   * @return
+   */
   protected abstract Response handle(final String clientIp, final boolean http2,
                                      final String method, final HttpUrl url,
                                      final Headers requestHeaders, final Buffer requestBody);

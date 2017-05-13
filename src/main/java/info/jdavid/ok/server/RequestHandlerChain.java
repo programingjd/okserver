@@ -197,6 +197,9 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   protected final Response handle(final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
                                   final Headers requestHeaders, final Buffer requestBody) {
+    if (isAcmeChallenge(url)) {
+
+    }
     for (final Handler handler: chain) {
       final String[] params = handler.matches(method, url);
       if (params != null) {
