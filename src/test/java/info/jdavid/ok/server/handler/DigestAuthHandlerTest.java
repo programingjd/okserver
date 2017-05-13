@@ -19,6 +19,7 @@ import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -66,7 +67,8 @@ public class DigestAuthHandlerTest {
       maxRequestSize(512).
       requestHandler(new RequestHandlerChain() {
         @Override
-        protected boolean allowInsecure(final String method, final HttpUrl url, final boolean insecureOnly) {
+        protected boolean allowInsecure(final String method, final HttpUrl url, final Headers requestHeaders,
+                                        final boolean insecureOnly) {
           return true;
         }
       }.add(new DigestAuthHandler(credentials, "Test", "DigestAuthTest".getBytes(), handler))).

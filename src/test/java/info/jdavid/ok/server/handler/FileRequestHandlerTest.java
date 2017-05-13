@@ -24,6 +24,7 @@ import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.header.AcceptRanges;
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -61,7 +62,8 @@ public class FileRequestHandlerTest {
       maxRequestSize(512).
       requestHandler(new RequestHandlerChain() {
         @Override
-        protected boolean allowInsecure(final String method, final HttpUrl url, final boolean insecureOnly) {
+        protected boolean allowInsecure(final String method, final HttpUrl url, final Headers requestHeaders,
+                                        final boolean insecureOnly) {
           return true;
         }
       }.add(new FileRequestHandler(root))).
@@ -102,7 +104,7 @@ public class FileRequestHandlerTest {
     testWeb("https://localhost:8181/");
   }
 
-  private void testWeb(final String baseUrl) throws Exception {
+  static void testWeb(final String baseUrl) throws Exception {
     final File root = getWebRoot();
     //try { Thread.sleep(3000L); } catch (final InterruptedException ignore) {}
     final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED);
