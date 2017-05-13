@@ -757,7 +757,7 @@ public class FileRequestHandler extends RegexHandler {
 
   }
 
-  class ByteCountingSink implements Sink {
+  static class ByteCountingSink implements Sink {
     int length = 0;
     @Override public void write(final Buffer source, final long byteCount) throws IOException {
       source.skip(byteCount);
@@ -768,7 +768,7 @@ public class FileRequestHandler extends RegexHandler {
     @Override public void close() {}
   }
 
-  class CompressedSource implements Source {
+  static class CompressedSource implements Source {
 
     final boolean closeSourceOnClose;
     final Source source;

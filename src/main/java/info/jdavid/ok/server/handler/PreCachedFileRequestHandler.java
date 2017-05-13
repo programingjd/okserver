@@ -2,12 +2,22 @@ package info.jdavid.ok.server.handler;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import okhttp3.MediaType;
+import okio.Buffer;
+import okio.BufferedSource;
+import okio.GzipSource;
+import okio.Okio;
 
 
 @SuppressWarnings({ "WeakerAccess" })
@@ -17,6 +27,8 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   private static final String ASCII = "ASCII";
 
   String etagPrefix = null;
+
+  Map<String, Data> cache = new LinkedHashMap<String, Data>(4096, 0.75f, true);
 
   /**
    * Creates a new file handler that will accept all requests.
@@ -114,12 +126,9 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   @Override
-  protected String etag(final File file, final File webRoot) {
+  protected final String etag(final File file, final File webRoot) {
     try {
-      final String filePath = file.getCanonicalPath();
-      final String rootPath = file.getCanonicalPath();
-      if (!filePath.startsWith(rootPath)) throw new RuntimeException();
-      final String relativePath = filePath.substring(rootPath.length());
+      final String relativePath = relativePath(file);
       final byte[] pathBytes = relativePath.getBytes(UTF8);
       final String prefix = etagPrefix;
       final StringBuilder s = new StringBuilder(pathBytes.length * 2 + 4 + etagPrefix.length());
@@ -133,10 +142,46 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
     }
   }
 
+  final String relativePath(final String etag) {
+    final String prefix = etagPrefix;
+    final String pathPortion = etag.substring(prefix.length(), etag.length() - 16);
+    try {
+      return new String(Hex.unhex(pathPortion), UTF8);
+    }
+    catch (final UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  final String relativePath(final File file) throws IOException {
+    final String filePath = file.getCanonicalPath();
+    final String rootPath = file.getCanonicalPath();
+    if (!filePath.startsWith(rootPath)) throw new RuntimeException();
+    return filePath.substring(rootPath.length());
+  }
 
   @Override
   protected BufferedSourceWithSize fromCache(final File file, final String etag,
                                              final boolean compress, final boolean gzip) {
+    final String relativePath = relativePath(etag);
+    final Data data = cache.get(relativePath);
+    if (data != null) {
+      final byte[] bytes;
+      final Lock lock = data.lock.readLock();
+      try {
+        bytes = etag.equals(data.etag) ? data.bytes : null;
+      }
+      finally {
+        lock.unlock();
+      }
+      if (bytes != null) {
+        final Buffer buffer = new Buffer();
+        if (gzip == data.compressed) buffer.write(bytes);
+        else if (data.compressed) return decompress(bytes);
+        else throw new RuntimeException();
+        return new BufferedSourceWithSize(buffer, buffer.size());
+      }
+    }
     return null;
   }
 
@@ -144,13 +189,94 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   protected BufferedSourceWithSize fromCache(final File file, final String etag,
                                              final long start, final long end,
                                              final boolean compress, final boolean gzip) {
+    if (compress == gzip) {
+      final String relativePath = relativePath(etag);
+      final Data data = cache.get(relativePath);
+      if (data != null) {
+        final byte[] bytes;
+        final Lock lock = data.lock.readLock();
+        try {
+          bytes = etag.equals(data.etag) ? data.bytes : null;
+        }
+        finally {
+          lock.unlock();
+        }
+        if (bytes != null) {
+          final Buffer buffer = new Buffer();
+          buffer.write(bytes, (int)start, (int)(end - start));
+          return new BufferedSourceWithSize(buffer, buffer.size());
+        }
+      }
+    }
     return null;
   }
 
   @Override
   protected BufferedSourceWithSize cache(final File file, final String etag,
                                          final boolean compress, final boolean gzip) {
+    final String relativePath = relativePath(etag);
+    final Data data = cache.get(relativePath);
+    if (data == null) {
+      try {
+        final Data d = new Data(file, etag, compress);
+        final byte[] bytes = d.bytes;
+        cache.put(relativePath, d);
+        final Buffer buffer = new Buffer();
+        if (gzip == compress) buffer.write(bytes);
+        else if (compress) return decompress(bytes);
+        else throw new RuntimeException();
+      }
+      catch (final IOException ignore) {}
+    }
+    else {
+      try {
+        final byte[] bytes = bytes(file, compress);
+        final Lock lock = data.lock.writeLock();
+        try {
+          data.etag = etag;
+          data.bytes = bytes;
+        }
+        finally {
+          lock.unlock();
+        }
+      }
+      catch (final IOException ignore) {}
+    }
     return null;
+  }
+
+  private static BufferedSourceWithSize decompress(final byte[] bytes) {
+    final Buffer buffer = new Buffer();
+    final BufferedSource source = Okio.buffer(new GzipSource(new Buffer().write(bytes)));
+    try {
+      buffer.writeAll(source);
+    }
+    catch (final IOException ignore) {
+      return null;
+    }
+    finally {
+      try {
+        source.close();
+      }
+      catch (final IOException ignore) {}
+    }
+    return new BufferedSourceWithSize(buffer, buffer.size());
+  }
+
+  private static byte[] bytes(final File file, final boolean compress) throws IOException {
+    final BufferedSource buffered;
+    if (compress) {
+      buffered = Okio.buffer(new CompressedSource(Okio.source(file), true));
+    }
+    else {
+      buffered = Okio.buffer(Okio.source(file));
+    }
+    try {
+      return buffered.readByteArray();
+    }
+    finally {
+      buffered.close();
+    }
   }
 
   @Override
@@ -158,6 +284,20 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
                                          final long start, final long end,
                                          final boolean compress, final boolean gzip) {
     return cache(file, etag, compress, gzip);
+  }
+
+  static class Data {
+    final boolean compressed;
+    String etag;
+    byte[] bytes;
+    final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    public Data(final File file, final String etag, final boolean compress) throws IOException {
+      this.etag = etag;
+      this.compressed = compress;
+      this.bytes = bytes(file, compress);
+    }
+
   }
 
 }
