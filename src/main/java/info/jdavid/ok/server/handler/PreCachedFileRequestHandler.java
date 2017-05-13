@@ -5,6 +5,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
+import okhttp3.MediaType;
+
 
 @SuppressWarnings({ "WeakerAccess" })
 public class PreCachedFileRequestHandler extends FileRequestHandler {
@@ -68,8 +70,14 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
           }
         }
       }
-      else if (current.isFile() && acceptFile(current)) {
-        // todo
+      else if (current.isFile()) {
+        final MediaType mediaType = mediaType(current);
+        if (acceptMediaType(mediaType)) {
+          if (acceptFile(current)) {
+            final boolean compress = config(mediaType).compress;
+            cache(webRoot, etag(current, webRoot), config(mediaType).compress, compress);
+          }
+        }
       }
     }
     return this;
@@ -79,8 +87,39 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
     return directory.getName().charAt(0) == '.';
   }
 
+  protected boolean acceptMediaType(final MediaType mediaType) {
+    return isAllowed(mediaType);
+  }
+
+  @SuppressWarnings("unused")
   protected boolean acceptFile(final File file) {
-    return isAllowed(mediaType(file));
+    return true;
+  }
+
+  @Override
+  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+                                             final boolean compress, final boolean gzip) {
+    return null;
+  }
+
+  @Override
+  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+                                             final long start, final long end,
+                                             final boolean compress, final boolean gzip) {
+    return null;
+  }
+
+  @Override
+  protected BufferedSourceWithSize cache(final File file, final String etag,
+                                         final boolean compress, final boolean gzip) {
+    return null;
+  }
+
+  @Override
+  protected BufferedSourceWithSize cache(final File file, final String etag,
+                                         final long start, final long end,
+                                         final boolean compress, final boolean gzip) {
+    return cache(file, etag, compress, gzip);
   }
 
 }
