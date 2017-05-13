@@ -211,10 +211,6 @@ public class DigestAuthHandler extends AuthHandler {
     return digest(MD5).digest(bytes(name));
   }
 
-  private static String md5(final byte[] bytes) {
-    return string(digest(MD5).digest(bytes));
-  }
-
   private static final String ZERO = "0";
   private static final String ZEROS = "0000000000000000";
 

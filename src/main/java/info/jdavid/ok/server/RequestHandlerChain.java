@@ -31,6 +31,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
     cmd(args);
   }
 
+  @SuppressWarnings("UnusedReturnValue")
   static HttpServer cmd(final String[] args) {
     //final String[] args = new String[] { "--root", "i:/jdavid/pierreblanche.bitbucket.org" };
     final Map<String, String> map = new HashMap<String, String>(args.length);

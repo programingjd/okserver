@@ -79,6 +79,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    * @param clientIp the client ip to validate.
    * @return true if the client ip is allowed, false if it is blacklisted.
    */
+  @SuppressWarnings("unused")
   protected boolean acceptClientIp(final String clientIp) {
     return true;
   }
@@ -89,6 +90,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    * @param url the request url.
    * @return the response.
    */
+  @SuppressWarnings("unused")
   protected Response handleBlockedClientIp(final String method, final HttpUrl url) {
     return FORBIDDEN;
   }
@@ -115,6 +117,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    * @param requestHeaders the request headers.
    * @return true if the url is for an acme challenge, false if it isn't.
    */
+  @SuppressWarnings("unused")
   protected boolean isAcmeChallenge(final String method, final HttpUrl url, final Headers requestHeaders) {
     return "GET".equals(method) && url.encodedPath().startsWith("/.well-known/acme-challenge/");
   }
@@ -126,6 +129,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    * @param insecureOnly whether the server accepts only insecure connections or whether https is enabled.
    * @return the response.
    */
+  @SuppressWarnings("unused")
   protected Response handleDisallowedInsecureRequest(final String method, final HttpUrl url,
                                                      final boolean insecureOnly) {
     if (insecureOnly) {

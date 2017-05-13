@@ -644,6 +644,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
+  @SuppressWarnings("unused")
   protected BufferedSourceWithSize fromCache(final File file, final String etag,
                                              final boolean compress, final boolean gzip) {
     return null;
@@ -659,6 +660,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
+  @SuppressWarnings("unused")
   protected BufferedSourceWithSize fromCache(final File file, final String etag,
                                              final long start, final long end,
                                              final boolean compress, final boolean gzip) {
@@ -674,6 +676,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
+  @SuppressWarnings("unused")
   protected BufferedSourceWithSize cache(final File file, final String etag,
                                          final boolean compress, final boolean gzip) {
     return null;
@@ -690,6 +693,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param gzip true if the content should be compressed and the client supports gzip compression.
    * @return the cached content.
    */
+  @SuppressWarnings("unused")
   protected BufferedSourceWithSize cache(final File file, final String etag, final long start, final long end,
                                          final boolean compress, final boolean gzip) {
     return null;
@@ -707,7 +711,8 @@ public class FileRequestHandler extends RegexHandler {
       randomAccessFile = new RandomAccessFile(f, "r");
     }
 
-    public RandomAccessFileSource(final File f, final long start, final long end) throws IOException {
+    public RandomAccessFileSource(final File f, final long start,
+                                  @SuppressWarnings("unused") final long end) throws IOException {
       randomAccessFile = new RandomAccessFile(f, "r");
       randomAccessFile.seek(start);
     }
