@@ -75,14 +75,14 @@ public class FileRequestHandlerTest {
     SERVER.shutdown();
   }
 
-  private static File getWebRoot() throws IOException {
+  static File getWebRoot() throws IOException {
     final File projectDir = new File(".").getCanonicalFile();
     final File root = new File(new File(new File(projectDir, "src"), "test"), "resources");
     assertTrue(root.isDirectory());
     return root;
   }
 
-  private static OkHttpClient client() {
+  static OkHttpClient client() {
     return HttpsTest.client.newBuilder().
       readTimeout(0, TimeUnit.SECONDS).
       retryOnConnectionFailure(false).
@@ -160,7 +160,7 @@ public class FileRequestHandlerTest {
     testIndex("https://localhost:8181/");
   }
 
-  private void testIndex(final String baseUrl) throws IOException {
+  static void testIndex(final String baseUrl) throws IOException {
     final File root = getWebRoot();
     final HttpUrl url = HttpUrl.parse(baseUrl);
     final OkHttpClient client = client();
@@ -213,7 +213,7 @@ public class FileRequestHandlerTest {
     testFiles("https://localhost:8181/");
   }
 
-  private void testFiles(final String baseUrl) throws IOException {
+  static void testFiles(final String baseUrl) throws IOException {
     final File root = getWebRoot();
     final HttpUrl url = HttpUrl.parse(baseUrl);
     final OkHttpClient client = client();
@@ -272,7 +272,7 @@ public class FileRequestHandlerTest {
     testETag("https://localhost:8181/");
   }
 
-  private void testETag(final String baseUrl) throws IOException {
+  static void testETag(final String baseUrl) throws IOException {
     final File root = getWebRoot();
     final HttpUrl url = HttpUrl.parse(baseUrl);
     final OkHttpClient client = client();
@@ -316,7 +316,7 @@ public class FileRequestHandlerTest {
     testRange("https://localhost:8181/");
   }
 
-  private void testRange(final String baseUrl) throws IOException {
+  static void testRange(final String baseUrl) throws IOException {
     final File root = getWebRoot();
     final File file = new File(root, "video.mp4");
     final byte[] bytes = Okio.buffer(Okio.source(file)).readByteArray();
