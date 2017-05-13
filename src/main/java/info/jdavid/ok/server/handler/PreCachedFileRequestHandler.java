@@ -1,6 +1,8 @@
 package info.jdavid.ok.server.handler;
 
 import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -10,6 +12,11 @@ import okhttp3.MediaType;
 
 @SuppressWarnings({ "WeakerAccess" })
 public class PreCachedFileRequestHandler extends FileRequestHandler {
+
+  private static final String UTF8 = "UTF-8";
+  private static final String ASCII = "ASCII";
+
+  String etagPrefix = null;
 
   /**
    * Creates a new file handler that will accept all requests.
@@ -58,6 +65,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   @Override
   public Handler setup() {
     super.setup();
+    etagPrefix = etagPrefix(webRoot);
     final Deque<File> deque = new ArrayDeque<File>();
     deque.push(webRoot);
     while (!deque.isEmpty()) {
@@ -83,6 +91,15 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
     return this;
   }
 
+  protected String etagPrefix(final File webRoot) {
+    try {
+      return new String(Md5.md5(webRoot.getCanonicalPath().getBytes(UTF8)), ASCII);
+    }
+    catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   protected boolean acceptDirectory(final File directory) {
     return directory.getName().charAt(0) == '.';
   }
@@ -95,6 +112,27 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   protected boolean acceptFile(final File file) {
     return true;
   }
+
+  @Override
+  protected String etag(final File file, final File webRoot) {
+    try {
+      final String filePath = file.getCanonicalPath();
+      final String rootPath = file.getCanonicalPath();
+      if (!filePath.startsWith(rootPath)) throw new RuntimeException();
+      final String relativePath = filePath.substring(rootPath.length());
+      final byte[] pathBytes = relativePath.getBytes(UTF8);
+      final String prefix = etagPrefix;
+      final StringBuilder s = new StringBuilder(pathBytes.length * 2 + 4 + etagPrefix.length());
+      s.append(prefix);
+      s.append(Hex.hex(pathBytes));
+      s.append(Hex.hex(BigInteger.valueOf(file.lastModified())));
+      return s.toString();
+    }
+    catch (final IOException ignore) {
+      return null;
+    }
+  }
+
 
   @Override
   protected BufferedSourceWithSize fromCache(final File file, final String etag,

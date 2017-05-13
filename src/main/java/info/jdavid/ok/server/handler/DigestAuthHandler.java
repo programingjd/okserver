@@ -2,9 +2,6 @@ package info.jdavid.ok.server.handler;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.security.Key;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,15 +9,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
 
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
-import okio.ByteString;
 
 
 /**
@@ -31,24 +23,6 @@ public class DigestAuthHandler extends AuthHandler {
 
   private static final String AUTHORIZATION = "Authorization";
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
-
-  private static String AES = "AES";
-  private static String AES_CBC = "AES/CBC/PKCS5Padding";
-  private static String MD5 = "MD5";
-
-  static {
-    try {
-      MessageDigest.getInstance(MD5);
-      KeyGenerator.getInstance(AES);
-      Cipher.getInstance(AES_CBC);
-    }
-    catch (final NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
-    catch (final NoSuchPaddingException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   final String name;
   final Map<String, String> credentials;
@@ -86,8 +60,8 @@ public class DigestAuthHandler extends AuthHandler {
     super(delegate);
     name = digestName;
     final byte[] bytes = new SecureRandom(seed).generateSeed(16);
-    key = secretKey(bytes);
-    nonceIv = iv(seed);
+    key = Crypto.secretKey(bytes);
+    nonceIv = Crypto.iv(seed);
     this.credentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
   }
 
@@ -135,11 +109,11 @@ public class DigestAuthHandler extends AuthHandler {
   }
 
   private static String nonce(final Request request, final SecretKey key, final byte[] iv) {
-    final String time = hex(BigInteger.valueOf(System.currentTimeMillis()));
-    final String random = hex(new SecureRandom().generateSeed(8));
+    final String time = Hex.hex(BigInteger.valueOf(System.currentTimeMillis()));
+    final String random = Hex.hex(new SecureRandom().generateSeed(8));
     final String host = request.url.host();
     final String path = request.url.encodedPath();
-    return encrypt(key, iv, bytes(time + random + host + path));
+    return Crypto.encrypt(key, iv, bytes(time + random + host + path));
   }
 
   private static final Pattern AUTHORIZATION_VALUE_REGEX =
@@ -195,112 +169,26 @@ public class DigestAuthHandler extends AuthHandler {
     if (response == null) return false;
     final String opaque = map.get("opaque");
     if (!opaque(request).equals(opaque)) return false;
-    final String decrypted = string(decrypt(key, nonceIv, nonce));
+    final String decrypted = string(Crypto.decrypt(key, nonceIv, nonce));
     final long time = Long.parseLong(decrypted.substring(0, 12), 16);
     if ((System.currentTimeMillis() - time) > 600000) return false; // 10 mins old at the most.
     final String hostAndPath = decrypted.substring(28);
     if (!hostAndPath.equals(request.url.host() + request.url.encodedPath())) return false;
 
-    final String ha1 = hex(md5(username + ":" + realm + ":" + password));
-    final String ha2 = hex(md5(request.method + ":" + uri));
+    final String ha1 = Hex.hex(md5(username + ":" + realm + ":" + password));
+    final String ha2 = Hex.hex(md5(request.method + ":" + uri));
 
-    final String expected = hex(md5(ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":auth:" + ha2));
+    final String expected = Hex.hex(md5(ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":auth:" + ha2));
     return response.equals(expected);
   }
 
-  private static byte[] md5(final String name) {
-    return digest(MD5).digest(bytes(name));
-  }
-
-  private static final String ZERO = "0";
-  private static final String ZEROS = "0000000000000000";
-
-  private static String hex(final BigInteger bigInteger) {
-    final String s = bigInteger.toString(16);
-    return s.length() % 2 == 0 ? s : ZERO + s;
-  }
-
-  private static String hex(final byte[] bytes) {
-    final String s = new BigInteger(1, bytes).toString(16);
-    return ZEROS.substring(0, bytes.length * 2 - s.length()) + s;
-  }
-
-  private static byte[] unhex(final String hex) {
-    return ByteString.decodeHex(hex).toByteArray();
-  }
-
-  private static String encrypt(final Key key, final byte[] iv, final byte[] bytes) {
-    try {
-      final Cipher cipher = cipher(AES_CBC);
-      cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
-      final byte[] encrypted = cipher.doFinal(bytes);
-      return hex(encrypted);
-    }
-    catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static byte[] decrypt(final Key key, final byte[] iv, final String crypted) {
-    final byte[] bytes = unhex(crypted);
-    try {
-      final Cipher cipher = cipher(AES_CBC);
-      cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
-      return cipher.doFinal(bytes);
-    }
-    catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static byte[] iv(final byte[] seed /*, final boolean secure*/) {
-    final byte[] bytes = new byte[16];
-//    if (secure) {
-      new SecureRandom(seed).nextBytes(bytes);
-//    }
-//    else {
-//      final long l = seed == null ? System.currentTimeMillis() :
-//                                    new BigInteger(md5(seed).getBytes()).longValue();
-//      new Random(l).nextBytes(bytes);
-//    }
-    return bytes;
-  }
-
-  private static SecretKey secretKey(final byte[] iv) {
-    try {
-      final KeyGenerator keygen = KeyGenerator.getInstance(AES);
-      keygen.init(new SecureRandom(iv));
-      return keygen.generateKey();
-    }
-    catch (final NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static Cipher cipher(final String algorithm) {
-    try {
-      return Cipher.getInstance(algorithm);
-    }
-    catch (final NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
-    catch (final NoSuchPaddingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static MessageDigest digest(final String algorithm) {
-    try {
-      return MessageDigest.getInstance(algorithm);
-    }
-    catch (final NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
+  static byte[] md5(final String name) {
+    return Md5.md5(bytes(name));
   }
 
   private static byte[] bytes(final String s) {
     try {
-      return s.getBytes("ASCII");
+      return s.getBytes(ASCII);
     }
     catch (final UnsupportedEncodingException e) {
       throw new RuntimeException(e);
@@ -309,11 +197,13 @@ public class DigestAuthHandler extends AuthHandler {
 
   private static String string(final byte[] bytes) {
     try {
-      return new String(bytes, "ASCII");
+      return new String(bytes, ASCII);
     }
     catch (final UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
   }
+
+  private static final String ASCII = "ASCII";
 
 }
