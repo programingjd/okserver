@@ -1,8 +1,10 @@
 package info.jdavid.ok.server.header;
 
+
 /**
  * ETag header.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public final class ETag {
 
   private ETag() {}

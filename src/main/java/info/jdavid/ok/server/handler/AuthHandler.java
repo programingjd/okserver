@@ -12,6 +12,7 @@ import okio.Buffer;
 /**
  * Abstract class for Handlers handling user authentication.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public abstract class AuthHandler implements Handler {
 
   final Handler delegate;

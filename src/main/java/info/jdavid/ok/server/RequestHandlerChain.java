@@ -24,7 +24,7 @@ import okio.Okio;
  * A RequestHandler that uses a chain of Handlers to try to satisfy a request. The handlers are tried one by
  * one until one of them accepts the request.
  */
-@SuppressWarnings({ "WeakerAccess", "unused" })
+@SuppressWarnings({ "WeakerAccess" })
 public class RequestHandlerChain extends AbstractRequestHandler {
 
   public static void main(final String[] args) {
@@ -263,6 +263,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
    * @param url the request url.
    * @param requestHeaders the request headers.
    */
+  @SuppressWarnings({ "unused" })
   protected void decorateResponse(final Response.Builder responseBuilder,
                                   final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
@@ -286,6 +287,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
    * @param requestHeaders the request headers.
    * @return the response builder object.
    */
+  @SuppressWarnings({ "unused" })
   protected Response.Builder handleNotAccepted(final String clientIp, final String method,
                                                final HttpUrl url,final Headers requestHeaders) {
     return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();

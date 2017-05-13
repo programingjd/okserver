@@ -14,6 +14,7 @@ import javax.net.ssl.SSLSocket;
 import static info.jdavid.ok.server.Logger.logger;
 
 
+@SuppressWarnings({ "WeakerAccess" })
 abstract class Platform {
 
   private static final String JAVA_SPEC_VERSION;

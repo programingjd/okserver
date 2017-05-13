@@ -14,6 +14,7 @@ import okio.BufferedSource;
 import okio.Okio;
 
 
+@SuppressWarnings({ "WeakerAccess" })
 final class Handshake {
 
   final byte[] cipherSuites;

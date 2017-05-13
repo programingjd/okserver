@@ -8,6 +8,7 @@ import okio.Buffer;
 /**
  * Abstract implementation of a request handler with sensible (and overridable) defaults.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public abstract class AbstractRequestHandler implements RequestHandler {
 
   @Override

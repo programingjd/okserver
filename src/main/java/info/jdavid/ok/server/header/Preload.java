@@ -7,9 +7,11 @@ import info.jdavid.ok.server.Response;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 
+
 /**
  * Preload link header used for http2 push.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public final class Preload {
 
   private Preload() {}

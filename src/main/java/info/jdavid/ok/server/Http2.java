@@ -30,6 +30,7 @@ import static okhttp3.internal.http2.Header.TARGET_PATH;
 import static okhttp3.internal.http2.Header.TARGET_SCHEME;
 
 
+@SuppressWarnings({ "WeakerAccess" })
 class Http2 {
 
   static void serve(final SSLSocket socket, final String hostname,

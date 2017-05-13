@@ -6,6 +6,7 @@ import okhttp3.Headers;
 /**
  * Accept-Encoding header.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public final class AcceptEncoding {
 
   private AcceptEncoding() {}

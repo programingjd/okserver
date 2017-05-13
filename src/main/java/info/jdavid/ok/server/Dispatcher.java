@@ -12,7 +12,7 @@ import static info.jdavid.ok.server.Logger.logger;
 /**
  * The dispatcher is responsible for dispatching requests to workers.
  */
-@SuppressWarnings({ "WeakerAccess", "Convert2Lambda", "Anonymous2MethodRef" })
+@SuppressWarnings({ "WeakerAccess" })
 public interface Dispatcher {
 
   /**

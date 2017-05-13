@@ -18,6 +18,7 @@ import okio.Okio;
 import static info.jdavid.ok.server.Logger.logger;
 
 
+@SuppressWarnings({ "WeakerAccess" })
 class Http11 {
 
   private static String readRequest(final BufferedSource in) throws IOException {

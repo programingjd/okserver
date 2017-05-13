@@ -30,7 +30,7 @@ import okio.BufferedSource;
 /**
  * HTTP Response object.
  */
-@SuppressWarnings({ "unused", "WeakerAccess" })
+@SuppressWarnings("WeakerAccess")
 public abstract class Response {
 
   final Protocol protocol;

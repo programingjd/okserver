@@ -4,6 +4,7 @@ package info.jdavid.ok.server.header;
 /**
  * Cache-Control header.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public final class CacheControl {
 
   private CacheControl() {}

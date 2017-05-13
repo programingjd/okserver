@@ -26,6 +26,7 @@ import okio.ByteString;
 /**
  * Handler that adds digest auth to another handler.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public class DigestAuthHandler extends AuthHandler {
 
   private static final String AUTHORIZATION = "Authorization";

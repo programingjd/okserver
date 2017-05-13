@@ -12,6 +12,7 @@ import info.jdavid.ok.server.StatusLines;
 /**
  * Handler that adds basic auth to another handler.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public class BasicAuthHandler extends AuthHandler {
 
   private static final String WWW_AUTHENTICATE = "WWW-Authenticate";

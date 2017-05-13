@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.List;
 
 
+@SuppressWarnings({ "WeakerAccess" })
 public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   /**

@@ -20,6 +20,7 @@ import okio.Timeout;
 /**
  * Accept-Ranges header.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public final class AcceptRanges {
 
   private AcceptRanges() {}

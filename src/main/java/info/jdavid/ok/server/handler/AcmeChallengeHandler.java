@@ -6,12 +6,21 @@ import java.util.Map;
 import info.jdavid.ok.server.Response;
 import okhttp3.HttpUrl;
 
+
+@SuppressWarnings({ "WeakerAccess" })
 public class AcmeChallengeHandler implements Handler {
 
-  public AcmeChallengeHandler(final File acmeDirectory) {}
+  final File directory;
+  final Map<String, File> domainDirectories;
+
+  public AcmeChallengeHandler(final File acmeDirectory) {
+    directory = acmeDirectory;
+    domainDirectories = null;
+  }
 
   public AcmeChallengeHandler(final Map<String, File> domainAcmeDirectories) {
-
+    directory = null;
+    domainDirectories = domainAcmeDirectories;
   }
 
   @Override

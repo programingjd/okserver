@@ -14,7 +14,7 @@ import okhttp3.MediaType;
 /**
  * List of predefined media types.
  */
-@SuppressWarnings({ "unused", "WeakerAccess" })
+@SuppressWarnings("WeakerAccess")
 public class MediaTypes {
 
   public static final MediaType CSS = MediaType.parse("text/css");

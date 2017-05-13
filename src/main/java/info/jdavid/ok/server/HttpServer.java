@@ -20,7 +20,7 @@ import static info.jdavid.ok.server.Logger.logger;
 /**
  * Http Server class.
  */
-@SuppressWarnings({ "unused", "WeakerAccess", "Convert2Lambda", "UnusedReturnValue" })
+@SuppressWarnings({ "WeakerAccess" })
 public class HttpServer {
 
   final AtomicBoolean started = new AtomicBoolean();
@@ -79,6 +79,7 @@ public class HttpServer {
    * @param port the port number.
    * @return this.
    */
+  @SuppressWarnings("UnusedReturnValue")
   public final HttpServer securePort(final int port) {
     if (started.get()) {
       throw new IllegalStateException("The port number cannot be changed while the server is running.");

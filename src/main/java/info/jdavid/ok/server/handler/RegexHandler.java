@@ -15,6 +15,7 @@ import okhttp3.HttpUrl;
  * Handler that accepts request based on the request method and a regular expression for the request url path.
  * The regex captured groups are passed as parameters to the handle method.
  */
+@SuppressWarnings({ "WeakerAccess" })
 public abstract class RegexHandler implements Handler {
 
   final Pattern pattern;
