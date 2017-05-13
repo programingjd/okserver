@@ -20,10 +20,10 @@ public abstract class AbstractRequestHandler implements RequestHandler {
         return handle(clientIp, http2, method, url, requestHeaders, requestBody);
       }
       else {
-        if ("GET".equals(method) && isAcmeChallenge(url)) {
-          return handleAcmeChallenge(url, requestHeaders, requestBody);
+        if (isAcmeChallenge(method, url, requestHeaders)) {
+          return handleAcmeChallenge(clientIp, method, url, requestHeaders, requestBody);
         }
-        else if (allowInsecure(method, url, insecureOnly)) {
+        else if (allowInsecure(method, url, requestHeaders, insecureOnly)) {
           return handle(clientIp, http2, method, url, requestHeaders, requestBody);
         }
         else {
@@ -38,24 +38,28 @@ public abstract class AbstractRequestHandler implements RequestHandler {
 
   /**
    * Handles an acme challenge request.
+   * @param clientIp the request client ip.
+   * @param method the request method.
    * @param url the challenge request url.
    * @param requestHeaders the challenge request headers.
    * @param requestBody the challenge request body.
    * @return the challenge response.
    */
-  protected abstract Response handleAcmeChallenge(final HttpUrl url,
+  protected abstract Response handleAcmeChallenge(final String clientIp,
+                                                  final String method,
+                                                  final HttpUrl url,
                                                   final Headers requestHeaders,
                                                   final Buffer requestBody);
 
   /**
-   *
-   * @param clientIp
-   * @param http2
-   * @param method
-   * @param url
-   * @param requestHeaders
-   * @param requestBody
-   * @return
+   * Handles a request once the request validation has been performed.
+   * @param clientIp the request client ip.
+   * @param http2 true if the request is using http 2 (h2).
+   * @param method the request method.
+   * @param url the request url.
+   * @param requestHeaders the request headers.
+   * @param requestBody the request body.
+   * @return the response.
    */
   protected abstract Response handle(final String clientIp, final boolean http2,
                                      final String method, final HttpUrl url,
@@ -65,6 +69,9 @@ public abstract class AbstractRequestHandler implements RequestHandler {
   private static final Response FORBIDDEN =
     new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody().build();
 
+  /**
+   * Hook for performing initialization tasks.
+   */
   protected void init() {}
 
   /**
@@ -91,21 +98,25 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    * Returns whether the request is allowed to be insecure (http rather than https) or not.
    * @param method the request method (get, post, ...).
    * @param url the request url.
+   * @param requestHeaders the request headers.
    * @param insecureOnly whether the server accepts only insecure connections or whether https is enabled.
    * @return whether the insecure request is allowed or not.
    */
-  protected boolean allowInsecure(final String method, final HttpUrl url, final boolean insecureOnly) {
-    return insecureOnly || isAcmeChallenge(url);
+  protected boolean allowInsecure(final String method, final HttpUrl url, final Headers requestHeaders,
+                                  final boolean insecureOnly) {
+    return insecureOnly || isAcmeChallenge(method, url, requestHeaders);
   }
 
   /**
    * Returns whether the request is an acme challenge (domain owner verification for certificates like
    * let's encrypt).
+   * @param method the request method.
    * @param url the request url.
+   * @param requestHeaders the request headers.
    * @return true if the url is for an acme challenge, false if it isn't.
    */
-  protected boolean isAcmeChallenge(final HttpUrl url) {
-    return url.encodedPath().startsWith("/.well-known/acme-challenge/");
+  protected boolean isAcmeChallenge(final String method, final HttpUrl url, final Headers requestHeaders) {
+    return "GET".equals(method) && url.encodedPath().startsWith("/.well-known/acme-challenge/");
   }
 
   /**

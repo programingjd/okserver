@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import info.jdavid.ok.server.handler.AcmeChallengeHandler;
 import info.jdavid.ok.server.handler.FileRequestHandler;
 import info.jdavid.ok.server.handler.Handler;
 import info.jdavid.ok.server.handler.Request;
@@ -161,26 +162,49 @@ public class RequestHandlerChain extends AbstractRequestHandler {
     return builder.substring(0, n);
   }
 
+  final Handler acmeHandler;
   List<Handler> chain = new LinkedList<Handler>();
 
   /**
-   * Creates te default chain: a file handler serving the current directory.
+   * Creates the default chain: a file handler serving the current directory.
    * @return the default request handler chain.
    */
   public static RequestHandlerChain createDefaultChain() {
+    return createDefaultChain(new File("."));
+  }
+
+  /**
+   * Creates te default chain: a file handler serving the specified directory.
+   * @param webRoot the directory to serve.
+   * @return the default request handler chain.
+   */
+  public static RequestHandlerChain createDefaultChain(final File webRoot) {
+    if (webRoot.isFile()) throw new IllegalArgumentException("Web root should be a directory.");
+    final File directory;
     try {
-      return new RequestHandlerChain().
-        add(new FileRequestHandler(new File(".").getCanonicalFile()));
+      directory = webRoot.getCanonicalFile();
     }
     catch (final IOException e) {
       throw new RuntimeException(e);
     }
+    return new RequestHandlerChain(new AcmeChallengeHandler(directory)).
+      add(new FileRequestHandler(directory));
   }
 
   /**
    * Creates a new empty request handler chain.
    */
-  public RequestHandlerChain() {}
+  public RequestHandlerChain() {
+    acmeHandler = null;
+  }
+
+  /**
+   * Creates a new empty request handler chain with the specified handler for acme challenges.
+   * @param acmeChallengeHandler the acme challenge handler.
+   */
+  public RequestHandlerChain(final Handler acmeChallengeHandler) {
+    acmeHandler = acmeChallengeHandler;
+  }
 
   /**
    * Appends a Handler to the chain. Note that the order in which handlers are added matters, as they will be
@@ -194,12 +218,27 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   }
 
   @Override
+  protected Response handleAcmeChallenge(final String clientIp, final String method, final HttpUrl url,
+                                         final Headers requestHeaders, final Buffer requestBody) {
+    final Response.Builder responseBuilder;
+    final String[] params;
+    if (acmeHandler == null || (params = acmeHandler.matches(method, url)) == null) {
+      responseBuilder = handleNotAccepted(clientIp, method, url, requestHeaders);
+    }
+    else {
+      responseBuilder = acmeHandler.handle(
+        new Request(clientIp, false, method, url, requestHeaders, requestBody),
+        params
+      );
+    }
+    decorateResponse(responseBuilder, clientIp, false, method, url, requestHeaders);
+    return responseBuilder.build();
+  }
+
+  @Override
   protected final Response handle(final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
                                   final Headers requestHeaders, final Buffer requestBody) {
-    if (isAcmeChallenge(url)) {
-
-    }
     for (final Handler handler: chain) {
       final String[] params = handler.matches(method, url);
       if (params != null) {
@@ -227,9 +266,12 @@ public class RequestHandlerChain extends AbstractRequestHandler {
                                   final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
                                   final Headers requestHeaders) {
-    if (http2) {
-      for (final HttpUrl push: Preload.getPushUrls(responseBuilder)) {
-        responseBuilder.push(push);
+    final int code = responseBuilder.code();
+    if (code >= 200 && code < 300) {
+      if (http2) {
+        for (final HttpUrl push: Preload.getPushUrls(responseBuilder)) {
+          responseBuilder.push(push);
+        }
       }
     }
   }
