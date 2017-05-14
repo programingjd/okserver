@@ -17,21 +17,6 @@ public class HttpsBuilderTest {
       fail("Should have failed because no certificate has been set.");
     }
     catch (final IllegalStateException ignore) {}
-    try {
-      new Https.Builder().certificate(null).build();
-      fail("Should have failed because the certificate was null.");
-    }
-    catch (final NullPointerException ignore) {}
-    try {
-      new Https.Builder().addCertificate(null, HttpsTest.cert).build();
-      fail("Should have failed because no hostname has been set.");
-    }
-    catch (final NullPointerException ignore) {}
-    try {
-      new Https.Builder().addCertificate("example.com", null).build();
-      fail("Should have failed because the certificate was null.");
-    }
-    catch (final NullPointerException ignore) {}
   }
 
   @Test
