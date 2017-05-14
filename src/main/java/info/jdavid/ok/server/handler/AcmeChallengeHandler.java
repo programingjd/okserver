@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import okhttp3.HttpUrl;
@@ -23,6 +25,7 @@ public class AcmeChallengeHandler implements Handler {
   }
 
   public AcmeChallengeHandler(final Map<String, File> domainAcmeDirectories) {
+    if (domainAcmeDirectories.isEmpty()) throw new IllegalArgumentException();
     directory = null;
     domainDirectories = domainAcmeDirectories;
   }
@@ -33,7 +36,7 @@ public class AcmeChallengeHandler implements Handler {
   }
 
   @Override
-  public String[] matches(final String method, final HttpUrl url) {
+  public @Nullable String[] matches(final String method, final HttpUrl url) {
     final List<String> segments = url.pathSegments();
     return segments.toArray(new String[segments.size()]);
   }

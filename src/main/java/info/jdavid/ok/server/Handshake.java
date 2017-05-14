@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import okio.Buffer;
 import okio.BufferedSource;
 import okio.Okio;
@@ -45,7 +47,7 @@ final class Handshake {
   }
 
   @SuppressWarnings("unused")
-  static Handshake read(final Socket socket) throws IOException {
+  static @Nullable Handshake read(final Socket socket) throws IOException {
     final InputStream inputStream = socket.getInputStream();
     if (!inputStream.markSupported()) throw new IOException();
     inputStream.mark(4096);

@@ -1,7 +1,10 @@
 package info.jdavid.ok.server.header;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import javax.annotation.Nullable;
 
 import info.jdavid.ok.server.Response;
 import okhttp3.Headers;
@@ -82,7 +85,8 @@ public final class Preload {
     return getPushUrls(headers.values(LINK));
   }
 
-  private static List<HttpUrl> getPushUrls(final List<String> values) {
+  private static List<HttpUrl> getPushUrls(@Nullable final List<String> values) {
+    if (values == null || values.size() == 0) return Collections.emptyList();
     final List<HttpUrl> urls = new ArrayList<HttpUrl>(values.size());
     for (final String value: values) {
       final int index = value.indexOf(">; rel=preload");

@@ -1,11 +1,6 @@
 package info.jdavid.ok.server.handler;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
+import javax.annotation.Nullable;
 
 import info.jdavid.ok.server.Response;
 import okhttp3.HttpUrl;
@@ -30,7 +25,8 @@ public interface Handler {
    * @param url the request url.
    * @return null, or an array of parameters.
    */
-  public String[] matches(final String method, final HttpUrl url);
+  public @Nullable
+  String[] matches(final String method, final HttpUrl url);
 
   /**
    * Creates the response for an accepted request.

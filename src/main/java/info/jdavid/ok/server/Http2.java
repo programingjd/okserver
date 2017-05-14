@@ -8,8 +8,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
 import javax.net.ssl.SSLSocket;
 
+import info.jdavid.ok.server.header.ETag;
 import okhttp3.*;
 import okhttp3.internal.Util;
 import okhttp3.internal.http2.Http2Connection;
@@ -73,7 +75,6 @@ class Http2 {
   }
 
   private static final byte PSEUDO_HEADER_PREFIX = ByteString.encodeUtf8(":").getByte(0);
-  private static final String IF_NONE_MATCH = "If-None-Match";
 
   private static List<Header> responseHeaders(final Response response) {
     final Headers headers = response.headers();
@@ -198,7 +199,7 @@ class Http2 {
       final BufferedSink sink = Okio.buffer(stream.getSink());
       try {
         response.writeBody(source, sink);
-        requestHeaders.removeAll(IF_NONE_MATCH);
+        requestHeaders.removeAll(ETag.IF_NONE_MATCH);
 
         final Http2Connection connection = stream.getConnection();
         // TODO, check that Push is enabled by the SETTINGS frame.
@@ -239,7 +240,9 @@ class Http2 {
     }
   }
 
-  private static HttpUrl url(final String scheme, final String authority, final String path) {
+  private static @Nullable HttpUrl url(@Nullable final String scheme,
+                                       @Nullable final String authority,
+                                       @Nullable final String path) {
     if (scheme == null || authority == null || path == null) return null;
     final int i = authority.indexOf(':');
     final String host = i == -1 ? authority : authority.substring(0, i);

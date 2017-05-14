@@ -9,12 +9,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.MediaTypes;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.header.AcceptEncoding;
 import info.jdavid.ok.server.header.AcceptRanges;
 import info.jdavid.ok.server.header.ETag;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okio.Buffer;
 import okio.BufferedSource;
@@ -274,9 +277,11 @@ public class FileRequestHandler extends RegexHandler {
       }
     }
     if (isIndexFile(file)) {
+      //noinspection ConstantConditions
+      final HttpUrl redirectUrl = request.url.newBuilder("./").build();
       return new Response.Builder().
         statusLine(StatusLines.MOVED_PERMANENTLY).
-        location(request.url.newBuilder("./").build()).
+        location(redirectUrl).
         noBody();
     }
     final MediaType mediaType = mediaType(file);
@@ -553,7 +558,7 @@ public class FileRequestHandler extends RegexHandler {
     return true;
   }
 
-  private BufferedSourceWithSize source(final File f, final String etag,
+  private BufferedSourceWithSize source(final File f, @Nullable final String etag,
                                         final boolean compress,
                                         final boolean gzip) throws FileNotFoundException {
     final BufferedSourceWithSize source1 = fromCache(f, etag, compress, gzip);
@@ -582,7 +587,7 @@ public class FileRequestHandler extends RegexHandler {
     }
   }
 
-  private BufferedSourceWithSize source(final File f, final String etag,
+  private BufferedSourceWithSize source(final File f, @Nullable final String etag,
                                         final long start, final long end,
                                         final boolean compress,
                                         final boolean gzip) throws IOException {
@@ -645,7 +650,7 @@ public class FileRequestHandler extends RegexHandler {
    * @return the cached content.
    */
   @SuppressWarnings("unused")
-  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+  protected BufferedSourceWithSize fromCache(final File file, @Nullable final String etag,
                                              final boolean compress, final boolean gzip) {
     return null;
   }
@@ -661,7 +666,7 @@ public class FileRequestHandler extends RegexHandler {
    * @return the cached content.
    */
   @SuppressWarnings("unused")
-  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+  protected BufferedSourceWithSize fromCache(final File file, @Nullable final String etag,
                                              final long start, final long end,
                                              final boolean compress, final boolean gzip) {
     return null;
@@ -677,7 +682,7 @@ public class FileRequestHandler extends RegexHandler {
    * @return the cached content.
    */
   @SuppressWarnings("unused")
-  protected BufferedSourceWithSize cache(final File file, final String etag,
+  protected BufferedSourceWithSize cache(final File file, @Nullable final String etag,
                                          final boolean compress, final boolean gzip) {
     return null;
   }
@@ -694,7 +699,8 @@ public class FileRequestHandler extends RegexHandler {
    * @return the cached content.
    */
   @SuppressWarnings("unused")
-  protected BufferedSourceWithSize cache(final File file, final String etag, final long start, final long end,
+  protected BufferedSourceWithSize cache(final File file, @Nullable final String etag,
+                                         final long start, final long end,
                                          final boolean compress, final boolean gzip) {
     return null;
   }

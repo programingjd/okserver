@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.UUID;
 
+import javax.annotation.Nullable;
+
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
 import okio.Buffer;
@@ -89,7 +91,7 @@ public final class AcceptRanges {
         this(contentType, null);
       }
 
-      public Builder(final MediaType contentType, final String boundary) {
+      public Builder(final MediaType contentType, @Nullable final String boundary) {
         this.contentType = contentType;
         this.boundary = ByteString.encodeUtf8(boundary == null ? UUID.randomUUID().toString() : boundary);
       }

@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 
@@ -128,7 +130,7 @@ public class MediaTypes {
     return map;
   }
 
-  public static MediaType fromUrl(final HttpUrl url) {
+  public static MediaType fromUrl(@Nullable final HttpUrl url) {
     if (url == null) return null;
     final List<String> segments = url.pathSegments();
     final int last = segments.size() - 1;
@@ -150,7 +152,7 @@ public class MediaTypes {
     return null;
   }
 
-  public static MediaType fromFile(final File file) {
+  public static MediaType fromFile(@Nullable final File file) {
     if (file == null) return null;
     if (file.isDirectory()) return DIRECTORY;
     final String filename = file.getName();

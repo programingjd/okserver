@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.Response;
 import okhttp3.HttpUrl;
 
@@ -28,10 +30,9 @@ public abstract class RegexHandler implements Handler {
    * @param regex the regular expression.
    */
   protected RegexHandler(final Collection<String> methods, final String regex) {
-    if (methods == null || methods.isEmpty()) {
+    if (methods.isEmpty()) {
       throw new NullPointerException("The accepted request method cannot be null.");
     }
-    if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
     final List<String> list = this.methods = new ArrayList<String>(methods.size());
     for (final String method: methods) {
       list.add(method.toUpperCase());
@@ -46,8 +47,6 @@ public abstract class RegexHandler implements Handler {
    * @param regex the regular expression.
    */
   protected RegexHandler(final String method, final String regex) {
-    if (method == null) throw new NullPointerException("The accepted request method cannot be null.");
-    if (regex == null) throw new NullPointerException("The regular expression cannot be null.");
     methods = Collections.singletonList(method.toUpperCase());
     pattern = Pattern.compile(regex);
   }
@@ -55,7 +54,7 @@ public abstract class RegexHandler implements Handler {
   @Override public Handler setup() { return this; }
 
   @Override
-  public String[] matches(final String method, final HttpUrl url) {
+  public @Nullable String[] matches(final String method, final HttpUrl url) {
     if (methods.contains(method)) {
       final String encodedPath = url.encodedPath();
       final Matcher matcher = pattern.matcher(url.encodedPath());
@@ -81,7 +80,6 @@ public abstract class RegexHandler implements Handler {
    * @return the handler with the additional requirements.
    */
   public static Handler create(final Collection<String> methods, final String regex, final Handler delegate) {
-    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     return new RegexHandlerWrapper(methods, regex, delegate);
   }
 
@@ -93,7 +91,6 @@ public abstract class RegexHandler implements Handler {
    * @return the handler with the additional requirements.
    */
   public static Handler create(final String method, final String regex, final Handler delegate) {
-    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     //noinspection Duplicates
     return new RegexHandlerWrapper(method, regex, delegate);
   }

@@ -1,5 +1,7 @@
 package info.jdavid.ok.server.handler;
 
+import javax.annotation.Nullable;
+
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -37,7 +39,7 @@ public final class Request {
 
   public Request(final String clientIp, final boolean http2,
                  final String method, final HttpUrl url,
-                 final Headers headers, final Buffer body) {
+                 final Headers headers, @Nullable final Buffer body) {
     this.clientIp = clientIp;
     this.method = method;
     this.http2 = http2;

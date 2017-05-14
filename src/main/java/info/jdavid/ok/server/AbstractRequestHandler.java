@@ -1,5 +1,7 @@
 package info.jdavid.ok.server;
 
+import javax.annotation.Nullable;
+
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -15,7 +17,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
   public final Response handle(final String clientIp,
                                final boolean secure, final boolean insecureOnly, final boolean http2,
                                final String method, final HttpUrl url, final Headers requestHeaders,
-                               final Buffer requestBody) {
+                               @Nullable final Buffer requestBody) {
     if (acceptClientIp(clientIp)) {
       if (secure) {
         return handle(clientIp, http2, method, url, requestHeaders, requestBody);
@@ -50,7 +52,7 @@ public abstract class AbstractRequestHandler implements RequestHandler {
                                                   final String method,
                                                   final HttpUrl url,
                                                   final Headers requestHeaders,
-                                                  final Buffer requestBody);
+                                                  @Nullable final Buffer requestBody);
 
   /**
    * Handles a request once the request validation has been performed.
@@ -64,7 +66,8 @@ public abstract class AbstractRequestHandler implements RequestHandler {
    */
   protected abstract Response handle(final String clientIp, final boolean http2,
                                      final String method, final HttpUrl url,
-                                     final Headers requestHeaders, final Buffer requestBody);
+                                     final Headers requestHeaders,
+                                     @Nullable final Buffer requestBody);
 
 
   private static final Response FORBIDDEN =

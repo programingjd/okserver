@@ -1,5 +1,7 @@
 package info.jdavid.ok.server;
 
+import javax.annotation.Nullable;
+
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -26,7 +28,7 @@ public interface RequestHandler {
   public Response handle(final String clientIp,
                          final boolean secure, final boolean insecureOnly, final boolean http2,
                          final String method, final HttpUrl url,
-                         final Headers requestHeaders, final Buffer requestBody);
+                         final Headers requestHeaders, @Nullable final Buffer requestBody);
 
   static class Helper {
 

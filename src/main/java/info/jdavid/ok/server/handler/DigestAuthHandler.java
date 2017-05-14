@@ -3,7 +3,6 @@ package info.jdavid.ok.server.handler;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -40,8 +39,7 @@ public class DigestAuthHandler extends AuthHandler {
    * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
-  public DigestAuthHandler(final Map<String, String> credentials,
-                           final byte[] seed, final Handler delegate) {
+  public DigestAuthHandler(final Map<String, String> credentials, final byte[] seed, final Handler delegate) {
     this(credentials, "digest", seed, delegate);
   }
 
@@ -55,14 +53,13 @@ public class DigestAuthHandler extends AuthHandler {
    * @param delegate the delegate handler.
    */
   public DigestAuthHandler(final Map<String, String> credentials, final String digestName,
-                           final byte[] seed,
-                           final Handler delegate) {
+                           final byte[] seed, final Handler delegate) {
     super(delegate);
     name = digestName;
     final byte[] bytes = new SecureRandom(seed).generateSeed(16);
     key = Crypto.secretKey(bytes);
     nonceIv = Crypto.iv(seed);
-    this.credentials = credentials == null ? Collections.<String, String>emptyMap() : credentials;
+    this.credentials = credentials;
   }
 
   @Override
@@ -147,7 +144,7 @@ public class DigestAuthHandler extends AuthHandler {
 
   private boolean areCredentialsValid(final Request request) {
     final String headerValue = request.headers.get(AUTHORIZATION);
-    if (!headerValue.startsWith("Digest ")) return false;
+    if (headerValue == null || !headerValue.startsWith("Digest ")) return false;
     final Map<String, String> map = parseHeaderValue(headerValue);
     final String username = map.get("username");
     if (username == null) return false;

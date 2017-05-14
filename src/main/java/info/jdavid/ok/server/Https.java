@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -39,8 +40,11 @@ public final class Https {
   final String[] cipherSuites;
   final boolean http2;
 
-  private Https(final byte[] cert, final Map<String, byte[]> additionalCerts,
-                final List<String> protocols, final List<String> cipherSuites, final boolean http2) {
+  private Https(@Nullable final byte[] cert,
+                @Nullable final Map<String, byte[]> additionalCerts,
+                @Nullable final List<String> protocols,
+                @Nullable final List<String> cipherSuites,
+                final boolean http2) {
     context = createSSLContext(cert);
     final Platform platform = this.platform = Platform.findPlatform();
     additionalContexts =
@@ -58,14 +62,14 @@ public final class Https {
     this.http2 = http2 && platform.supportsHttp2();
   }
 
-  SSLContext getContext(final String host) {
+  SSLContext getContext(@Nullable final String host) {
     if (host == null) return context;
     final SSLContext additionalContext = additionalContexts.get(host);
     return additionalContext == null ? context : additionalContext;
   }
 
   SSLSocket createSSLSocket(final Socket socket,
-                            final String hostname, final boolean http2) throws IOException {
+                            @Nullable final String hostname, final boolean http2) throws IOException {
     final SSLSocketFactory sslFactory = getContext(hostname).getSocketFactory();
     final SSLSocket sslSocket = (SSLSocket)sslFactory.createSocket(socket, null, socket.getPort(), true);
     platform.setupSSLSocket(sslSocket, http2);
@@ -76,7 +80,7 @@ public final class Https {
     return sslSocket;
   }
 
-  private static SSLContext createSSLContext(final byte[] certificate) {
+  private static SSLContext createSSLContext(@Nullable final byte[] certificate) {
     if (certificate == null) return null;
     final InputStream cert = new ByteArrayInputStream(certificate);
     try {
@@ -152,7 +156,6 @@ public final class Https {
      * @return this.
      */
     public Builder certificate(final byte[] bytes, final boolean allowHttp2) {
-      if (bytes == null) throw new NullPointerException("The certificate byte array cannot be null.");
       if (mCertificate != null) throw new IllegalStateException("Main certificate already set.");
       mCertificate = bytes;
       mHttp2 = allowHttp2;
@@ -166,8 +169,6 @@ public final class Https {
      * @return this.
      */
     public Builder addCertificate(final String hostname, final byte[] bytes) {
-      if (hostname == null) throw new NullPointerException("The hostname cannot be null.");
-      if (bytes == null) throw new NullPointerException("The certificate byte array cannot be null.");
       if (mAdditionalCertificates.containsKey(hostname)) {
         throw new IllegalStateException("Certificate for host \"" + hostname + "\" has already been set.");
       }

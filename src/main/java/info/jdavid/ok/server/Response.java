@@ -13,6 +13,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.header.CacheControl;
 import info.jdavid.ok.server.header.Cors;
 import info.jdavid.ok.server.header.ETag;
@@ -47,8 +49,9 @@ public abstract class Response {
   }
 
   private Response(final Protocol protocol, final int code, final String message,
-                   final Headers headers, final ResponseBody body, final ResponseBody[] chunks,
-                   final List<HttpUrl> push) {
+                   final Headers headers,
+                   @Nullable final ResponseBody body, @Nullable final ResponseBody[] chunks,
+                   @Nullable final List<HttpUrl> push) {
     this.protocol = protocol;
     this.code = code;
     this.message = message;
@@ -95,7 +98,7 @@ public abstract class Response {
    * @param name the header name.
    * @return the list of values.
    */
-  public List<String> headers(String name) {
+  public List<String> headers(final String name) {
     return headers.values(name);
   }
 
@@ -104,7 +107,7 @@ public abstract class Response {
    * @param name the header name.
    * @return the header value.
    */
-  public String header(String name) {
+  public @Nullable String header(final String name) {
     return header(name, null);
   }
 
@@ -114,8 +117,8 @@ public abstract class Response {
    * @param defaultValue the default value.
    * @return the header name.
    */
-  public String header(String name, String defaultValue) {
-    String result = headers.get(name);
+  public @Nullable String header(final String name, @Nullable final String defaultValue) {
+    final String result = headers.get(name);
     return result != null ? result : defaultValue;
   }
 
@@ -123,19 +126,19 @@ public abstract class Response {
     return headers;
   }
 
-  ResponseBody body() {
+  @Nullable ResponseBody body() {
     return body;
   }
 
-  ResponseBody[] chunks() {
+  @Nullable ResponseBody[] chunks() {
     return chunks;
   }
 
-  List<HttpUrl> pushUrls() {
+  @Nullable List<HttpUrl> pushUrls() {
     return push;
   }
 
-  abstract void writeBody(final BufferedSource in, final BufferedSink out) throws IOException;
+  abstract void writeBody(@Nullable final BufferedSource in, final BufferedSink out) throws IOException;
 
   @Override public String toString() {
     return "Response{protocol="
@@ -202,7 +205,7 @@ public abstract class Response {
      * @param etag the etag (optional).
      * @return this
      */
-    public Builder noCache(final String etag) {
+    public Builder noCache(@Nullable final String etag) {
       if (etag != null) headers.set(ETag.HEADER, etag);
       headers.set(CacheControl.HEADER, "no-cache");
       return this;
@@ -222,7 +225,7 @@ public abstract class Response {
      * @param etag the etag.
      * @return this
      */
-    public Builder etag(final String etag) {
+    public Builder etag(@Nullable final String etag) {
       if (etag == null) {
         headers.removeAll(ETag.HEADER);
       }
@@ -261,7 +264,9 @@ public abstract class Response {
      * @param secs the max-age for the cors headers.
      * @return this
      */
-    public Builder cors(final String origin, final List<String> methods, final List<String> headers,
+    public Builder cors(@Nullable final String origin,
+                        @Nullable final List<String> methods,
+                        @Nullable final List<String> headers,
                         final long secs) {
       this.headers.set(Cors.ALLOW_ORIGIN, origin == null ? "null" : origin);
       if (methods != null) {
@@ -282,7 +287,9 @@ public abstract class Response {
      * @param headers the headers.
      * @return this
      */
-    public Builder cors(final String origin, final List<String> methods, final List<String> headers) {
+    public Builder cors(@Nullable final String origin,
+                        @Nullable final List<String> methods,
+                        @Nullable final List<String> headers) {
       return cors(origin, methods, headers, 31536000);
     }
 
@@ -293,7 +300,9 @@ public abstract class Response {
      * @param secs the max-age for the cors headers.
      * @return this
      */
-    public Builder cors(final String origin, final List<String> methods, final long secs) {
+    public Builder cors(@Nullable final String origin,
+                        @Nullable final List<String> methods,
+                        final long secs) {
       return cors(origin, methods, null, secs);
     }
 
@@ -303,7 +312,8 @@ public abstract class Response {
      * @param methods the methods.
      * @return this
      */
-    public Builder cors(final String origin, final List<String> methods) {
+    public Builder cors(@Nullable final String origin,
+                        @Nullable final List<String> methods) {
       return cors(origin, methods, null, 31536000);
     }
 
@@ -313,7 +323,7 @@ public abstract class Response {
      * @param secs the max-age for the cors headers.
      * @return this
      */
-    public Builder cors(final String origin, final long secs) {
+    public Builder cors(@Nullable final String origin, final long secs) {
       return cors(origin, Collections.singletonList("GET"), null, secs);
     }
 
@@ -322,7 +332,7 @@ public abstract class Response {
      * @param origin the origin.
      * @return this
      */
-    public Builder cors(final String origin) {
+    public Builder cors(@Nullable final String origin) {
       return cors(origin, Collections.singletonList("GET"), null, 31536000);
     }
 
@@ -377,7 +387,7 @@ public abstract class Response {
      * @param name the header name.
      * @return the last header value, or null if the header is absent.
      */
-    public String header(final String name) {
+    public @Nullable String header(final String name) {
       return headers.get(name);
     }
 
@@ -469,14 +479,15 @@ public abstract class Response {
      * @param body the response body.
      * @return this
      */
-    public Builder body(final ResponseBody body) {
+    public Builder body(@Nullable final ResponseBody body) {
       this.body = body;
       if (body == null) {
         contentLength(0);
         removeHeader(CONTENT_TYPE);
       }
       else {
-        contentType(body.contentType());
+        final MediaType contentType = body.contentType();
+        if (contentType != null) contentType(contentType);
         contentLength(body.contentLength());
       }
       return this;
@@ -487,7 +498,7 @@ public abstract class Response {
      * @param text the plain/text string value.
      * @return this
      */
-    public Builder body(final String text) {
+    public Builder body(@Nullable final String text) {
       return body(MediaTypes.TEXT, text);
     }
 
@@ -498,7 +509,7 @@ public abstract class Response {
      * @return this
      * @deprecated
      */
-    public Builder body(final String text, final MediaType contentType) {
+    public Builder body(@Nullable final String text, final MediaType contentType) {
       return body(contentType, text);
     }
 
@@ -508,7 +519,7 @@ public abstract class Response {
      * @param text the string value.
      * @return this
      */
-    public Builder body(final MediaType contentType, final String text) {
+    public Builder body(final MediaType contentType, @Nullable final String text) {
       if (text == null) return body((ResponseBody)null);
       final Buffer buffer = new Buffer().writeUtf8(text);
       return body(new BufferResponse(contentType, buffer));
@@ -519,7 +530,7 @@ public abstract class Response {
      * @param bytes the octet stream.
      * @return this
      */
-    public Builder body(final byte[] bytes) {
+    public Builder body(@Nullable final byte[] bytes) {
       return body(MediaTypes.OCTET_STREAM, bytes);
     }
 
@@ -529,7 +540,7 @@ public abstract class Response {
      * @param bytes the bytes.
      * @return this
      */
-    public Builder body(final MediaType contentType, final byte[] bytes) {
+    public Builder body(final MediaType contentType, @Nullable final byte[] bytes) {
       if (bytes == null) return body((ResponseBody)null);
       final Buffer buffer = new Buffer().write(bytes);
       return body(new BufferResponse(contentType, buffer));
@@ -541,7 +552,7 @@ public abstract class Response {
      * @param size the byte size of the source.
      * @return this
      */
-    public Builder body(final BufferedSource source, final long size) {
+    public Builder body(@Nullable final BufferedSource source, final long size) {
       if (source == null) return body((ResponseBody)null);
       if (size < 0) throw new IllegalArgumentException();
       return body(new BufferResponse(MediaTypes.OCTET_STREAM, source, size));
@@ -554,7 +565,7 @@ public abstract class Response {
      * @param size the byte size of the source.
      * @return this
      */
-    public Builder body(final MediaType contentType, final BufferedSource source, final long size) {
+    public Builder body(final MediaType contentType, @Nullable final BufferedSource source, final long size) {
       if (source == null) return body((ResponseBody)null);
       if (size < 0) throw new IllegalArgumentException();
       return body(new BufferResponse(contentType, source, size));
@@ -566,12 +577,12 @@ public abstract class Response {
      * @param chunks the response body chunks.
      * @return this
      */
-    public Builder chunks(final MediaType contentType, final ResponseBody... chunks) {
+    public Builder chunks(final MediaType contentType, @Nullable final ResponseBody... chunks) {
       return chunks(true, contentType, chunks);
     }
 
     private Builder chunks(final boolean checkCommonContentType, final MediaType contentType,
-                           final ResponseBody... chunks) {
+                           @Nullable final ResponseBody... chunks) {
       if (chunks == null) {
         this.chunks = null;
         removeHeader(TRANSFER_ENCODING);
@@ -580,7 +591,8 @@ public abstract class Response {
       else {
         if (checkCommonContentType) {
           for (final ResponseBody chunk: chunks) {
-            if (!chunk.contentType().equals(contentType)) {
+            final MediaType chunkContentType = chunk.contentType();
+            if (chunkContentType == null || !contentType.equals(chunkContentType)) {
               throw new IllegalArgumentException(
                 "All chunks should have the same Content-Type: " + contentType
               );
@@ -590,9 +602,7 @@ public abstract class Response {
         this.chunks = chunks;
         addHeader(TRANSFER_ENCODING, "chunked");
         removeHeader(CONTENT_LENGTH);
-        if (contentType != null) {
-          contentType(contentType);
-        }
+        contentType(contentType);
       }
       return this;
     }
@@ -602,7 +612,7 @@ public abstract class Response {
      * @param chunks the plain/text string values.
      * @return this
      */
-    public Builder chunks(final String... chunks) {
+    public Builder chunks(@Nullable final String... chunks) {
       return chunks(MediaTypes.TEXT, chunks);
     }
 
@@ -612,7 +622,7 @@ public abstract class Response {
      * @param chunks the string values.
      * @return this
      */
-    public Builder chunks(final MediaType contentType, final String... chunks) {
+    public Builder chunks(final MediaType contentType, @Nullable final String... chunks) {
       if (chunks == null) return chunks(false, contentType, (ResponseBody)null);
       final int length = chunks.length;
       final ResponseBody[] bodies = new ResponseBody[length];
@@ -629,7 +639,7 @@ public abstract class Response {
      * @param chunks the bytes chunks.
      * @return this
      */
-    public Builder chunks(final MediaType contentType, final byte[]... chunks) {
+    public Builder chunks(final MediaType contentType, @Nullable final byte[]... chunks) {
       if (chunks == null) return chunks(false, contentType, (ResponseBody)null);
       final int length = chunks.length;
       final ResponseBody[] bodies = new ResponseBody[length];
@@ -645,7 +655,7 @@ public abstract class Response {
      * @param eventSource the event source.
      * @return this.
      */
-    public Builder sse(final EventSource eventSource) {
+    public Builder sse(@Nullable final EventSource eventSource) {
       this.eventSource = eventSource;
       return this;
     }
@@ -656,7 +666,7 @@ public abstract class Response {
      * @param clientReconnectDelayInSeconds the reconnect delay in seconds for connected clients.
      * @return this.
      */
-    public Builder sse(final EventSource eventSource, final int clientReconnectDelayInSeconds) {
+    public Builder sse(@Nullable final EventSource eventSource, final int clientReconnectDelayInSeconds) {
       if (code == -1) statusLine(StatusLines.OK);
       this.eventSource = eventSource;
       sseRetrySecs = clientReconnectDelayInSeconds;
@@ -782,7 +792,7 @@ public abstract class Response {
      * Sends a message with the specified data.
      * @param data the message data.
      */
-    public void send(final String data) {
+    public void send(@Nullable final String data) {
       send(data, null);
     }
 
@@ -791,7 +801,7 @@ public abstract class Response {
      * @param data the message data.
      * @param metadata the message metadata.
      */
-    public void send(final String data, final Map<String, String> metadata) {
+    public void send(@Nullable final String data, @Nullable final Map<String, String> metadata) {
       if (data == null) throw new NullPointerException("The message data cannot be null.");
       if (metadata != null) {
         for (final Map.Entry<String, String> entry: metadata.entrySet()) {
@@ -864,7 +874,7 @@ public abstract class Response {
     static class Message {
       final String data;
       final Map<String, String> metadata;
-      public Message(final String data, final Map<String, String> metadata) {
+      public Message(final String data, @Nullable final Map<String, String> metadata) {
         this.data = data;
         this.metadata = metadata;
       }
@@ -880,7 +890,7 @@ public abstract class Response {
     }
 
     @Override
-    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
+    void writeBody(@Nullable final BufferedSource in, final BufferedSink out) throws IOException {
       out.writeUtf8("retry: " + retry + "\n").flush();
       try {
         while (true) {
@@ -919,11 +929,13 @@ public abstract class Response {
   }
 
   private static class SyncResponse extends Response {
+
     SyncResponse(final Builder builder) {
       super(builder);
     }
+
     @Override
-    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
+    void writeBody(@Nullable final BufferedSource in, final BufferedSink out) throws IOException {
       //noinspection EmptyFinallyBlock
       try {
         final ResponseBody data = body();
@@ -951,15 +963,17 @@ public abstract class Response {
 //        try { socket.close(); } catch (final IOException ignore) {}
       }
     }
+
   }
 
   private static class ChunkedResponse extends Response {
+
     ChunkedResponse(final Builder builder) {
       super(builder);
     }
 
     @Override
-    void writeBody(final BufferedSource in, final BufferedSink out) throws IOException {
+    void writeBody(@Nullable final BufferedSource in, final BufferedSink out) throws IOException {
       //noinspection EmptyFinallyBlock
       try {
         final ResponseBody[] chunks = chunks();
@@ -990,12 +1004,15 @@ public abstract class Response {
 //        try { socket.close(); } catch (final IOException ignore) {}
       }
     }
+
   }
 
   static final class BufferResponse extends ResponseBody {
+
     final MediaType contentType;
     final BufferedSource buffer;
     final long size;
+
     BufferResponse(final MediaType contentType, final Buffer buffer) {
       this(contentType, buffer, buffer.size());
     }
@@ -1007,6 +1024,7 @@ public abstract class Response {
     @Override public MediaType contentType() { return contentType; }
     @Override public long contentLength() { return size; }
     @Override public BufferedSource source() { return buffer; }
+
   }
 
 }

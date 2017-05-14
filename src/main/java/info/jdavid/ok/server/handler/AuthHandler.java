@@ -3,6 +3,8 @@ package info.jdavid.ok.server.handler;
 import java.util.prefs.AbstractPreferences;
 import java.util.prefs.BackingStoreException;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.header.CacheControl;
 import okhttp3.HttpUrl;
@@ -34,7 +36,7 @@ public abstract class AuthHandler implements Handler {
   }
 
   @Override
-  public String[] matches(final String method, final HttpUrl url) {
+  public @Nullable String[] matches(final String method, final HttpUrl url) {
     return delegate.matches(method, url);
   }
 
@@ -66,8 +68,8 @@ public abstract class AuthHandler implements Handler {
    * @return a modified Cache-Control header value, or null if it doesn't need to be changed.
    */
   protected String modifiedCacheControlValue(final String requestMethod, final int responseCode,
-                                             final String cacheControlHeaderValue,
-                                             final String expiresHeaderValue) {
+                                             @Nullable final String cacheControlHeaderValue,
+                                             @Nullable final String expiresHeaderValue) {
     boolean cacheable = expiresHeaderValue != null ||
       (cacheableByDefaultRequestMethod(requestMethod) && cacheableByDefaultStatusCode(responseCode));
     if (cacheControlHeaderValue == null) {
@@ -132,6 +134,7 @@ public abstract class AuthHandler implements Handler {
     @Override protected AbstractPreferences childSpi(final String name) { return null; }
     @Override protected void syncSpi() throws BackingStoreException {}
     @Override protected void flushSpi() throws BackingStoreException {}
+
   }
 
 }

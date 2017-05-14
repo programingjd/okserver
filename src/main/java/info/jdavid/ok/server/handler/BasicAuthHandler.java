@@ -28,7 +28,8 @@ public class BasicAuthHandler extends AuthHandler {
    */
   public BasicAuthHandler(final Map<String, String> credentials, final Handler delegate) {
     super(delegate);
-    this.credentials = credentials == null ? Collections.<String>emptySet() : credentials(credentials);
+    if (credentials.isEmpty()) throw new IllegalArgumentException();
+    this.credentials = credentials(credentials);
   }
 
   /**

@@ -1,7 +1,6 @@
 package info.jdavid.ok.server.handler;
 
 import java.security.Key;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
@@ -88,15 +87,6 @@ class Crypto {
       throw new RuntimeException(e);
     }
     catch (final NoSuchPaddingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  static MessageDigest digest(final String algorithm) {
-    try {
-      return MessageDigest.getInstance(algorithm);
-    }
-    catch (final NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
   }
