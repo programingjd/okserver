@@ -130,7 +130,7 @@ public class MediaTypes {
     return map;
   }
 
-  public static MediaType fromUrl(@Nullable final HttpUrl url) {
+  public static @Nullable MediaType fromUrl(@Nullable final HttpUrl url) {
     if (url == null) return null;
     final List<String> segments = url.pathSegments();
     final int last = segments.size() - 1;
@@ -152,7 +152,7 @@ public class MediaTypes {
     return null;
   }
 
-  public static MediaType fromFile(@Nullable final File file) {
+  public static @Nullable MediaType fromFile(@Nullable final File file) {
     if (file == null) return null;
     if (file.isDirectory()) return DIRECTORY;
     final String filename = file.getName();

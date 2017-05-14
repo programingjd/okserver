@@ -772,8 +772,8 @@ public abstract class Response {
    */
   public static final class EventSource {
 
-    private Lock lock = new ReentrantLock();
-    List<SSE> responses = new ArrayList<SSE>();
+    private final Lock lock = new ReentrantLock();
+    final List<SSE> responses = new ArrayList<SSE>();
 
     public EventSource() {}
 
@@ -867,8 +867,8 @@ public abstract class Response {
 
   private static class SSE extends Response {
 
-    private Lock lock = new ReentrantLock();
-    private Condition isReady = lock.newCondition();
+    private final Lock lock = new ReentrantLock();
+    private final Condition isReady = lock.newCondition();
     final List<Message> queue = new LinkedList<Message>();
 
     static class Message {

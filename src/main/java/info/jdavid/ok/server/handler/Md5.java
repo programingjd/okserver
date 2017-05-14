@@ -8,7 +8,8 @@ class Md5 {
 
   private Md5() {}
 
-  private static String MD5 = "MD5";
+  @SuppressWarnings("FieldCanBeLocal")
+  private static final String MD5 = "MD5";
 
   static byte[] md5(final byte[] bytes) {
     try {

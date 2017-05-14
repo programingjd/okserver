@@ -13,6 +13,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.annotation.Nullable;
+
 import okhttp3.MediaType;
 import okio.Buffer;
 import okio.BufferedSource;
@@ -27,7 +29,8 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
 
   String etagPrefix = null;
 
-  Map<String, Data> cache = new LinkedHashMap<String, Data>(4096, 0.75f, true);
+  final Map<String, Data> cache =
+    new LinkedHashMap<String, Data>(4096, 0.75f, true);
 
   /**
    * Creates a new file handler that will accept all requests.
@@ -69,7 +72,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
    * @param indexNames the (ordered) list of file names for index (directory) requests.
    * @param webRoot the web root directory containing the files.
    */
-  public PreCachedFileRequestHandler(String regex, File webRoot, List<String> indexNames) {
+  public PreCachedFileRequestHandler(final String regex, final File webRoot, final List<String> indexNames) {
     super(regex, webRoot, indexNames);
   }
 
@@ -91,7 +94,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
       }
       else if (current.isFile()) {
         final MediaType mediaType = mediaType(current);
-        if (acceptMediaType(mediaType)) {
+        if (mediaType != null && acceptMediaType(mediaType)) {
           if (acceptFile(current)) {
             final boolean compress = config(mediaType).compress;
             cache(current, etag(current, webRoot), config(mediaType).compress, compress);
@@ -130,11 +133,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
       final String relativePath = relativePath(file);
       final byte[] pathBytes = relativePath.getBytes(UTF8);
       final String prefix = etagPrefix;
-      final StringBuilder s = new StringBuilder(pathBytes.length * 2 + 4 + etagPrefix.length());
-      s.append(prefix);
-      s.append(Hex.hex(pathBytes));
-      s.append(Hex.hex(BigInteger.valueOf(file.lastModified())));
-      return s.toString();
+      return prefix + Hex.hex(pathBytes) + Hex.hex(BigInteger.valueOf(file.lastModified()));
     }
     catch (final IOException ignore) {
       return null;
@@ -160,8 +159,9 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   @Override
-  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+  protected BufferedSourceWithSize fromCache(final File file, @Nullable final String etag,
                                              final boolean compress, final boolean gzip) {
+    if (etag == null) return null;
     final String relativePath = relativePath(etag);
     final Data data = cache.get(relativePath);
     if (data != null) {
@@ -186,10 +186,11 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   @Override
-  protected BufferedSourceWithSize fromCache(final File file, final String etag,
+  protected BufferedSourceWithSize fromCache(final File file, @Nullable final String etag,
                                              final long start, final long end,
                                              final boolean compress, final boolean gzip) {
     if (compress == gzip) {
+      if (etag == null) return null;
       final String relativePath = relativePath(etag);
       final Data data = cache.get(relativePath);
       if (data != null) {
@@ -213,8 +214,9 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   @Override
-  protected BufferedSourceWithSize cache(final File file, final String etag,
+  protected BufferedSourceWithSize cache(final File file, @Nullable final String etag,
                                          final boolean compress, final boolean gzip) {
+    if (etag == null) return null;
     final String relativePath = relativePath(etag);
     final Data data = cache.get(relativePath);
     final byte[] bytes = bytes(file, relativePath, etag, data, compress);
@@ -233,9 +235,10 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   @Override
-  protected BufferedSourceWithSize cache(final File file, final String etag,
+  protected BufferedSourceWithSize cache(final File file, @Nullable final String etag,
                                          final long start, final long end,
                                          final boolean compress, final boolean gzip) {
+    if (etag == null) return null;
     final String relativePath = relativePath(etag);
     final Data data = cache.get(relativePath);
     final byte[] bytes = bytes(file, relativePath, etag, data, compress);
@@ -290,7 +293,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
   }
 
   private byte[] bytes(final File file, final String relativePath, final String etag,
-                       final Data data, final boolean compress) {
+                       @Nullable final Data data, final boolean compress) {
     final byte[] bytes;
     if (data == null) {
       try {

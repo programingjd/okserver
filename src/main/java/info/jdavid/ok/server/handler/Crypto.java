@@ -15,8 +15,8 @@ class Crypto {
   private Crypto() {}
 
 
-  private static String AES = "AES";
-  private static String AES_CBC = "AES/CBC/PKCS5Padding";
+  private static final String AES = "AES";
+  private static final String AES_CBC = "AES/CBC/PKCS5Padding";
 
   static {
     try {

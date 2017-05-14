@@ -36,7 +36,7 @@ public class HttpServer {
   KeepAliveStrategy keepAliveStrategy = KeepAliveStrategy.DEFAULT;
   RequestHandler requestHandler = null;
   Https https = null;
-  private Lock serverSocketLock = new ReentrantLock();
+  private final Lock serverSocketLock = new ReentrantLock();
 
   /**
    * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).

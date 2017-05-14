@@ -166,7 +166,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   }
 
   final Handler acmeHandler;
-  List<Handler> chain = new LinkedList<Handler>();
+  final List<Handler> chain = new LinkedList<Handler>();
 
   /**
    * Creates the default chain: a file handler serving the current directory.

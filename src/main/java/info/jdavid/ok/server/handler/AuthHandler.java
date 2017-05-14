@@ -112,7 +112,7 @@ public abstract class AuthHandler implements Handler {
     }
 
     private String mValue = null;
-    private Buffer buffer = new Buffer();
+    private final Buffer buffer = new Buffer();
 
     String encode(final String str) {
       putByteArray(null, buffer.writeUtf8(str).readByteArray());

@@ -208,7 +208,7 @@ public class FileRequestHandler extends RegexHandler {
     return this;
   }
 
-  private static List<String> DEFAULT_INDEX_NAMES = Arrays.asList("index.html", "index.htm");
+  private static final List<String> DEFAULT_INDEX_NAMES = Arrays.asList("index.html", "index.htm");
 
   /**
    * Creates a new file handler that will accept all requests.
@@ -295,6 +295,7 @@ public class FileRequestHandler extends RegexHandler {
         f = index(file);
         if (f == null) return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
         m = mediaType(f);
+        assert(m != null);
       }
       else {
         f = file;
@@ -521,7 +522,7 @@ public class FileRequestHandler extends RegexHandler {
     }
   }
 
-  private File index(final File file) {
+  private @Nullable File index(final File file) {
     for (final String name: indexNames) {
       final File index = new File(file, name);
       if (index.exists()) {
@@ -623,7 +624,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param file the file.
    * @return the media type (can be null).
    */
-  protected MediaType mediaType(final File file) {
+  protected @Nullable MediaType mediaType(final File file) {
     return MediaTypes.fromFile(file);
   }
 
@@ -634,7 +635,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param webRoot the web root directory.
    * @return the E-Tag (can be null).
    */
-  protected String etag(final File file, final File webRoot) {
+  protected @Nullable String etag(final File file, final File webRoot) {
     final String path = file.getAbsolutePath().
       substring(webRoot.getAbsolutePath().length()).
       replace('\\','/');
