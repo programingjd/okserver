@@ -24,6 +24,8 @@ repositories {
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
+println "Java version: ${System.getProperty('java.version')}"
+
 tasks.withType(JavaCompile) {
   doFirst {
     String jre6Home = System.getProperty('java.home').replaceAll('\\\\', '/').replaceFirst(/1[.][789]/, '1.6')
@@ -78,14 +80,15 @@ sourceSets {
 }
 
 dependencies {
-  //compile 'com.squareup.okio:okio:1.12.0'
-  compile 'com.squareup.okhttp3:okhttp:3.7.0'
-  compile 'org.slf4j:slf4j-api:1.7.24'
+  compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+  compile 'com.squareup.okio:okio:1.13.0'
+  compile 'com.squareup.okhttp3:okhttp:3.8.0'
+  compile 'org.slf4j:slf4j-api:1.7.25'
   jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
   testCompile 'junit:junit:4.12'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'
-  cli 'org.slf4j:slf4j-jdk14:1.7.24'
+  cli 'org.slf4j:slf4j-jdk14:1.7.25'
 }
 
 task bigJar(type: Jar) {
@@ -127,13 +130,16 @@ test {
     fileTree(include: [ '*.jar' ], dir: "${jreHome}/lib")
   )
   setBootstrapClasspath(bootClasspath)
+  jvmArgs '-XX:+IgnoreUnrecognizedVMOptions'
+  jvmArgs '--permit-illegal-access'
+  jvmArgs '--show-version'
   testLogging {
     showStandardStreams = true
   }
   jacoco {
     append = false
     destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
-    classDumpFile = file("$buildDir/jacoco/classpathdumps")
+    classDumpDir = file("$buildDir/jacoco/classpathdumps")
   }
   systemProperty 'https.proptocols', 'TLSv1.2'
   systemProperty 'started-with-gradle', 'true'
