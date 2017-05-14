@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.annotation.Nullable;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 
@@ -143,7 +144,7 @@ public class HttpServer {
    * @param strategy the strategy.
    * @return this
    */
-  public final HttpServer keepAliveStrategy(final KeepAliveStrategy strategy) {
+  public final HttpServer keepAliveStrategy(@Nullable final KeepAliveStrategy strategy) {
     if (started.get()) {
       throw new IllegalStateException(
         "The keep-alive strategy cannot be changed while the server is running.");
@@ -152,7 +153,13 @@ public class HttpServer {
     return this;
   }
 
-  protected void validateHandler() {}
+  /**
+   * Validates the specified handler before it is set as the request handler for the server.
+   * @param handler the candidate request handler.
+   * @throws IllegalArgumentException if the handler is not suitable.
+   */
+  @SuppressWarnings("unused")
+  protected void validateHandler(final RequestHandler handler) {}
 
   /**
    * Sets the request handler.
@@ -163,7 +170,7 @@ public class HttpServer {
     if (started.get()) {
       throw new IllegalStateException("The request handler cannot be changed while the server is running.");
     }
-    validateHandler();
+    validateHandler(handler);
     this.requestHandler = handler;
     return this;
   }
@@ -176,7 +183,13 @@ public class HttpServer {
     return handler;
   }
 
-  protected void validateDispatcher() {}
+  /**
+   * Validates the specified dispatcher before it is set as the request dispatcher for the server.
+   * @param dispatcher the candidate request dispatcher.
+   * @throws IllegalArgumentException if the dispatcher is not suitable.
+   */
+  @SuppressWarnings("unused")
+  protected void validateDispatcher(final Dispatcher dispatcher) {}
 
   /**
    * Sets a custom dispatcher.
@@ -187,12 +200,18 @@ public class HttpServer {
     if (started.get()) {
       throw new IllegalStateException("The dispatcher cannot be changed while the server is running.");
     }
-    validateDispatcher();
+    validateDispatcher(dispatcher);
     this.dispatcher = dispatcher;
     return this;
   }
 
-  protected void validateHttps() {}
+  /**
+   * Validates the specified https settings before they are set for the server.
+   * @param https the candidate https settings.
+   * @throws IllegalArgumentException if the settings is not suitable.
+   */
+  @SuppressWarnings("unused")
+  protected void validateHttps(final Https https) {}
 
   /**
    * Sets the Https provider.
@@ -203,7 +222,7 @@ public class HttpServer {
     if (started.get()) {
       throw new IllegalStateException("The certificates cannot be changed while the server is running.");
     }
-    if (https != null) validateHttps();
+    validateHttps(https);
     this.https = https;
     return this;
   }
@@ -503,7 +522,7 @@ public class HttpServer {
   }
 
   private static class SecureServerSocket extends ServerSocket {
-    SecureServerSocket(final int port, final InetAddress address) throws IOException {
+    SecureServerSocket(final int port, @Nullable final InetAddress address) throws IOException {
       super(port, -1, address);
     }
     @Override public Socket accept() throws IOException {

@@ -8,6 +8,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.handler.AcmeChallengeHandler;
 import info.jdavid.ok.server.handler.FileRequestHandler;
 import info.jdavid.ok.server.handler.Handler;
@@ -220,7 +222,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
 
   @Override
   protected Response handleAcmeChallenge(final String clientIp, final String method, final HttpUrl url,
-                                         final Headers requestHeaders, final Buffer requestBody) {
+                                         final Headers requestHeaders, @Nullable final Buffer requestBody) {
     final Response.Builder responseBuilder;
     final String[] params;
     if (acmeHandler == null || (params = acmeHandler.matches(method, url)) == null) {
@@ -239,7 +241,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   @Override
   protected final Response handle(final String clientIp, final boolean http2,
                                   final String method, final HttpUrl url,
-                                  final Headers requestHeaders, final Buffer requestBody) {
+                                  final Headers requestHeaders, @Nullable final Buffer requestBody) {
     for (final Handler handler: chain) {
       final String[] params = handler.matches(method, url);
       if (params != null) {

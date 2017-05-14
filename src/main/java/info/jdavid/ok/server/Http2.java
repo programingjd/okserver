@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.net.ssl.SSLSocket;
 
@@ -39,8 +40,10 @@ class Http2 {
                     final long maxRequestSize,
                     final KeepAliveStrategy keepAliveStrategy,
                     final RequestHandler requestHandler) throws IOException {
+    final String hostAddress = socket.getInetAddress().getHostAddress();
+    assert(hostAddress != null);
     final Http2ConnectionListener listener =
-      new Http2ConnectionListener(requestHandler, maxRequestSize, socket.getInetAddress().getHostAddress());
+      new Http2ConnectionListener(requestHandler, maxRequestSize, hostAddress);
     final BufferedSource in = Okio.buffer(Okio.source(socket));
     final BufferedSink out = Okio.buffer(Okio.sink(socket));
     final Http2Connection connection = new Http2Connection.Builder(false).

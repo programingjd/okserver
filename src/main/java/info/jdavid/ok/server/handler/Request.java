@@ -35,7 +35,7 @@ public final class Request {
   /**
    * The request body.
    */
-  public final Buffer body;
+  public @Nullable final Buffer body;
 
   public Request(final String clientIp, final boolean http2,
                  final String method, final HttpUrl url,

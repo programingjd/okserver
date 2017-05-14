@@ -7,6 +7,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.Dispatcher;
 import info.jdavid.ok.server.HttpServer;
 import info.jdavid.ok.server.Https;
@@ -31,7 +33,7 @@ public class Readme {
                                  final boolean insecureOnly, final boolean http2,
                                  final String method, final HttpUrl url,
                                  final Headers requestHeaders,
-                                 final Buffer requestBody) {
+                                 @Nullable final Buffer requestBody) {
             final String path = url.encodedPath();
             final Response.Builder builder = new Response.Builder();
             if ("GET".equals(method) && "/ok".equals(path)) {

@@ -36,8 +36,8 @@ public interface RequestHandler {
                            final String clientIp,
                            final boolean secure, final boolean insecureOnly, final boolean http2,
                            final String method, final String path,
-                           final Headers requestHeaders, final Buffer requestBody) {
-      final String h = requestHeaders == null ? null : requestHeaders.get("Host");
+                           final Headers requestHeaders, @Nullable final Buffer requestBody) {
+      final String h = requestHeaders.get("Host");
       if (h == null) {
         return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
       }
@@ -45,7 +45,9 @@ public interface RequestHandler {
       final String host = i == -1 ? h : h.substring(0, i);
       final int port = i == -1 ? 0 : Integer.valueOf(h.substring(i+1));
 
-      final HttpUrl.Builder url = HttpUrl.parse("http://localhost" + path).newBuilder().
+      final HttpUrl localhostUrl = HttpUrl.parse("http://localhost" + path);
+      assert(localhostUrl != null);
+      final HttpUrl.Builder url = localhostUrl.newBuilder().
         scheme(secure ? "https" : "http").
         host(host);
       if (port > 0) url.port(port);

@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.7.0.2'
+version '3.8.0.0'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -26,23 +26,6 @@ targetCompatibility = 1.6
 
 println "Java version: ${System.getProperty('java.version')}"
 
-tasks.withType(JavaCompile) {
-  doFirst {
-    String jre6Home = System.getProperty('java.home').replaceAll('\\\\', '/').replaceFirst(/1[.][789]/, '1.6')
-    if (new File(jre6Home).exists()) {
-      options.fork = true
-      options.bootClasspath = fileTree(include: [ '*.jar' ], dir: "${jre6Home}/lib").join(File.pathSeparator)
-      options.extensionDirs = "${jre6Home}/lib/ext"
-    }
-  }
-}
-
-tasks.withType(Test) {
-  doFirst {
-    jvmArgs('-Xbootclasspath/p:' + configurations.alpn.files{it.group=='info.jdavid.alpn'})
-  }
-}
-
 ext {
   bintrayApiKey = new File("$projectDir/local.properties").with {
     it.text.splitEachLine('=', { if (it && it[0] == 'bintrayApiKey') return it[1] })
@@ -50,6 +33,28 @@ ext {
   jdkVersion = Runtime.class.getPackage().getImplementationVersion()?.
     replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
   println jdkVersion
+}
+
+tasks.withType(JavaCompile) {
+  if (jdkVersion != null) {
+    doFirst {
+      String jre6Home =
+        System.getProperty('java.home').replaceAll('\\\\', '/').replaceFirst(/1[.][789]/, '1.6')
+      if (new File(jre6Home).exists()) {
+        options.fork = true
+        options.bootClasspath = fileTree(include: ['*.jar'], dir: "${jre6Home}/lib").join(File.pathSeparator)
+        options.extensionDirs = "${jre6Home}/lib/ext"
+      }
+    }
+  }
+}
+
+tasks.withType(Test) {
+  if (jdkVersion != null) {
+    doFirst {
+      jvmArgs '-Xbootclasspath/p:' + configurations.alpn.files { it.group == 'info.jdavid.alpn' }
+    }
+  }
 }
 
 configurations {
@@ -87,7 +92,7 @@ dependencies {
   jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
   testCompile 'junit:junit:4.12'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
-  testRuntime 'org.slf4j:slf4j-jdk14:1.7.24'
+  testRuntime 'org.slf4j:slf4j-jdk14:1.7.25'
   cli 'org.slf4j:slf4j-jdk14:1.7.25'
 }
 
@@ -124,15 +129,18 @@ jacocoTestReport {
 }
 
 test {
-  // todo, only add alpn to bootclasspath if not running with java 9.
   String jreHome = System.getProperty('java.home').replaceAll('\\\\', '/')
-  FileTree bootClasspath = configurations.alpn.asFileTree.plus(
-    fileTree(include: [ '*.jar' ], dir: "${jreHome}/lib")
-  )
-  setBootstrapClasspath(bootClasspath)
-  jvmArgs '-XX:+IgnoreUnrecognizedVMOptions'
-  jvmArgs '--permit-illegal-access'
-  jvmArgs '--show-version'
+  if (jdkVersion != null) {
+    FileTree bootClasspath = configurations.alpn.asFileTree.plus(
+      fileTree(include: ['*.jar'], dir: "${jreHome}/lib")
+    )
+    setBootstrapClasspath(bootClasspath)
+  }
+  else {
+    jvmArgs '-XX:+IgnoreUnrecognizedVMOptions'
+    jvmArgs '--permit-illegal-access'
+    jvmArgs '--show-version'
+  }
   testLogging {
     showStandardStreams = true
   }

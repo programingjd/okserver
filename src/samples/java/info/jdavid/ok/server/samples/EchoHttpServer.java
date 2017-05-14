@@ -1,5 +1,7 @@
 package info.jdavid.ok.server.samples;
 
+import javax.annotation.Nullable;
+
 import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.handler.RegexHandler;
 import info.jdavid.ok.server.handler.Request;
@@ -60,7 +62,9 @@ public class EchoHttpServer {
     new EchoHttpServer().start();
   }
 
-  private static Response.Builder echo(final Buffer requestBody, final MediaType mime) {
+  private static Response.Builder echo(@Nullable final Buffer requestBody, @Nullable final MediaType mime) {
+    if (requestBody == null) return new Response.Builder().statusLine(StatusLines.OK).noBody();
+    if (mime == null) return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
     return new Response.Builder().statusLine(StatusLines.OK).body(new EchoBody(requestBody, mime));
   }
 
@@ -71,7 +75,8 @@ public class EchoHttpServer {
     }
 
     @Override public Response.Builder handle(final Request request, final String[] params) {
-      final MediaType mime = MediaType.parse(request.headers.get("Content-Type"));
+      final String contentType = request.headers.get("Content-Type");
+      final MediaType mime = contentType == null ? null : MediaType.parse(contentType);
       return echo(request.body, mime);
     }
   }
