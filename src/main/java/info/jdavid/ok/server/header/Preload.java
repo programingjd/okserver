@@ -26,7 +26,7 @@ public final class Preload {
    * @param type the link type (can be null, for urls called via xhr or fetch).
    * @param noPush to specify that the preload link is not to be used for server push.
    */
-  public static void addLink(final Headers.Builder headers, final HttpUrl url, final TYPE type,
+  public static void addLink(final Headers.Builder headers, final HttpUrl url, @Nullable final TYPE type,
                              final boolean noPush) {
     if (type == null) {
       headers.add(
@@ -51,7 +51,7 @@ public final class Preload {
    * @return the response builder.
    */
   public static Response.Builder addLink(final Response.Builder responseBuilder, final HttpUrl url,
-                                         final TYPE type, final boolean noPush) {
+                                         @Nullable final TYPE type, final boolean noPush) {
     if (type == null) {
       responseBuilder.addHeader(
         LINK,

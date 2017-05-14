@@ -25,7 +25,6 @@ public abstract class AuthHandler implements Handler {
    */
   public AuthHandler(final Handler delegate) {
     super();
-    if (delegate == null) throw new NullPointerException("The delegate handler cannot be null.");
     this.delegate = delegate;
   }
 

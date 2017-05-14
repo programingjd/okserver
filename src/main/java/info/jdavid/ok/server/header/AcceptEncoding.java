@@ -22,7 +22,7 @@ public final class AcceptEncoding {
 
   public static boolean supportsGZipEncoding(final Headers headers) {
     final String value = headers.get(HEADER);
-    return value.contains(GZIP);
+    return value != null && value.contains(GZIP);
   }
 
 }
