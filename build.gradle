@@ -86,6 +86,7 @@ sourceSets {
 
 dependencies {
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+  samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   compile 'com.squareup.okio:okio:1.13.0'
   compile 'com.squareup.okhttp3:okhttp:3.8.0'
   compile 'org.slf4j:slf4j-api:1.7.25'
