@@ -28,6 +28,9 @@ import okio.Source;
 import okio.Timeout;
 
 
+/**
+ * Handler for serving files under a web root.
+ */
 @SuppressWarnings("WeakerAccess")
 public class FileRequestHandler extends RegexHandler {
 
@@ -35,7 +38,10 @@ public class FileRequestHandler extends RegexHandler {
   final Collection<MediaType> allowedMediaTypes = new ArrayList<MediaType>(48);
   final List<String> indexNames;
 
-
+  /**
+   * Media Type configuration settings (enable compression, enable range requests, immutable
+   * and max age).
+   */
   public static class MediaTypeConfig {
     final boolean compress;
     final boolean ranges;

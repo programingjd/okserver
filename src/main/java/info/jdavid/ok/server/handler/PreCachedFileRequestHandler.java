@@ -22,6 +22,9 @@ import okio.GzipSource;
 import okio.Okio;
 
 
+/**
+ * Extension of FileRequestHandler that precaches all files.
+ */
 @SuppressWarnings({ "WeakerAccess" })
 public class PreCachedFileRequestHandler extends FileRequestHandler {
 
