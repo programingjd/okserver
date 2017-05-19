@@ -1,7 +1,10 @@
 package info.jdavid.ok.server.handler;
 
+import java.util.AbstractMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -9,6 +12,7 @@ import javax.annotation.Nullable;
 
 import info.jdavid.ok.server.Response;
 import okhttp3.HttpUrl;
+
 
 public class EndpointHandler implements Handler {
 
@@ -51,6 +55,92 @@ public class EndpointHandler implements Handler {
     return resolver.resolve(shifted).response(request);
   }
 
+  public EndpointHandler head(final String regex, final Resolver<? extends Resource> resolver) {
+    add("HEAD", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler head(final String regex, final Resource resource) {
+    add("HEAD", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler get(final String regex, final Resolver<? extends Resource> resolver) {
+    add("GET", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler get(final String regex, final Resource resource) {
+    add("GET", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler post(final String regex, final Resolver<? extends Resource> resolver) {
+    add("POST", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler post(final String regex, final Resource resource) {
+    add("POST", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler put(final String regex, final Resolver<? extends Resource> resolver) {
+    add("PUT", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler put(final String regex, final Resource resource) {
+    add("PUT", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler delete(final String regex, final Resolver<? extends Resource> resolver) {
+    add("DELETE", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler delete(final String regex, final Resource resource) {
+    add("DELETE", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler patch(final String regex, final Resolver<? extends Resource> resolver) {
+    add("PATCH", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler patch(final String regex, final Resource resource) {
+    add("PATCH", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+  public EndpointHandler options(final String regex, final Resolver<? extends Resource> resolver) {
+    add("OPTIONS", regex, resolver);
+    return this;
+  }
+
+  public EndpointHandler options(final String regex, final Resource resource) {
+    add("OPTIONS", regex, new SingleResourceResolver(resource));
+    return this;
+  }
+
+
+  protected void add(final String method, final String regex, final Resolver<? extends Resource> resolver) {
+    Map<String, Map.Entry<Pattern, Resolver<? extends Resource>>> map = resolvers.get(method);
+    if (map == null) {
+      map = new LinkedHashMap<String, Map.Entry<Pattern, Resolver<? extends Resource>>>();
+      resolvers.put(method, map);
+    }
+    map.put(
+      UUID.randomUUID().toString(),
+      new AbstractMap.SimpleEntry<Pattern, Resolver<? extends Resource>>(
+        Pattern.compile(regex),
+        resolver
+      )
+    );
+  }
+
   public static interface Resolver<T extends Resource> {
 
     public T resolve(final String[] params);
@@ -60,6 +150,21 @@ public class EndpointHandler implements Handler {
   public static interface Resource {
 
     public Response.Builder response(final Request request);
+
+  }
+
+  static class SingleResourceResolver implements Resolver<Resource> {
+
+    public final Resource resource;
+
+    public SingleResourceResolver(final Resource resource) {
+      this.resource = resource;
+    }
+
+    @Override
+    public Resource resolve(final String[] params) {
+      return resource;
+    }
 
   }
 
