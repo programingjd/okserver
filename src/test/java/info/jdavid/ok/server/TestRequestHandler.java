@@ -12,8 +12,11 @@ import okio.Buffer;
 public class TestRequestHandler implements RequestHandler {
 
   @Override public Response handle(final String clientIp,
-                                   final boolean secure, final boolean insecureOnly, final boolean http2,
-                                   final String method, final HttpUrl url,
+                                   final boolean secure,
+                                   final boolean insecureOnly,
+                                   final boolean http2,
+                                   final String method,
+                                   final HttpUrl url,
                                    final Headers requestHeaders,
                                    @Nullable final Buffer requestBody) {
     final Response.Builder builder = new Response.Builder();

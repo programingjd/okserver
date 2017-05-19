@@ -28,8 +28,11 @@ public class RequestHandlerTest {
 
   private static HttpServer SERVER = new HttpServer().requestHandler(new RequestHandler() {
     @Override public Response handle(final String clientIp,
-                                     final boolean secure, final boolean insecureOnly, final boolean http2,
-                                     final String method, final HttpUrl url,
+                                     final boolean secure,
+                                     final boolean insecureOnly,
+                                     final boolean http2,
+                                     final String method,
+                                     final HttpUrl url,
                                      final Headers requestHeaders,
                                      @Nullable final Buffer requestBody) {
         final Buffer buffer = new Buffer();
