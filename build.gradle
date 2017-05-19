@@ -24,6 +24,16 @@ repositories {
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
+compileSamplesJava {
+  sourceCompativility = 1.8
+  targetCompativility = 1.8
+}
+
+compileTestJava {
+  sourceCompativility = 1.8
+  targetCompativility = 1.8
+}
+
 println "Java version: ${System.getProperty('java.version')}"
 
 ext {

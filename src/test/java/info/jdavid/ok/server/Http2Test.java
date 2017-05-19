@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
 import okhttp3.ConnectionPool;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -21,6 +23,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class Http2Test {
 
   private static OkHttpClient client(final List<Protocol> protocols) {
@@ -73,7 +76,8 @@ public class Http2Test {
         @Override public Response handle(final String clientIp, final boolean secure,
                                          final boolean insecureOnly, final boolean http2,
                                          final String method, final HttpUrl url,
-                                         final Headers requestHeaders, final Buffer requestBody) {
+                                         final Headers requestHeaders,
+                                         @Nullable final Buffer requestBody) {
           final List<String> path = url.pathSegments();
           if (path.isEmpty() || !path.get(path.size() - 1).equals("push")) {
             final String s = url + "\n" + secure + "\n" + insecureOnly + "\n" + http2;

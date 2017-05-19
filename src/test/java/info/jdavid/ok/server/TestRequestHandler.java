@@ -1,16 +1,21 @@
 package info.jdavid.ok.server;
 
+import javax.annotation.Nullable;
+
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okio.Buffer;
 
+
+@SuppressWarnings("ConstantConditions")
 public class TestRequestHandler implements RequestHandler {
 
   @Override public Response handle(final String clientIp,
                                    final boolean secure, final boolean insecureOnly, final boolean http2,
                                    final String method, final HttpUrl url,
-                                   final Headers requestHeaders, final Buffer requestBody) {
+                                   final Headers requestHeaders,
+                                   @Nullable final Buffer requestBody) {
     final Response.Builder builder = new Response.Builder();
     if ("/test".equals(url.encodedPath())) {
       builder.statusLine(StatusLines.OK);

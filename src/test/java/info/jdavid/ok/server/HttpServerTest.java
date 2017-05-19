@@ -22,11 +22,14 @@ import java.net.Socket;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 
 //@org.junit.FixMethodOrder(org.junit.runners.MethodSorters.NAME_ASCENDING)
+@SuppressWarnings("ConstantConditions")
 public class HttpServerTest {
 
-  private static Request.Builder request(final String... segments) {
+  private static Request.Builder request(@Nullable final String... segments) {
     HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(8080);
     if (segments != null) {
       for (final String segment: segments) {
@@ -36,7 +39,7 @@ public class HttpServerTest {
     return new Request.Builder().url(url.build());
   }
 
-  private static Request.Builder secureRequest(final String... segments) {
+  private static Request.Builder secureRequest(@Nullable final String... segments) {
     HttpUrl.Builder url = new HttpUrl.Builder().scheme("https").host("localhost").port(8181);
     if (segments != null) {
       for (final String segment: segments) {

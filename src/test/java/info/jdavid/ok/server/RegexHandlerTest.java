@@ -16,6 +16,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class RegexHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());

@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 import okhttp3.ConnectionPool;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -21,13 +23,15 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class RequestHandlerTest {
 
   private static HttpServer SERVER = new HttpServer().requestHandler(new RequestHandler() {
     @Override public Response handle(final String clientIp,
                                      final boolean secure, final boolean insecureOnly, final boolean http2,
                                      final String method, final HttpUrl url,
-                                     final Headers requestHeaders, final Buffer requestBody) {
+                                     final Headers requestHeaders,
+                                     @Nullable final Buffer requestBody) {
         final Buffer buffer = new Buffer();
         System.out.println(clientIp);
         buffer.writeByte(byteLength(clientIp));

@@ -10,6 +10,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class MediaTypesTest {
 
   @Test

@@ -5,6 +5,8 @@ import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -15,7 +17,7 @@ import static org.junit.Assert.*;
 
 public class StartStopTest {
 
-  private static Request.Builder request(final int port, final String... segments) {
+  private static Request.Builder request(final int port, @Nullable final String... segments) {
     HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(port);
     if (segments != null) {
       for (final String segment: segments) {

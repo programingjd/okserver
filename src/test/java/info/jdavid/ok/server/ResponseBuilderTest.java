@@ -17,6 +17,7 @@ import java.util.List;
 
 
 //@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@SuppressWarnings("ConstantConditions")
 public class ResponseBuilderTest {
 
   private Response.Builder response(final int code) {

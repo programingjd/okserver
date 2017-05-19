@@ -8,6 +8,7 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class HttpsTest {
 
   private static byte[] getCert() {
@@ -101,7 +103,8 @@ public class HttpsTest {
         @Override public Response handle(final String clientIp, final boolean secure,
                                          final boolean insecureOnly, final boolean http2,
                                          final String method, final HttpUrl url,
-                                         final Headers requestHeaders, final Buffer requestBody) {
+                                         final Headers requestHeaders,
+                                         @Nullable final Buffer requestBody) {
           final String s = url + "\n" + secure + "\n" + insecureOnly;
           return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
         }

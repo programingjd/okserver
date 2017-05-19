@@ -17,11 +17,14 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 
 //@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@SuppressWarnings("ConstantConditions")
 public class SSEServerTest {
 
-  private static Request.Builder request(final String... segments) {
+  private static Request.Builder request(@Nullable final String... segments) {
     HttpUrl.Builder url = new HttpUrl.Builder().scheme("http").host("localhost").port(8082);
     if (segments != null) {
       for (final String segment: segments) {

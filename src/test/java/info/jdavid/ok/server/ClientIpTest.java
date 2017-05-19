@@ -6,6 +6,8 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -18,11 +20,12 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class ClientIpTest {
 
   private static final OkHttpClient client = new OkHttpClient();
 
-  private static OkHttpClient client(final Proxy proxy) {
+  private static OkHttpClient client(@Nullable final Proxy proxy) {
     final OkHttpClient.Builder builder = client.newBuilder().readTimeout(0, TimeUnit.SECONDS);
     if (proxy != null) builder.proxy(proxy);
     return builder.build();
@@ -55,7 +58,7 @@ public class ClientIpTest {
       @Override public Response handle(final String clientIp,
                                        final boolean secure, final boolean insecureOnly, final boolean http2,
                                        final String method, final HttpUrl url,
-                                       final Headers requestHeaders, final Buffer requestBody) {
+                                       final Headers requestHeaders, @Nullable final Buffer requestBody) {
         return new Response.Builder().statusLine(StatusLines.OK).body(clientIp).build();
       }
     }).start();

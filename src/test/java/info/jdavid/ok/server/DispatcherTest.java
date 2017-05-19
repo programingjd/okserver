@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
 import okhttp3.ConnectionPool;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -16,6 +18,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class DispatcherTest {
 
   private static HttpServer server(final Dispatcher dispatcher) {
@@ -23,7 +26,8 @@ public class DispatcherTest {
       @Override public Response handle(final String clientIp,
                                        final boolean secure, final boolean insecureOnly, final boolean http2,
                                        final String method, final HttpUrl url,
-                                       final Headers requestHeaders, final Buffer requestBody) {
+                                       final Headers requestHeaders,
+                                       @Nullable final Buffer requestBody) {
         try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
         return new Response.Builder().statusLine(StatusLines.OK).body("Test").build();
       }
