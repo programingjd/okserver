@@ -40,7 +40,7 @@ public class ApiServer {
               head("/resources/([^/]+)", (final String[] params) -> new HeadItem(params[0])).
               get("/resources/([^/]+)", (final String[] params) -> new GetItem(params[0])).
               delete("/resources/([^/]+)", (final String[] params) -> new DeleteItem(params[0])).
-              post("/resources/([^/]+)", (final String[] params) -> new PostItem(params[0])).
+              post("/resources/?", (final String[] params) -> new PostItem()).
               put("/resources/([^/]+)", (final String[] params) -> new PutItem(params[0]))
           )
       ).
@@ -119,32 +119,24 @@ public class ApiServer {
 
   class PostItem implements EndpointHandler.ResourceAction {
 
-    private final boolean exists;
-
-    PostItem(final String name) {
-      exists = resources.get(name) != null;
-    }
-
     @Override
     public Response.Builder response(final Request request) {
-      if (exists) {
+      try {
+        final Map<String, ?> json = Parser.parse(request.body);
+        //noinspection ConstantConditions
+        final String name = (String)json.get(Item.NAME);
+        if (name == null) throw new NullPointerException();
+        final Item item = new Item(name);
+        resources.put("item" + nextId.incrementAndGet(), item);
+        final Buffer buffer = new Buffer();
+        Builder.build(buffer, item);
         return new Response.Builder().
-          statusLine(StatusLines.CONFLICT);
+          statusLine(StatusLines.OK).
+          body(MediaTypes.JSON, buffer);
       }
-      else {
-        try {
-          final Map<String, ?> json = Parser.parse(request.body);
-          //noinspection ConstantConditions
-          final String name = (String)json.get(Item.NAME);
-          if (name == null) throw new NullPointerException();
-          resources.put("item" + nextId.incrementAndGet(), new Item(name));
-          return new Response.Builder().
-            statusLine(StatusLines.CREATED);
-        }
-        catch (final Exception ignore) {
-          return new Response.Builder().
-            statusLine(StatusLines.BAD_REQUEST);
-        }
+      catch (final Exception ignore) {
+        return new Response.Builder().
+          statusLine(StatusLines.BAD_REQUEST);
       }
     }
 
@@ -187,17 +179,26 @@ public class ApiServer {
 
     public static final String NAME = "name";
 
-    Set<Entry<String, String>> mEntries;
+    Entry<String, String> entry;
 
     public Item(final String name) {
-      mEntries = new HashSet<>(1);
-      mEntries.add(new SimpleEntry<>(NAME, name));
+      entry = new SimpleEntry<>(NAME, name);
     }
 
     @Override
     @SuppressWarnings("NullableProblems")
     public Set<Entry<String, String>> entrySet() {
-      return mEntries;
+      final Set<Entry<String, String>> set = new HashSet<>(1);
+      set.add(entry);
+      return set;
+    }
+
+    @Override
+    public String put(final String key, final String value) {
+      if (!NAME.equals(key)) throw new UnsupportedOperationException();
+      final String previous = entry.getValue();
+      entry.setValue(value);
+      return previous;
     }
 
   }

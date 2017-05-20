@@ -158,7 +158,7 @@ public class DigestAuthHandlerTest {
     return map1;
   }
 
-  private static OkHttpClient client() {
+  static OkHttpClient client() {
     return new OkHttpClient.Builder().
       followRedirects(false).
       retryOnConnectionFailure(false).
