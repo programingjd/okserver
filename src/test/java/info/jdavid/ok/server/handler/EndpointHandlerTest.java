@@ -80,6 +80,7 @@ public class EndpointHandlerTest {
     final Response response2 = client().newCall(
       new Request.Builder().
         url(baseUrl.newBuilder("/resources/item1").build()).
+        head().
         build()
     ).execute();
     assertTrue(response2.isSuccessful());
