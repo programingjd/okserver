@@ -22,10 +22,11 @@ import static info.jdavid.ok.server.handler.DigestAuthHandlerTest.client;
 
 public class EndpointHandlerTest {
 
-  private static final ApiServer SERVER = new ApiServer(); //.dispatcher(new Dispatcher.Logged());
+  private ApiServer SERVER = null;
 
   @Before
   public void startServer() {
+    SERVER = new ApiServer();
     SERVER.start();
   }
 
