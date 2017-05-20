@@ -172,7 +172,7 @@ public abstract class Response {
     private EventSource eventSource = null;
     private int sseRetrySecs = 5;
     private List<HttpUrl> push = null;
-    private Headers.Builder headers = new Headers.Builder().set(CONTENT_LENGTH, "0");
+    private Headers.Builder headers = new Headers.Builder();
 
     /**
      * Creates a new Builder.
@@ -768,6 +768,9 @@ public abstract class Response {
           headers.set(Cors.ALLOW_HEADERS, "Content-Type, Accept");
         }
         return new SSE(this);
+      }
+      if (headers.get(CONTENT_LENGTH) == null) {
+        headers.set(CONTENT_LENGTH, "0");
       }
       return new SyncResponse(this);
     }

@@ -110,6 +110,13 @@ public class ResponseBuilderTest {
   }
 
   @Test
+  public void testContentLength() throws IOException {
+    assertEquals("0", response(200).build().header("Content-Length"));
+    final byte[] bytes = new byte[] { 0x01, 0x02, 0x03 };
+    assertEquals("3", response(200).body(bytes).header("Content-Length"));
+  }
+
+  @Test
   public void testBody() throws IOException {
     assertNull(response(404).noBody().build().body());
     assertEquals("test", response(200).body("test").build().body().string());
