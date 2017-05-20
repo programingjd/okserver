@@ -122,6 +122,8 @@ public class ResponseBuilderTest {
     final Buffer source = new Buffer();
     source.writeUtf8("test");
     assertEquals("test",
+                 response(200).body(source).build().body().string());
+    assertEquals("test",
                  response(200).body(source, (int)source.size()).build().body().string());
   }
 

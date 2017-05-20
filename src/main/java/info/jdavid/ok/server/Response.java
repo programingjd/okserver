@@ -172,7 +172,7 @@ public abstract class Response {
     private EventSource eventSource = null;
     private int sseRetrySecs = 5;
     private List<HttpUrl> push = null;
-    private Headers.Builder headers = new Headers.Builder();
+    private Headers.Builder headers = new Headers.Builder().set(CONTENT_LENGTH, "0");
 
     /**
      * Creates a new Builder.
@@ -549,6 +549,16 @@ public abstract class Response {
     /**
      * Sets a response body built from the specified bytes.
      * @param source the bytes.
+     * @return this
+     */
+    public Builder body(@Nullable final Buffer source) {
+      if (source == null) return body((ResponseBody)null);
+      return body(new BufferResponse(MediaTypes.OCTET_STREAM, source));
+    }
+
+    /**
+     * Sets a response body built from the specified bytes.
+     * @param source the bytes.
      * @param size the byte size of the source.
      * @return this
      */
@@ -557,6 +567,18 @@ public abstract class Response {
       if (size < 0) throw new IllegalArgumentException();
       return body(new BufferResponse(MediaTypes.OCTET_STREAM, source, size));
     }
+
+    /**
+     * Sets a response body built from the specified bytes.
+     * @param contentType the media type.
+     * @param source the bytes.
+     * @return this
+     */
+    public Builder body(final MediaType contentType, @Nullable final Buffer source) {
+      if (source == null) return body((ResponseBody)null);
+      return body(new BufferResponse(contentType, source));
+    }
+
 
     /**
      * Sets a response body built from the specified bytes.

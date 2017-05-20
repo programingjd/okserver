@@ -16,39 +16,6 @@ public class SSEServer {
     //noinspection Duplicates
     mServer = new HttpServer().
       requestHandler(
-//        new RequestHandler() {
-//          @Override
-//          public Response handle(final String clientIp,
-//                                 final boolean secure, final boolean insecureOnly, final boolean http2,
-//                                 final String method, final HttpUrl url,
-//                                 final Headers requestHeaders, final Buffer requestBody) {
-//            if (!"GET".equals(method)) return unsupported();
-//            if (!"/sse".equals(url.encodedPath())) return notFound();
-//            final Response.EventSource eventSource = new Response.EventSource();
-//            new Thread() {
-//              // Sends 5 "OK" message.
-//              public void run() {
-//                if (initialDelaySecs > 0) {
-//                  try { Thread.sleep(initialDelaySecs * 1000L); }
-//                  catch (final InterruptedException ignore) {}
-//                }
-//                for (int i=0; i<4; ++i) {
-//                  eventSource.send("OK");
-//                  try { Thread.sleep(periodSecs * 1000L); }
-//                  catch (final InterruptedException ignore) {}
-//                }
-//                eventSource.send("OK");
-//              }
-//            }.start();
-//            return new Response.Builder().sse(eventSource, retrySecs).build();
-//          }
-//          private Response notFound() {
-//            return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build();
-//          }
-//          private Response unsupported() {
-//            return new Response.Builder().statusLine(StatusLines.METHOD_NOT_ALLOWED).noBody().build();
-//          }
-//        }
         new RequestHandlerChain().
           add(new SSEHandler(retrySecs, periodSecs, initialDelaySecs))
       ).

@@ -24,16 +24,6 @@ repositories {
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
-compileSamplesJava {
-  sourceCompativility = 1.8
-  targetCompativility = 1.8
-}
-
-compileTestJava {
-  sourceCompativility = 1.8
-  targetCompativility = 1.8
-}
-
 println "Java version: ${System.getProperty('java.version')}"
 
 ext {
@@ -94,9 +84,20 @@ sourceSets {
   }
 }
 
+compileSamplesJava {
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+}
+
+compileTestJava {
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+}
+
 dependencies {
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+  samplesCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
   compile 'com.squareup.okio:okio:1.13.0'
   compile 'com.squareup.okhttp3:okhttp:3.8.0'
   compile 'org.slf4j:slf4j-api:1.7.25'

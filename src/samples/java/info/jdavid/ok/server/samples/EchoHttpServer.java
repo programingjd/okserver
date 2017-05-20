@@ -25,29 +25,9 @@ public class EchoHttpServer {
 
   public EchoHttpServer(final int port) {
     mServer = new HttpServer().
-//      requestHandler(new RequestHandler() {
-//        @Override
-//        public Response handle(final String clientIp,
-//                               final boolean secure, final boolean insecureOnly, final boolean http2,
-//                               final String method, final HttpUrl url,
-//                               final Headers requestHeaders, final Buffer requestBody) {
-//          if (!"POST".equals(method)) return unsupported();
-//          if (!"/echo".equals(url.encodedPath())) return notFound();
-//          final MediaType mime = MediaType.parse(requestHeaders.get("Content-Type"));
-//          return echo(requestBody, mime).build();
-//        }
-//      }).
       requestHandler(new RequestHandlerChain().add(new EchoHandler())).
       port(port);
   }
-
-//  private Response notFound() {
-//    return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build();
-//  }
-
-//  private Response unsupported() {
-//    return new Response.Builder().statusLine(StatusLines.METHOD_NOT_ALLOWED).noBody().build();
-//  }
 
   public void start() {
     mServer.start();

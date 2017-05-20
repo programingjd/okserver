@@ -20,8 +20,8 @@ import okhttp3.HttpUrl;
 @SuppressWarnings("WeakerAccess")
 public class EndpointHandler implements Handler {
 
-  final Map<String, Map<String, Map.Entry<Pattern, Resolver<? extends Resource>>>> resolvers =
-    new HashMap<String, Map<String, Map.Entry<Pattern, Resolver<? extends Resource>>>>(6);
+  final Map<String, Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>> resolvers =
+    new HashMap<String, Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>>(6);
 
   @Override
   public Handler setup() {
@@ -31,11 +31,11 @@ public class EndpointHandler implements Handler {
   @Nullable
   @Override
   public String[] matches(final String method, final HttpUrl url) {
-    final Map<String, Map.Entry<Pattern, Resolver<? extends Resource>>> resolvers =
+    final Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>> resolvers =
       this.resolvers.get(method);
     if (resolvers.size() > 0) {
       final String path = url.encodedPath();
-      for (final Map.Entry<String, Map.Entry<Pattern, Resolver<? extends Resource>>> entry :
+      for (final Map.Entry<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>> entry :
            resolvers.entrySet()) {
         final Matcher matcher = entry.getValue().getKey().matcher(path);
         if (matcher.find() && matcher.start() == 0 && matcher.end() == path.length()) {
@@ -53,7 +53,7 @@ public class EndpointHandler implements Handler {
 
   @Override
   public final Response.Builder handle(final Request request, final String[] params) {
-    final Resolver<? extends Resource> resolver = resolvers.get(request.method).get(params[0]).getValue();
+    final Resolver<? extends ResourceAction> resolver = resolvers.get(request.method).get(params[0]).getValue();
     final String[] shifted = new String[params.length - 1];
     System.arraycopy(params, 1, shifted, 0, shifted.length);
     return resolver.resolve(shifted).response(request);
@@ -62,12 +62,12 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a HEAD request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler head(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler head(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("HEAD", regex, resolver);
     return this;
   }
@@ -75,23 +75,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a HEAD request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler head(final String regex, final Resource resource) {
-    add("HEAD", regex, new SingleResourceResolver(resource));
+  public EndpointHandler head(final String regex, final ResourceAction resourceAction) {
+    add("HEAD", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a GET request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler get(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler get(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("GET", regex, resolver);
     return this;
   }
@@ -99,23 +99,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a GET request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler get(final String regex, final Resource resource) {
-    add("GET", regex, new SingleResourceResolver(resource));
+  public EndpointHandler get(final String regex, final ResourceAction resourceAction) {
+    add("GET", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a POST request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler post(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler post(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("POST", regex, resolver);
     return this;
   }
@@ -123,23 +123,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a POST request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler post(final String regex, final Resource resource) {
-    add("POST", regex, new SingleResourceResolver(resource));
+  public EndpointHandler post(final String regex, final ResourceAction resourceAction) {
+    add("POST", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a PUT request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler put(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler put(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("PUT", regex, resolver);
     return this;
   }
@@ -147,23 +147,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a PUT request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler put(final String regex, final Resource resource) {
-    add("PUT", regex, new SingleResourceResolver(resource));
+  public EndpointHandler put(final String regex, final ResourceAction resourceAction) {
+    add("PUT", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a DELETE request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler delete(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler delete(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("DELETE", regex, resolver);
     return this;
   }
@@ -171,23 +171,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a DELETE request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler delete(final String regex, final Resource resource) {
-    add("DELETE", regex, new SingleResourceResolver(resource));
+  public EndpointHandler delete(final String regex, final ResourceAction resourceAction) {
+    add("DELETE", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a PATCH request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler patch(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler patch(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("PATCH", regex, resolver);
     return this;
   }
@@ -195,23 +195,23 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a PATCH request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler patch(final String regex, final Resource resource) {
-    add("PATCH", regex, new SingleResourceResolver(resource));
+  public EndpointHandler patch(final String regex, final ResourceAction resourceAction) {
+    add("PATCH", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
   /**
    * Adds a OPTIONS request handler for the endpoint with the route matching the specified regular expression.
    * The regular expression should capture the parameters necessary for the resolver to decide which
-   * resource to use for handling a request.
+   * mResourceAction to use for handling a request.
    * @param regex the regex for the route.
    * @param resolver the resolver.
    * @return this.
    */
-  public EndpointHandler options(final String regex, final Resolver<? extends Resource> resolver) {
+  public EndpointHandler options(final String regex, final Resolver<? extends ResourceAction> resolver) {
     add("OPTIONS", regex, resolver);
     return this;
   }
@@ -219,11 +219,11 @@ public class EndpointHandler implements Handler {
   /**
    * Adds a OPTIONS request handler for the endpoint with the route matching the specified regular expression.
    * @param regex the regex for the route.
-   * @param resource the resource that will handle requests.
+   * @param resourceAction the resourceAction that will handle requests.
    * @return this.
    */
-  public EndpointHandler options(final String regex, final Resource resource) {
-    add("OPTIONS", regex, new SingleResourceResolver(resource));
+  public EndpointHandler options(final String regex, final ResourceAction resourceAction) {
+    add("OPTIONS", regex, new SingleResourceResolver(resourceAction));
     return this;
   }
 
@@ -233,15 +233,15 @@ public class EndpointHandler implements Handler {
    * @param regex the regular expression for the endpoint route.
    * @param resolver the resolver.
    */
-  protected void add(final String method, final String regex, final Resolver<? extends Resource> resolver) {
-    Map<String, Map.Entry<Pattern, Resolver<? extends Resource>>> map = resolvers.get(method);
+  protected void add(final String method, final String regex, final Resolver<? extends ResourceAction> resolver) {
+    Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>> map = resolvers.get(method);
     if (map == null) {
-      map = new LinkedHashMap<String, Map.Entry<Pattern, Resolver<? extends Resource>>>();
+      map = new LinkedHashMap<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>();
       resolvers.put(method, map);
     }
     map.put(
       UUID.randomUUID().toString(),
-      new AbstractMap.SimpleEntry<Pattern, Resolver<? extends Resource>>(
+      new AbstractMap.SimpleEntry<Pattern, Resolver<? extends ResourceAction>>(
         Pattern.compile(regex),
         resolver
       )
@@ -249,25 +249,25 @@ public class EndpointHandler implements Handler {
   }
 
   /**
-   * Resolver class responsible for returning the resource associated with the request based
+   * Resolver class responsible for returning the mResourceAction associated with the request based
    * on the params extracted from the url.
-   * @param <T> the resource type.
+   * @param <T> the mResourceAction type.
    */
-  public static interface Resolver<T extends Resource> {
+  public static interface Resolver<T extends ResourceAction> {
 
     /**
-     * Returns the resource that will handle the request.
+     * Returns the mResourceAction that will handle the request.
      * @param params the url params (captured groups from the regex).
-     * @return the resource.
+     * @return the mResourceAction.
      */
     public T resolve(final String[] params);
 
   }
 
   /**
-   * Resource class responsible for handling the request.
+   * ResourceAction class responsible for handling the request.
    */
-  public static interface Resource {
+  public static interface ResourceAction {
 
     /**
      * Handles the request and returns the response.
@@ -278,17 +278,17 @@ public class EndpointHandler implements Handler {
 
   }
 
-  static class SingleResourceResolver implements Resolver<Resource> {
+  static class SingleResourceResolver implements Resolver<ResourceAction> {
 
-    public final Resource resource;
+    public final ResourceAction mResourceAction;
 
-    public SingleResourceResolver(final Resource resource) {
-      this.resource = resource;
+    public SingleResourceResolver(final ResourceAction resourceAction) {
+      this.mResourceAction = resourceAction;
     }
 
     @Override
-    public Resource resolve(final String[] params) {
-      return resource;
+    public ResourceAction resolve(final String[] params) {
+      return mResourceAction;
     }
 
   }
