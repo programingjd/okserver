@@ -43,26 +43,26 @@ Here's a very simple example:
   - For any other request, we return a **404 Not Found** with no content.
 
 ```java
-    new HttpServer().requestHandler(
-      new RequestHandler() {
-        @Override
-        public Response handle(final String clientIp, final boolean secure,
-                               final boolean insecureOnly, final boolean http2,
-                               final String method, final HttpUrl url,
-                               final Headers requestHeaders,
-                               final Buffer requestBody) {
-          final String path = url.encodedPath();
-          final Response.Builder builder = new Response.Builder();
-          if ("GET".equals(method) && "/ok".equals(path)) {
-            builder.statusLine(StatusLines.OK).body("ok");
-          }
-          else {
-            builder.statusLine(StatusLines.NOT_FOUND).noBody();
-          }
-          return builder.build();
-        }
+new HttpServer().requestHandler(
+  new RequestHandler() {
+    @Override
+    public Response handle(final String clientIp, final boolean secure,
+                           final boolean insecureOnly, final boolean http2,
+                           final String method, final HttpUrl url,
+                           final Headers requestHeaders,
+                           final Buffer requestBody) {
+      final String path = url.encodedPath();
+      final Response.Builder builder = new Response.Builder();
+      if ("GET".equals(method) && "/ok".equals(path)) {
+        builder.statusLine(StatusLines.OK).body("ok");
       }
-    );
+      else {
+        builder.statusLine(StatusLines.NOT_FOUND).noBody();
+      }
+      return builder.build();
+    }
+  }
+);
 ```
 
 To start the server, you simply call `start()`. It defaults to port 8080, but you can change that easily
@@ -120,18 +120,18 @@ The easiest way to implement request handlers is to use a `RequestHandlerChain`,
 to it.
 
 ```java
-     final Map<String, String> credentials = new HashMap<String, String>();
-     credentials.put("user1", "password1");
-     final File webRoot = new File(new File(System.getProperty("user.home")), "www");
- 
-     new HttpServer().
-       requestHandler(
-         new RequestHandlerChain().
-           add(new BasicAuthHandler(credentials, new FileRequestHandler(webRoot)))
-       ).
-       dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
-       port(8080).
-       start();
+final Map<String, String> credentials = new HashMap<String, String>();
+credentials.put("user1", "password1");
+final File webRoot = new File(new File(System.getProperty("user.home")), "www");
+
+new HttpServer().
+  requestHandler(
+    new RequestHandlerChain().
+      add(new BasicAuthHandler(credentials, new FileRequestHandler(webRoot)))
+  ).
+  dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
+  port(8080).
+  start();
 ```
 
 You can find more examples in the ***samples*** directory.

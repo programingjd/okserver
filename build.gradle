@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.8.0.0'
+version '3.8.0.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -95,17 +95,22 @@ compileTestJava {
 }
 
 dependencies {
-  compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
   compile 'com.squareup.okio:okio:1.13.0'
   compile 'com.squareup.okhttp3:okhttp:3.8.0'
   compile 'org.slf4j:slf4j-api:1.7.25'
+  compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
   jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
+
+  samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+  samplesCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
+
   testCompile 'junit:junit:4.12'
+  testCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
+  testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.25'
+
   cli 'org.slf4j:slf4j-jdk14:1.7.25'
 }
 
