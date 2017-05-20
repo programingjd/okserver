@@ -14,9 +14,6 @@ import info.jdavid.ok.server.HttpsTest;
 import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
-import info.jdavid.ok.server.handler.BasicAuthHandler;
-import info.jdavid.ok.server.handler.Handler;
-import info.jdavid.ok.server.handler.Request;
 import okhttp3.ConnectionPool;
 import okhttp3.Credentials;
 import okhttp3.Headers;
@@ -27,8 +24,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+
 
 public class BasicAuthHandlerTest {
 
