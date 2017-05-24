@@ -13,7 +13,7 @@ public class Tmp {
     new HttpServer().
       requestHandler(
         new RequestHandlerChain().
-          add(new FileRequestHandler("/test(.*)", testReportRoot))
+          add(new FileHandler("/test(/.*)", testReportRoot))
       ).
       port(8080).
       start();

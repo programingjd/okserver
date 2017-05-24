@@ -25,12 +25,12 @@ public class CacheTest {
 
   @BeforeClass
   public static void startServer() throws IOException {
-    FileRequestHandlerTest.startServer();
+    FileHandlerTest.startServer();
   }
 
   @AfterClass
   public static void stopServer() {
-    FileRequestHandlerTest.stopServer();
+    FileHandlerTest.stopServer();
   }
 
   private static File getWebRoot() throws IOException {

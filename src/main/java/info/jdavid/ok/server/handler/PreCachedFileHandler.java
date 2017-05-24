@@ -23,10 +23,10 @@ import okio.Okio;
 
 
 /**
- * Extension of FileRequestHandler that precaches all files.
+ * Extension of FileHandler that precaches all files.
  */
 @SuppressWarnings({ "WeakerAccess" })
-public class PreCachedFileRequestHandler extends FileRequestHandler {
+public class PreCachedFileHandler extends FileHandler {
 
   private static final String UTF8 = "UTF-8";
 
@@ -40,7 +40,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
    * All files under the web root whose media type is allowed are cached during setup.
    * @param webRoot the web root directory containing the files.
    */
-  public PreCachedFileRequestHandler(final File webRoot) {
+  public PreCachedFileHandler(final File webRoot) {
     super(webRoot);
   }
 
@@ -50,7 +50,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
    * @param webRoot the web root directory containing the files.
    * @param indexNames the names for the index files (defaults to "index.html" and "index.htm").
    */
-  public PreCachedFileRequestHandler(final File webRoot, final List<String> indexNames) {
+  public PreCachedFileHandler(final File webRoot, final List<String> indexNames) {
     super(webRoot, indexNames);
   }
 
@@ -62,7 +62,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
    * @param regex the regex used for accepting the request and capturing the path relative to the web root.
    * @param webRoot the web root directory containing the files.
    */
-  public PreCachedFileRequestHandler(final String regex, final File webRoot) {
+  public PreCachedFileHandler(final String regex, final File webRoot) {
     super(regex, webRoot);
   }
 
@@ -75,7 +75,7 @@ public class PreCachedFileRequestHandler extends FileRequestHandler {
    * @param indexNames the (ordered) list of file names for index (directory) requests.
    * @param webRoot the web root directory containing the files.
    */
-  public PreCachedFileRequestHandler(final String regex, final File webRoot, final List<String> indexNames) {
+  public PreCachedFileHandler(final String regex, final File webRoot, final List<String> indexNames) {
     super(regex, webRoot, indexNames);
   }
 

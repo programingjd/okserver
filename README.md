@@ -127,7 +127,7 @@ final File webRoot = new File(new File(System.getProperty("user.home")), "www");
 new HttpServer().
   requestHandler(
     new RequestHandlerChain().
-      add(new BasicAuthHandler(credentials, new FileRequestHandler(webRoot)))
+      add(new BasicAuthHandler(credentials, new FileHandler(webRoot)))
   ).
   dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
   port(8080).

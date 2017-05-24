@@ -13,20 +13,20 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testETag;
-import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testFiles;
-import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testIndex;
-import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testRange;
-import static info.jdavid.ok.server.handler.FileRequestHandlerTest.testWeb;
+import static info.jdavid.ok.server.handler.FileHandlerTest.testETag;
+import static info.jdavid.ok.server.handler.FileHandlerTest.testFiles;
+import static info.jdavid.ok.server.handler.FileHandlerTest.testIndex;
+import static info.jdavid.ok.server.handler.FileHandlerTest.testRange;
+import static info.jdavid.ok.server.handler.FileHandlerTest.testWeb;
 
 import static org.junit.Assert.*;
 
 
-public class PreCachedFileRequestHandlerTest {
+public class PreCachedFileHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
 
-  private static PreCachedFileRequestHandler handler;
+  private static PreCachedFileHandler handler;
 
   @BeforeClass
   public static void startServer() throws IOException {
@@ -51,7 +51,7 @@ public class PreCachedFileRequestHandlerTest {
                                         final boolean insecureOnly) {
           return true;
         }
-      }.add(handler = new PreCachedFileRequestHandler(root))).
+      }.add(handler = new PreCachedFileHandler(root))).
       start();
   }
 
@@ -70,13 +70,13 @@ public class PreCachedFileRequestHandlerTest {
   @Test
   public void testCache() {
     assertEquals(9, handler.cache.size());
-    final PreCachedFileRequestHandler.Data videoData = handler.cache.get("/video.mp4");
+    final PreCachedFileHandler.Data videoData = handler.cache.get("/video.mp4");
     assertNotNull(videoData);
     assertTrue(videoData.bytes.length > 0);
-    final PreCachedFileRequestHandler.Data styleData = handler.cache.get("/style.css");
+    final PreCachedFileHandler.Data styleData = handler.cache.get("/style.css");
     assertNotNull(styleData);
     assertTrue(styleData.bytes.length > 0);
-    final PreCachedFileRequestHandler.Data textData = handler.cache.get("/noindex/file.txt");
+    final PreCachedFileHandler.Data textData = handler.cache.get("/noindex/file.txt");
     assertNotNull(textData);
     assertTrue(textData.bytes.length > 0);
   }

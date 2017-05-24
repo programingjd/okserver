@@ -17,7 +17,7 @@ import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.Response;
 import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.handler.BasicAuthHandler;
-import info.jdavid.ok.server.handler.FileRequestHandler;
+import info.jdavid.ok.server.handler.FileHandler;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -99,12 +99,11 @@ public class Readme {
     new HttpServer().
       requestHandler(
         new RequestHandlerChain().
-          add(new BasicAuthHandler(credentials, new FileRequestHandler(webRoot)))
+          add(new BasicAuthHandler(credentials, new FileHandler(webRoot)))
       ).
       dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
       port(8080).
       start();
   }
-
 
 }

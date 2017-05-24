@@ -49,7 +49,7 @@ public class AcmeChallengeHandlerTest {
                                         final boolean insecureOnly) {
           return true;
         }
-      }.add(new FileRequestHandler(root))).
+      }.add(new FileHandler(root))).
       start();
   }
 
@@ -80,12 +80,12 @@ public class AcmeChallengeHandlerTest {
   @Test
   public void testHttp() throws Exception {
     test("http://localhost:8080/");
-    FileRequestHandlerTest.testWeb("http://localhost:8080/");
+    FileHandlerTest.testWeb("http://localhost:8080/");
   }
 
   @Test
   public void testHttps() throws Exception {
-    FileRequestHandlerTest.testWeb("https://localhost:8181/");
+    FileHandlerTest.testWeb("https://localhost:8181/");
   }
 
   private void test(final String baseUrl) throws IOException {

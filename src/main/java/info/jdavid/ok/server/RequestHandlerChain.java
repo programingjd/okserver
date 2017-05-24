@@ -11,7 +11,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import info.jdavid.ok.server.handler.AcmeChallengeHandler;
-import info.jdavid.ok.server.handler.FileRequestHandler;
+import info.jdavid.ok.server.handler.FileHandler;
 import info.jdavid.ok.server.handler.Handler;
 import info.jdavid.ok.server.handler.Request;
 import info.jdavid.ok.server.header.Preload;
@@ -133,7 +133,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
       else {
         root = new File(".");
       }
-      server.requestHandler(new RequestHandlerChain().add(new FileRequestHandler(root)));
+      server.requestHandler(new RequestHandlerChain().add(new FileHandler(root)));
       server.start();
       return server;
     }
@@ -191,7 +191,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
       throw new RuntimeException(e);
     }
     return new RequestHandlerChain(new AcmeChallengeHandler(directory)).
-      add(new FileRequestHandler(directory));
+      add(new FileHandler(directory));
   }
 
   /**

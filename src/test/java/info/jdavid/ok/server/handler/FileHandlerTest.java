@@ -39,7 +39,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
-public class FileRequestHandlerTest {
+public class FileHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
 
@@ -66,7 +66,7 @@ public class FileRequestHandlerTest {
                                         final boolean insecureOnly) {
           return true;
         }
-      }.add(new FileRequestHandler(root))).
+      }.add(new FileHandler(root))).
       start();
   }
 

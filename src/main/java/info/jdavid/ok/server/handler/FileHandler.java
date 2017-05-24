@@ -32,7 +32,7 @@ import okio.Timeout;
  * Handler for serving files under a web root.
  */
 @SuppressWarnings("WeakerAccess")
-public class FileRequestHandler extends RegexHandler {
+public class FileHandler extends RegexHandler {
 
   final File webRoot;
   final Collection<MediaType> allowedMediaTypes = new ArrayList<MediaType>(48);
@@ -220,7 +220,7 @@ public class FileRequestHandler extends RegexHandler {
    * Creates a new file handler that will accept all requests.
    * @param webRoot the web root directory containing the files.
    */
-  public FileRequestHandler(final File webRoot) {
+  public FileHandler(final File webRoot) {
     this("(.*)", webRoot, DEFAULT_INDEX_NAMES);
   }
 
@@ -229,7 +229,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param webRoot the web root directory containing the files.
    * @param indexNames the names for the index files (defaults to "index.html" and "index.htm").
    */
-  public FileRequestHandler(final File webRoot, final List<String> indexNames) {
+  public FileHandler(final File webRoot, final List<String> indexNames) {
     this("(.*)", webRoot, indexNames);
   }
 
@@ -240,7 +240,7 @@ public class FileRequestHandler extends RegexHandler {
    * @param regex the regex used for accepting the request and capturing the path relative to the web root.
    * @param webRoot the web root directory containing the files.
    */
-  public FileRequestHandler(final String regex, final File webRoot) {
+  public FileHandler(final String regex, final File webRoot) {
     this(regex, webRoot, DEFAULT_INDEX_NAMES);
   }
 
@@ -252,8 +252,8 @@ public class FileRequestHandler extends RegexHandler {
    * @param indexNames the (ordered) list of file names for index (directory) requests.
    * @param webRoot the web root directory containing the files.
    */
-  public FileRequestHandler(final String regex,
-                            final File webRoot, final List<String> indexNames) {
+  public FileHandler(final String regex,
+                     final File webRoot, final List<String> indexNames) {
     super(Arrays.asList("HEAD", "GET"), regex);
     this.webRoot = webRoot;
     this.indexNames = indexNames;
