@@ -69,7 +69,7 @@ public class PreCachedFileRequestHandlerTest {
 
   @Test
   public void testCache() {
-    assertEquals(8, handler.cache.size());
+    assertEquals(9, handler.cache.size());
     final PreCachedFileRequestHandler.Data videoData = handler.cache.get("/video.mp4");
     assertNotNull(videoData);
     assertTrue(videoData.bytes.length > 0);

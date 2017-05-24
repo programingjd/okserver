@@ -809,6 +809,7 @@ public class FileRequestHandler extends RegexHandler {
         this.sink.close();
       }
       else {
+        this.sink.write(sourceBuffer, sourceBuffer.size());
         this.sink.flush();
       }
       final long count = Math.min(byteCount, sinkBuffer.size());

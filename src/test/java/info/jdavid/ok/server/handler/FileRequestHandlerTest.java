@@ -260,6 +260,14 @@ public class FileRequestHandlerTest {
     assertTrue(response8.header("Content-Type").startsWith(MediaTypes.TEXT.type()));
     assertEquals(text(new File(new File(root, "noindex"), "file.txt")),
                  response8.body().string().trim());
+
+    final okhttp3.Response response9 =
+      client.newCall(new Request.Builder().url(url.newBuilder("/tests.html").build()).
+        build()).execute();
+    assertEquals(200, response9.code());
+    assertTrue(response9.header("Content-Type").startsWith(MediaTypes.HTML.type()));
+    assertEquals(text(new File(root, "tests.html")),
+                 response9.body().string().trim());
   }
 
   @Test
