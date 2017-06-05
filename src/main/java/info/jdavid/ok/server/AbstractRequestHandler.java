@@ -140,8 +140,12 @@ public abstract class AbstractRequestHandler implements RequestHandler {
       return FORBIDDEN;
     }
     else {
+      final HttpUrl.Builder urlBuilder = url.newBuilder().scheme("https");
+      if (url.port() == 8080) {
+        urlBuilder.port(8181);
+      }
       return new Response.Builder().statusLine(StatusLines.PERMANENT_REDIRECT).
-        location(url.newBuilder().scheme("https").build()).hsts().noBody().build();
+        location(urlBuilder.build()).hsts().noBody().build();
     }
   }
 
