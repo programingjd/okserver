@@ -80,7 +80,8 @@ public class FileHandler extends RegexHandler {
    * Gets the web root directory.
    * @return the web root directory.
    */
-  protected File getWebRoot() {
+  @SuppressWarnings("unused")
+  protected final File getWebRoot() {
     return webRoot;
   }
 
@@ -310,7 +311,7 @@ public class FileHandler extends RegexHandler {
         }
         m = mediaType;
       }
-      final String etag = etag(f, webRoot);
+      final String etag = etag(request, f, webRoot);
       if (etag != null && etag.equalsIgnoreCase(request.headers.get(ETag.IF_NONE_MATCH))) {
           return new Response.Builder().statusLine(StatusLines.NOT_MODIFIED).noBody();
       }
@@ -339,7 +340,7 @@ public class FileHandler extends RegexHandler {
             response.header(AcceptRanges.HEADER, AcceptRanges.BYTES);
             final String rangeHeaderValue = request.headers.get(AcceptRanges.RANGE);
             if (rangeHeaderValue == null) {
-              final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+              final BufferedSourceWithSize buffered = source(request, f, etag, compress, gzip);
               if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
               return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
             }
@@ -352,7 +353,7 @@ public class FileHandler extends RegexHandler {
                   return response.statusLine(StatusLines.REQUEST_RANGE_NOT_SATISFIABLE).noBody();
                 }
                 if (!ifRangeMatch(request, etag)) {
-                  final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+                  final BufferedSourceWithSize buffered = source(request, f, etag, compress, gzip);
                   if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
                   return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
                 }
@@ -408,7 +409,8 @@ public class FileHandler extends RegexHandler {
                   return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody();
                 }
                 try {
-                  final BufferedSourceWithSize buffered = source(f, etag, start, end, compress, gzip);
+                  final BufferedSourceWithSize buffered =
+                    source(request, f, etag, start, end, compress, gzip);
                   if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
                   return response.statusLine(StatusLines.PARTIAL).
                     header(AcceptRanges.CONTENT_RANGE,
@@ -498,7 +500,8 @@ public class FileHandler extends RegexHandler {
                   }
                   try {
                     // never use gzip compression for multipart ranges.
-                    final BufferedSourceWithSize buffered = source(f, etag, start, end, compress, false);
+                    final BufferedSourceWithSize buffered =
+                      source(request, f, etag, start, end, compress, false);
                     multipart.addRange(buffered.source, start, end, fileLength);
                   }
                   catch (final FileNotFoundException ignore) {
@@ -513,7 +516,7 @@ public class FileHandler extends RegexHandler {
             }
           }
           else {
-            final BufferedSourceWithSize buffered = source(f, etag, compress, gzip);
+            final BufferedSourceWithSize buffered = source(request, f, etag, compress, gzip);
             if (gzip) response.header(AcceptEncoding.CONTENT_ENCODING, AcceptEncoding.GZIP);
             return response.statusLine(StatusLines.OK).body(m, buffered.source, buffered.size);
           }
@@ -565,9 +568,22 @@ public class FileHandler extends RegexHandler {
     return true;
   }
 
-  private BufferedSourceWithSize source(final File f, @Nullable final String etag,
-                                        final boolean compress,
-                                        final boolean gzip) throws FileNotFoundException {
+  /**
+   * Returns the source and its size for the requested file. This looks into the cache (and updates it)
+   * if possible.
+   * @param request the request object.
+   * @param f the file matching the request.
+   * @param etag the resource etag.
+   * @param compress true if the resource should be compressed (according to the config), false if not.
+   * @param gzip true if the resourse should be compressed and the client supports gzip compression,
+   * false otherwise.
+   * @return the source with its size information.
+   * @throws FileNotFoundException if the requested file is missing.
+   */
+  protected BufferedSourceWithSize source(@SuppressWarnings("unused") final Request request,
+                                          final File f, @Nullable final String etag,
+                                          final boolean compress,
+                                          final boolean gzip) throws FileNotFoundException {
     final BufferedSourceWithSize source1 = fromCache(f, etag, compress, gzip);
     if (source1 != null) return source1;
     final BufferedSourceWithSize source2 = cache(f, etag, compress, gzip);
@@ -594,10 +610,25 @@ public class FileHandler extends RegexHandler {
     }
   }
 
-  private BufferedSourceWithSize source(final File f, @Nullable final String etag,
-                                        final long start, final long end,
-                                        final boolean compress,
-                                        final boolean gzip) throws IOException {
+  /**
+   * Returns the source and its size for the requested file range. This looks into the cache (and updates it)
+   * if possible.
+   * @param request the request object.
+   * @param f the file matching the request.
+   * @param etag the resource etag.
+   * @param start the start byte index.
+   * @param end the end byte index.
+   * @param compress true if the resource should be compressed (according to the config), false if not.
+   * @param gzip true if the resourse should be compressed and the client supports gzip compression,
+   * false otherwise.
+   * @return the source with its size information.
+   * @throws FileNotFoundException if the requested file is missing.
+   */
+  protected BufferedSourceWithSize source(@SuppressWarnings("unused") final Request request,
+                                          final File f, @Nullable final String etag,
+                                          final long start, final long end,
+                                          final boolean compress,
+                                          final boolean gzip) throws IOException {
     final BufferedSourceWithSize source1 = fromCache(f, etag, start, end, compress, gzip);
     if (source1 != null) return source1;
     final BufferedSourceWithSize source2 = cache(f, etag, start, end, compress, gzip);
@@ -632,6 +663,19 @@ public class FileHandler extends RegexHandler {
    */
   protected @Nullable MediaType mediaType(final File file) {
     return MediaTypes.fromFile(file);
+  }
+
+  /**
+   * Calculates the E-Tag for the specified file. It can return null for unsupported files (files that are
+   * not supposed to be served by the server).
+   * @param  request the request object (can be used to access the query parameters, or the headers).
+   * @param file the file.
+   * @param webRoot the web root directory.
+   * @return the E-Tag (can be null).
+   */
+  protected @Nullable String etag(@SuppressWarnings("unused") final Request request,
+                                  final File file, final File webRoot) {
+    return etag(file, webRoot);
   }
 
   /**
