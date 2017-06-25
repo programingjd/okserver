@@ -4,12 +4,12 @@ buildscript {
   }
   dependencies {
     classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
-    classpath 'org.jsoup:jsoup:1.10.2'
+    classpath 'org.jsoup:jsoup:1.10.3'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.8.0.3'
+version '3.8.1.0'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -96,18 +96,18 @@ compileTestJava {
 
 dependencies {
   compile 'com.squareup.okio:okio:1.13.0'
-  compile 'com.squareup.okhttp3:okhttp:3.8.0'
+  compile 'com.squareup.okhttp3:okhttp:3.8.1'
   compile 'org.slf4j:slf4j-api:1.7.25'
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
   jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
 
   samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
+  samplesCompile 'info.jdavid.ok.json:okjson:3.8.1.0'
 
   testCompile 'junit:junit:4.12'
-  testCompile 'info.jdavid.ok.json:okjson:3.8.0.1'
-  testCompile 'net.sourceforge.htmlunit:htmlunit:2.25'
+  testCompile 'info.jdavid.ok.json:okjson:3.8.1.0'
+  testCompile 'net.sourceforge.htmlunit:htmlunit:2.27'
   testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.25'
 

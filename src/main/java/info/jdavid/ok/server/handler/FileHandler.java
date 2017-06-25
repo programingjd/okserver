@@ -265,7 +265,7 @@ public class FileHandler extends RegexHandler {
     final int n = params.length;
     if (n < 1) return new Response.Builder().statusLine(StatusLines.INTERNAL_SERVER_ERROR).noBody();
     final String path = params[n-1];
-    final File file = new File(webRoot, path.startsWith("/") ? path.substring(1) : path);
+    final File file = file(path, request);
     if (file.isDirectory()) {
       final int pathLength = path.length();
       if (pathLength > 0 && path.charAt(pathLength - 1) != '/') {
@@ -291,7 +291,7 @@ public class FileHandler extends RegexHandler {
         location(redirectUrl).
         noBody();
     }
-    final MediaType mediaType = mediaType(file);
+    final MediaType mediaType = mediaType(file, request);
     if (mediaType == null) {
       return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
     }
@@ -301,7 +301,7 @@ public class FileHandler extends RegexHandler {
       if (mediaType == MediaTypes.DIRECTORY) {
         f = index(file);
         if (f == null) return new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody();
-        m = mediaType(f);
+        m = mediaType(f, request);
         assert(m != null);
       }
       else {
@@ -569,6 +569,16 @@ public class FileHandler extends RegexHandler {
   }
 
   /**
+   * Returns the file represented by the specified path.
+   * @param path the path.
+   * @param request the request object.
+   * @return the file.
+   */
+  protected File file(final String path, @SuppressWarnings("unused") final Request request) {
+    return new File(webRoot, path.startsWith("/") ? path.substring(1) : path);
+  }
+
+  /**
    * Returns the source and its size for the requested file. This looks into the cache (and updates it)
    * if possible.
    * @param request the request object.
@@ -653,6 +663,18 @@ public class FileHandler extends RegexHandler {
     else {
       return new BufferedSourceWithSize(Okio.buffer(source), end - start);
     }
+  }
+
+  /**
+   * Returns the media type of the specified file. It can return null for unsupported files (files that are
+   * not supposed to be served by the server).
+   * @param file the file.
+   * @param request the request object.
+   * @return the media type (can be null).
+   */
+  protected @Nullable MediaType mediaType(final File file,
+                                          @SuppressWarnings("unused") final Request request) {
+    return mediaType(file);
   }
 
   /**
