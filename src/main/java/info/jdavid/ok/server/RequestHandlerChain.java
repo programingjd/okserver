@@ -14,6 +14,7 @@ import info.jdavid.ok.server.handler.AcmeChallengeHandler;
 import info.jdavid.ok.server.handler.FileHandler;
 import info.jdavid.ok.server.handler.Handler;
 import info.jdavid.ok.server.handler.Request;
+import info.jdavid.ok.server.header.Connection;
 import info.jdavid.ok.server.header.Preload;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -235,6 +236,9 @@ public class RequestHandlerChain extends AbstractRequestHandler {
       );
     }
     decorateResponse(responseBuilder, clientIp, false, method, url, requestHeaders);
+    if (Connection.CLOSE.equalsIgnoreCase(requestHeaders.get(Connection.HEADER))) {
+      responseBuilder.header(Connection.HEADER, Connection.CLOSE);
+    }
     return responseBuilder.build();
   }
 
@@ -248,11 +252,17 @@ public class RequestHandlerChain extends AbstractRequestHandler {
         final Response.Builder responseBuilder =
          handler.handle(new Request(clientIp, http2, method, url, requestHeaders, requestBody), params);
         decorateResponse(responseBuilder, clientIp, http2, method, url, requestHeaders);
+        if (Connection.CLOSE.equalsIgnoreCase(requestHeaders.get(Connection.HEADER))) {
+          responseBuilder.header(Connection.HEADER, Connection.CLOSE);
+        }
         return responseBuilder.build();
       }
     }
     final Response.Builder responseBuilder = handleNotAccepted(clientIp, method, url, requestHeaders);
     decorateResponse(responseBuilder, clientIp, http2, method, url, requestHeaders);
+    if (Connection.CLOSE.equalsIgnoreCase(requestHeaders.get(Connection.HEADER))) {
+      responseBuilder.header(Connection.HEADER, Connection.CLOSE);
+    }
     return responseBuilder.build();
   }
 

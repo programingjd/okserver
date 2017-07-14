@@ -2,6 +2,7 @@ package info.jdavid.ok.server;
 
 import javax.annotation.Nullable;
 
+import info.jdavid.ok.server.header.Connection;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -71,7 +72,11 @@ public abstract class AbstractRequestHandler implements RequestHandler {
 
 
   private static final Response FORBIDDEN =
-    new Response.Builder().statusLine(StatusLines.FORBIDDEN).noBody().build();
+    new Response.Builder().
+      statusLine(StatusLines.FORBIDDEN).
+      header(Connection.HEADER, Connection.CLOSE).
+      noBody().
+      build();
 
   /**
    * Hook for performing initialization tasks.
@@ -144,8 +149,13 @@ public abstract class AbstractRequestHandler implements RequestHandler {
       if (url.port() == 8080) {
         urlBuilder.port(8181);
       }
-      return new Response.Builder().statusLine(StatusLines.PERMANENT_REDIRECT).
-        location(urlBuilder.build()).hsts().noBody().build();
+      return new Response.Builder().
+        statusLine(StatusLines.PERMANENT_REDIRECT).
+        location(urlBuilder.build()).
+        hsts().
+        header(Connection.HEADER, Connection.CLOSE).
+        noBody().
+        build();
     }
   }
 

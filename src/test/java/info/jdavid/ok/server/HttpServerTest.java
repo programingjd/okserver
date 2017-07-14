@@ -65,7 +65,7 @@ public class HttpServerTest {
     SERVER.
       ports(8080, 8181).
       https(new Https.Builder().certificate(HttpsTest.cert).build()).
-      maxRequestSize(512).
+      maxRequestSize(4096).
       requestHandler(new TestRequestHandler()).
       start();
     // Use an http client once to get rid of the static initializer penalty.
@@ -87,6 +87,7 @@ public class HttpServerTest {
 //    final Response r = client().newCall(
 //      request("test").
 //        head().
+//        header("Connection", "Close").
 //        header("Expect", "100-continue").
 //        build()
 //    ).execute();
@@ -103,6 +104,7 @@ public class HttpServerTest {
     final BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     final PrintWriter writer = new PrintWriter(socket.getOutputStream());
     writer.write("Test");
+    writer.write('\r');
     writer.write('\n');
     writer.flush();
     assertEquals("HTTP/1.1 400 Bad Request", reader.readLine());
@@ -144,7 +146,7 @@ public class HttpServerTest {
       fail("A new maximum request size should not be accepted once the server has been started.");
     }
     catch (final IllegalStateException e) {
-      assertEquals(512, SERVER.maxRequestSize());
+      assertEquals(4096, SERVER.maxRequestSize());
     }
     try {
       SERVER.start();
@@ -159,7 +161,7 @@ public class HttpServerTest {
   public void testPayloadTooLarge() throws IOException {
     final Response r = client().newCall(
       request("test").
-        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[700])).
+        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[4000])).
         build()
     ).execute();
     assertNull(r.handshake());
@@ -173,7 +175,7 @@ public class HttpServerTest {
   public void testPayloadTooLargeSecure() throws IOException {
     final Response r = client().newCall(
       secureRequest("test").
-        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[700])).
+        post(RequestBody.create(MediaTypes.OCTET_STREAM, new byte[4000])).
         build()
     ).execute();
     assertNotNull(r.handshake().tlsVersion());

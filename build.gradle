@@ -9,7 +9,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.8.1.0'
+version '3.8.1.1'
 
 apply plugin: 'java'
 apply plugin: 'jacoco'
@@ -103,10 +103,10 @@ dependencies {
   jdkVersion?.with { alpn "info.jdavid.alpn:alpn-boot:${it}" }
 
   samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompile 'info.jdavid.ok.json:okjson:3.8.1.0'
+  samplesCompile 'info.jdavid.ok.json:okjson:4.0.0'
 
   testCompile 'junit:junit:4.12'
-  testCompile 'info.jdavid.ok.json:okjson:3.8.1.0'
+  testCompile 'info.jdavid.ok.json:okjson:4.0.0'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.27'
   testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.25'

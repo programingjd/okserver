@@ -63,7 +63,7 @@ public class DigestAuthHandlerTest {
     SERVER.
       ports(8080, 8181).
       https(new Https.Builder().certificate(cert).build()).
-      maxRequestSize(512).
+      maxRequestSize(4096).
       requestHandler(new RequestHandlerChain() {
         @Override
         protected boolean allowInsecure(final String method, final HttpUrl url, final Headers requestHeaders,

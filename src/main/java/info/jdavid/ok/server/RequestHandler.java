@@ -2,6 +2,7 @@ package info.jdavid.ok.server;
 
 import javax.annotation.Nullable;
 
+import info.jdavid.ok.server.header.Connection;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
@@ -39,7 +40,10 @@ public interface RequestHandler {
                            final Headers requestHeaders, @Nullable final Buffer requestBody) {
       final String h = requestHeaders.get("Host");
       if (h == null) {
-        return new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
+        return new Response.Builder().
+          statusLine(StatusLines.BAD_REQUEST).
+          header(Connection.HEADER, Connection.CLOSE).
+          noBody().build();
       }
       final int i = h.indexOf(':');
       final String host = i == -1 ? h : h.substring(0, i);

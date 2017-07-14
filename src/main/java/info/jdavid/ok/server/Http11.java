@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import info.jdavid.ok.server.header.Connection;
+import info.jdavid.ok.server.header.Expect;
 import okhttp3.Headers;
 import okhttp3.internal.http.HttpMethod;
 import okio.Buffer;
@@ -15,25 +18,38 @@ import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 
-import static info.jdavid.ok.server.Logger.logger;
-
 
 @SuppressWarnings({ "WeakerAccess" })
 class Http11 {
 
-  private static String readRequest(final BufferedSource in) throws IOException {
-    final long index = in.indexOf((byte)'\n');
-    if (index == -1) {
-      final ByteString byteString = in.readByteString();
-      if (byteString.size() > 0) {
-        logger.warn("Invalid HTTP1.1 request:\n" + byteString.utf8());
-      }
-      return null;
+  private static final Charset ASCII = Charset.forName("ASCII");
+
+  private static long crlf(final BufferedSource in, final long limit) throws IOException {
+    long index = 0;
+    while (true) {
+      index = in.indexOf((byte)'\r', index, limit);
+      if (index == -1) return -1;
+      if (in.indexOf((byte)'\n', index + 1, index + 2) != -1) return index;
+      ++index;
     }
-    else {
-      final String line = in.readUtf8Line();
-      return line == null ? null : line.trim();
+  }
+
+  private static ByteString readRequestLine(final BufferedSource in) throws IOException {
+    final long index = crlf(in, 4096);
+    if (index == -1) return null;
+    final ByteString requestLine = in.readByteString(index);
+    in.skip(2L);
+    return requestLine;
+  }
+
+  private static long skipWhitespace(final BufferedSource in) throws IOException {
+    long count = 0;
+    while (in.indexOf((byte)' ', 0, 1) == 0 ||
+           in.indexOf((byte)'\t', 0, 1) == 0) {
+      in.readByte();
+      ++count;
     }
+    return count;
   }
 
   private static boolean useSocket(final BufferedSource in, final int reuse,
@@ -58,112 +74,206 @@ class Http11 {
       final String clientIp = socket.getInetAddress().getHostAddress();
       int reuseCounter = 0;
       while (useSocket(in, reuseCounter++, keepAliveStrategy)) {
-        final String request = readRequest(in);
-        if (request == null || request.length() == 0) return;
-        final int index1 = request.indexOf(' ');
-        final String method = index1 == -1 ? null : request.substring(0, index1);
-        final int index2 = method == null ? -1 : request.indexOf(' ', index1 + 1);
-        final String path = index2 == -1 ? null : request.substring(index1 + 1, index2);
+        long availableRequestSize = maxRequestSize;
+        final ByteString requestByteString = readRequestLine(in);
         final Response response;
-        if (method == null || path == null) {
-          response = new Response.Builder().statusLine(StatusLines.BAD_REQUEST).noBody().build();
-        }
+        if (requestByteString == null || requestByteString.size() < 3) {
+          response = new Response.Builder().
+            statusLine(StatusLines.BAD_REQUEST).
+            header(Connection.HEADER, Connection.CLOSE).
+            noBody().
+            build();        }
         else {
-          final boolean useBody = HttpMethod.permitsRequestBody(method);
-          final Headers.Builder headersBuilder = new Headers.Builder();
-          String header;
-          while ((header = in.readUtf8LineStrict()).length() != 0) {
-            headersBuilder.add(header);
-          }
-          if ("100-continue".equals(headersBuilder.get("Expect"))) {
+          availableRequestSize -= (requestByteString.size() + 2);
+          final String request = requestByteString.string(ASCII);
+          final int index1 = request.indexOf(' ');
+          final String method = index1 == -1 ? null : request.substring(0, index1);
+          final int index2 = method == null ? -1 : request.indexOf(' ', index1 + 1);
+          final String path = index2 == -1 ? null : request.substring(index1 + 1, index2);
+          if (method == null || path == null) {
             response = new Response.Builder().
-              statusLine(StatusLines.CONTINUE).noBody().build();
+              statusLine(StatusLines.BAD_REQUEST).
+              header(Connection.HEADER, Connection.CLOSE).
+              noBody().
+              build();
           }
           else {
-            final String contentLength = headersBuilder.get("Content-Length");
-            final long length = contentLength == null ? -1 : Long.parseLong(contentLength);
-            if (length > maxRequestSize) {
+            final Headers.Builder headersBuilder = new Headers.Builder();
+            boolean noHeaders = true;
+            while (true) {
+              final long index = crlf(in, availableRequestSize);
+              if (index == -1) {
+                break;
+              }
+              if (noHeaders) noHeaders = false;
+              final ByteString headerByteString = in.readByteString(index);
+              in.skip(2L);
+              availableRequestSize -= (index + 2);
+              if (index == 0) break;
+              headersBuilder.add(headerByteString.string(ASCII));
+            }
+            if (noHeaders) {
               response = new Response.Builder().
-                statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
+                statusLine(StatusLines.BAD_REQUEST).
+                header(Connection.HEADER, Connection.CLOSE).
+                noBody().
+                build();
             }
             else {
-              if (length == 0) {
-                response = RequestHandler.Helper.handle(requestHandler, clientIp,
-                                                        secure, insecureOnly, false,
-                                                        method, path, headersBuilder.build(), null);
+              if (Expect.CONTINUE.equalsIgnoreCase(headersBuilder.get(Expect.HEADER))) {
+                final Buffer buffer = new Buffer();
+                boolean tooLarge = false;
+                while (true) {
+                  final long read = in.read(buffer, Math.min(availableRequestSize, 8192L));
+                  if (read == -1) break;
+                  buffer.skip(read);
+                  availableRequestSize -= read;
+                  if (availableRequestSize == 0) {
+                    tooLarge = true;
+                    break;
+                  }
+                }
+                if (tooLarge) {
+                  response = new Response.Builder().
+                    statusLine(StatusLines.PAYLOAD_TOO_LARGE).
+                    noBody().
+                    header(Connection.HEADER, Connection.CLOSE).
+                    build();
+                }
+                else {
+                  final boolean keepAlive =
+                    !Connection.CLOSE.equalsIgnoreCase(headersBuilder.get(Connection.HEADER));
+                  final Response.Builder responseBuilder = new Response.Builder().
+                    statusLine(StatusLines.CONTINUE).
+                    noBody();
+                  if (!keepAlive) responseBuilder.header(Connection.HEADER, Connection.CLOSE);
+                  response = responseBuilder.build();
+                }
               }
-              else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
-                if (useBody) {
-                  final Buffer body = new Buffer();
-                  long total = 0L;
-                  boolean invalid = false;
-                  while (true) {
-                    final long chunkSize = Long.parseLong(in.readUtf8LineStrict().trim(), 16);
-                    total += chunkSize;
-                    if (chunkSize == 0) {
-                      if (in.readUtf8LineStrict().length() != 0) invalid = true;
-                      break;
-                    }
-                    if (total > maxRequestSize) {
-                      break;
-                    }
-                    if (!socket.isClosed()) in.read(body, chunkSize);
-                    body.flush();
-                    if (in.readUtf8LineStrict().length() != 0) {
-                      invalid = true;
-                      break;
-                    }
-                  }
-                  if (invalid) {
-                    response = new Response.Builder().
-                      statusLine(StatusLines.BAD_REQUEST).noBody().build();
-                  }
-                  else if (total > maxRequestSize) {
-                    response = new Response.Builder().
-                      statusLine(StatusLines.PAYLOAD_TOO_LARGE).noBody().build();
-                  }
-                  else {
+              else {
+                final String contentLength = headersBuilder.get("Content-Length");
+                final long length = contentLength == null ? -1 : Long.parseLong(contentLength);
+                if (length > availableRequestSize) {
+                  response = new Response.Builder().
+                    statusLine(StatusLines.PAYLOAD_TOO_LARGE).
+                    header(Connection.HEADER, Connection.CLOSE).
+                    noBody().
+                    build();
+                }
+                else {
+                  final boolean useBody = HttpMethod.permitsRequestBody(method);
+                  if (length == 0) {
                     response = RequestHandler.Helper.handle(requestHandler, clientIp,
                                                             secure, insecureOnly, false,
-                                                            method, path, headersBuilder.build(), body);
+                                                            method, path, headersBuilder.build(), null);
                   }
-                }
-                else {
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
-                                                          secure, insecureOnly, false,
-                                                          method, path, headersBuilder.build(), null);
-                }
-              }
-              else { // length > 0
-                if (useBody) {
-                  final Buffer body = new Buffer();
-                  if (!socket.isClosed()) in.readFully(body, length);
-                  body.flush();
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
-                                                          secure, insecureOnly, false,
-                                                          method, path, headersBuilder.build(), body);
-                }
-                else {
-                  response = RequestHandler.Helper.handle(requestHandler, clientIp,
-                                                          secure, insecureOnly, false,
-                                                          method, path, headersBuilder.build(), null);
+                  else if (length < 0 || "chunked".equals(headersBuilder.get("Transfer-Encoding"))) {
+                    if (useBody) {
+                      final Buffer body = new Buffer();
+                      boolean tooLarge = false;
+                      boolean invalid = false;
+                      while (true) {
+                        availableRequestSize -= skipWhitespace(in);
+                        final long index = crlf(in, 16);
+                        if (index == -1) {
+                          invalid = true;
+                          break;
+                        }
+                        final ByteString chunkSizeByteString = in.readByteString(index);
+                        in.skip(2L);
+                        availableRequestSize -= (index + 2);
+                        final long chunkSize = Long.parseLong(chunkSizeByteString.string(ASCII).trim(), 16);
+                        if (chunkSize == 0) {
+                          if (crlf(in, 2) != 0) {
+                            invalid = true;
+                          }
+                          else {
+                            in.skip(2L);
+                          }
+                          break;
+                        }
+                        if (chunkSize > availableRequestSize) {
+                          tooLarge = true;
+                          break;
+                        }
+                        if (!socket.isClosed()) {
+                          long remaining = chunkSize;
+                          while (true) {
+                            final long read = in.read(body, remaining);
+                            if (read == -1) {
+                              invalid = true;
+                              break;
+                            }
+                            remaining -= read;
+                            if (remaining < 1) break;
+                          }
+                          if (invalid) break;
+                          availableRequestSize -= chunkSize;
+                        }
+                        body.flush();
+                        if (crlf(in, 2) != 0) {
+                          invalid = true;
+                          break;
+                        }
+                        else {
+                          in.skip(2L);
+                        }
+                        availableRequestSize -= 2;
+                      }
+                      if (invalid) {
+                        response = new Response.Builder().
+                          statusLine(StatusLines.BAD_REQUEST).
+                          header(Connection.HEADER, Connection.CLOSE).
+                          noBody().
+                          build();
+                      }
+                      else if (tooLarge) {
+                        response = new Response.Builder().
+                          statusLine(StatusLines.PAYLOAD_TOO_LARGE).
+                          header(Connection.HEADER, Connection.CLOSE).
+                          noBody().
+                          build();
+                      }
+                      else {
+                        response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                                secure, insecureOnly, false,
+                                                                method, path, headersBuilder.build(), body);
+                      }
+                    }
+                    else {
+                      response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                              secure, insecureOnly, false,
+                                                              method, path, headersBuilder.build(), null);
+                    }
+                  }
+                  else { // length > 0
+                    if (useBody) {
+                      final Buffer body = new Buffer();
+                      if (!socket.isClosed()) in.readFully(body, length);
+                      body.flush();
+                      response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                              secure, insecureOnly, false,
+                                                              method, path, headersBuilder.build(), body);
+                    }
+                    else {
+                      response = RequestHandler.Helper.handle(requestHandler, clientIp,
+                                                              secure, insecureOnly, false,
+                                                              method, path, headersBuilder.build(), null);
+                    }
+                  }
                 }
               }
             }
           }
         }
-        final Response r =
-          response == null ?
-          new Response.Builder().statusLine(StatusLines.NOT_FOUND).noBody().build() :
-          response;
 
-        out.writeUtf8(r.protocol().toString().toUpperCase(Locale.US));
+        out.writeUtf8(response.protocol().toString().toUpperCase(Locale.US));
         out.writeUtf8(" ");
-        out.writeUtf8(String.valueOf(r.code()));
+        out.writeUtf8(String.valueOf(response.code()));
         out.writeUtf8(" ");
-        out.writeUtf8(r.message());
+        out.writeUtf8(response.message());
         out.writeUtf8("\r\n");
-        final Headers headers = r.headers();
+        final Headers headers = response.headers();
         final int headersSize = headers.size();
         for (int i=0; i<headersSize; ++i) {
           out.writeUtf8(headers.name(i));
@@ -174,7 +284,9 @@ class Http11 {
         out.writeUtf8("\r\n");
         out.flush();
 
-        r.writeBody(in, out);
+        response.writeBody(in, out);
+
+        if (Connection.CLOSE.equalsIgnoreCase(response.header(Connection.HEADER))) break;
       }
     }
     catch (final SocketTimeoutException ignore) {}
