@@ -278,6 +278,27 @@ public class HttpServer {
     return started.get();
   }
 
+  protected void dispatchLoop(final Dispatcher dispatcher, final ServerSocket socket,
+                            final boolean secure, final boolean insecureOnly) {
+    while (true) {
+      try {
+        if (!Thread.currentThread().isInterrupted()) {
+          dispatcher.dispatch(new Request(socket.accept(), secure, insecureOnly));
+        }
+      }
+      catch (final BindException e) {
+        logger.warn("Could not bind to port: " + port, e);
+        break;
+      }
+      catch (final IOException e) {
+        if (serverSocket.isClosed()) {
+          break;
+        }
+        logger.warn(secure ? "HTTPS" : "HTTP", e);
+      }
+    }
+  }
+
   /**
    * Starts the server.
    */
@@ -338,22 +359,7 @@ public class HttpServer {
         new Thread(new Runnable() {
           @Override public void run() {
             try {
-              //noinspection InfiniteLoopStatement
-              while (true) {
-                try {
-                  dispatch(dispatcher, serverSocket.accept(), false, secureServerSocket == null);
-                }
-                catch (final BindException e) {
-                  logger.warn("Could not bind to port: " + port, e);
-                  break;
-                }
-                catch (final IOException e) {
-                  if (serverSocket.isClosed()) {
-                    break;
-                  }
-                  logger.warn("HTTP", e);
-                }
-              }
+              dispatchLoop(dispatcher, serverSocket, false, secureServerSocket == null);
             }
             finally {
               try {
@@ -376,22 +382,7 @@ public class HttpServer {
         new Thread(new Runnable() {
           @Override public void run() {
             try {
-              //noinspection InfiniteLoopStatement
-              while (true) {
-                try {
-                  dispatch(dispatcher, secureServerSocket.accept(), true, false);
-                }
-                catch (final BindException e) {
-                  logger.warn("Could not bind to port: " + port, e);
-                  break;
-                }
-                catch (final IOException e) {
-                  if (secureServerSocket.isClosed()) {
-                    break;
-                  }
-                  logger.warn("HTTPS", e);
-                }
-              }
+              dispatchLoop(dispatcher, secureServerSocket, true, false);
             }
             finally {
               try {
@@ -490,13 +481,6 @@ public class HttpServer {
       else {
         HttpServer.this.serveHttp1(socket, false, mInsecureOnly);
       }
-    }
-  }
-
-  private void dispatch(final Dispatcher dispatcher, final Socket socket,
-                        final boolean secure, final boolean insecureOnly) {
-    if (!Thread.currentThread().isInterrupted()) {
-      dispatcher.dispatch(new Request(socket, secure, insecureOnly));
     }
   }
 

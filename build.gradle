@@ -208,23 +208,6 @@ task cli(type: JavaExec, dependsOn: classes) {
   classpath += files(configurations.cli.files)
 }
 
-task singleJar(type: Jar, dependsOn: jar) {
-  baseName = "${project.name}-all"
-  from {
-    configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-  }
-  from {
-    configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) }
-  }
-  from {
-    configurations.cli.collect { it.isDirectory() ? it : zipTree(it) }
-  }
-  from { sourceSets.main.output }
-  manifest {
-    attributes 'Main-Class': 'info.jdavid.ok.server.RequestHandlerChain'
-  }
-}
-
 task javadocJar(type: Jar, dependsOn: javadoc) {
   classifier = 'javadoc'
   from javadoc.destinationDir
