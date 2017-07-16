@@ -68,7 +68,7 @@ public class ResponseBuilderTest {
       assertEquals(StatusLines.get(code).message, response.message());
     }
     assertTrue(response(200).build().isSuccessful());
-    assertTrue(response(302).build().isSuccessful());
+    assertFalse(response(302).build().isSuccessful());
     assertFalse(response(404).build().isSuccessful());
     assertFalse(response(500).build().isSuccessful());
   }
