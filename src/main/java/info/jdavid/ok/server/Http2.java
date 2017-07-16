@@ -81,7 +81,7 @@ class Http2 {
   private static List<Header> responseHeaders(final Response response) {
     final Headers headers = response.headers();
     final int size = headers.size();
-    final List<Header> responseHeaders = new ArrayList<Header>(size + 1);
+    final List<Header> responseHeaders = new ArrayList<>(size + 1);
     responseHeaders.add(
       new Header(Header.RESPONSE_STATUS, ByteString.encodeUtf8(String.valueOf(response.code())))
     );
@@ -119,6 +119,7 @@ class Http2 {
       clientIp = address;
     }
 
+    @SuppressWarnings("TryFinallyCanBeTryWithResources")
     @Override public void onStream(final Http2Stream stream) throws IOException {
       final List<Header> requestHeaderList = stream.getRequestHeaders();
       final Headers.Builder requestHeaders = new Headers.Builder();
@@ -210,7 +211,7 @@ class Http2 {
           for (final HttpUrl push : pushUrls) {
             final Headers headers = requestHeaders.build();
             final int size = headers.size();
-            final List<Header> pushHeaderList = new ArrayList<Header>(size + 4);
+            final List<Header> pushHeaderList = new ArrayList<>(size + 4);
             assert method != null;
             assert scheme != null;
             pushHeaderList.add(new Header(TARGET_METHOD, method));

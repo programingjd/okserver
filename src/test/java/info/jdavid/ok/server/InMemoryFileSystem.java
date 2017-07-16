@@ -15,7 +15,7 @@ import okio.Source;
 
 public class InMemoryFileSystem implements FileSystem {
 
-  private Map<String, InMemoryFile> mInMemoryFiles = new HashMap<String, InMemoryFile>();
+  private Map<String, InMemoryFile> mInMemoryFiles = new HashMap<>();
 
   private static class InMemoryFile {
     private Buffer buffer = new Buffer();

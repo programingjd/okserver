@@ -6,11 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.Nullable;
-
 import okhttp3.ConnectionPool;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -26,15 +22,8 @@ import static org.junit.Assert.*;
 @SuppressWarnings("ConstantConditions")
 public class RequestHandlerTest {
 
-  private static HttpServer SERVER = new HttpServer().requestHandler(new RequestHandler() {
-    @Override public Response handle(final String clientIp,
-                                     final boolean secure,
-                                     final boolean insecureOnly,
-                                     final boolean http2,
-                                     final String method,
-                                     final HttpUrl url,
-                                     final Headers requestHeaders,
-                                     @Nullable final Buffer requestBody) {
+  private static HttpServer SERVER = new HttpServer().requestHandler(
+    (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
         final Buffer buffer = new Buffer();
         System.out.println(clientIp);
         buffer.writeByte(byteLength(clientIp));
@@ -57,7 +46,7 @@ public class RequestHandlerTest {
         buffer.write(requestBody, requestBody.size());
         return new Response.Builder().statusLine(StatusLines.OK).body(buffer, (int)buffer.size()).build();
       }
-  });
+    );
 
   private static int byteLength(final String s) {
     try {
@@ -126,7 +115,7 @@ public class RequestHandlerTest {
     source.read(buffer, 1);
     final byte count = buffer.readByte();
     assertTrue(count > 3);
-    final Map<String, String> headers = new HashMap<String, String>(count);
+    final Map<String, String> headers = new HashMap<>(count);
     for (int i=0; i<count; ++i) {
       source.read(buffer, 1);
       final int nameLength = buffer.readByte();

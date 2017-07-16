@@ -8,16 +8,11 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.Nullable;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionPool;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
@@ -37,6 +32,7 @@ public class HttpsTest {
   private static byte[] getCert() {
     final Source source = Okio.source(HttpsTest.class.getResourceAsStream("/test.p12"));
     final Buffer buffer = new Buffer();
+    //noinspection TryFinallyCanBeTryWithResources
     try {
       buffer.writeAll(source);
       return buffer.readByteArray();
@@ -69,11 +65,7 @@ public class HttpsTest {
       context.init(null, new TrustManager[] { trustManager }, new SecureRandom());
       client = new OkHttpClient.Builder().
         sslSocketFactory(context.getSocketFactory(), trustManager).
-        hostnameVerifier(new HostnameVerifier() {
-          @Override public boolean verify(final String hostname, final SSLSession sslSession) {
-            return true;
-          }
-        }).
+        hostnameVerifier((hostname, sslSession) -> true).
         build();
     }
     catch (final GeneralSecurityException e) {
@@ -99,15 +91,9 @@ public class HttpsTest {
     SERVER.
       ports(8080, 8181).
       https(new Https.Builder().certificate(cert, false).build()).
-      requestHandler(new RequestHandler() {
-        @Override public Response handle(final String clientIp, final boolean secure,
-                                         final boolean insecureOnly, final boolean http2,
-                                         final String method, final HttpUrl url,
-                                         final Headers requestHeaders,
-                                         @Nullable final Buffer requestBody) {
-          final String s = url + "\n" + secure + "\n" + insecureOnly;
-          return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
-        }
+      requestHandler((clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+        final String s = url + "\n" + secure + "\n" + insecureOnly;
+        return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
       }).
       start();
     // Use an http client once to get rid of the static initializer penalty.

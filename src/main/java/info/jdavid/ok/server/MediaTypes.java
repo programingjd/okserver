@@ -16,7 +16,7 @@ import okhttp3.MediaType;
 /**
  * List of predefined media types.
  */
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public class MediaTypes {
 
   public static final MediaType CSS = MediaType.parse("text/css");
@@ -81,7 +81,7 @@ public class MediaTypes {
 
   static final Map<String, MediaType> EXTENSIONS = initMap();
   private static Map<String, MediaType> initMap() {
-    final Map<String, MediaType> map = new HashMap<String, MediaType>(64);
+    final Map<String, MediaType> map = new HashMap<>(64);
     map.put("html", HTML);
     map.put("css", CSS);
     map.put("js", JAVASCRIPT);

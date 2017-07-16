@@ -10,6 +10,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
+
 class Crypto {
 
   private Crypto() {}
@@ -79,7 +80,7 @@ class Crypto {
     }
   }
 
-  static Cipher cipher(final String algorithm) {
+  private static Cipher cipher(final String algorithm) {
     try {
       return Cipher.getInstance(algorithm);
     }

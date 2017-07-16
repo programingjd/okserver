@@ -39,6 +39,7 @@ public class DigestAuthHandler extends AuthHandler {
    * @param seed the seed used for random bytes generation.
    * @param delegate the delegate handler.
    */
+  @SuppressWarnings("unused")
   public DigestAuthHandler(final Map<String, String> credentials, final byte[] seed, final Handler delegate) {
     this(credentials, "digest", seed, delegate);
   }
@@ -119,7 +120,7 @@ public class DigestAuthHandler extends AuthHandler {
   static Map<String, String> parseHeaderValue(final String headerValue) {
     final Matcher matcher =
       AUTHORIZATION_VALUE_REGEX.matcher(headerValue.substring(headerValue.indexOf(' ') + 1));
-    final Map<String, String> map = new HashMap<String, String>(12);
+    final Map<String, String> map = new HashMap<>(12);
     while (matcher.find()) {
       final String group1 = matcher.group(1);
       final String group2 = matcher.group(2);

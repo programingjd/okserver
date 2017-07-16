@@ -4,14 +4,9 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.annotation.Nullable;
-
 import okhttp3.ConnectionPool;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okio.Buffer;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -22,16 +17,11 @@ import static org.junit.Assert.*;
 public class DispatcherTest {
 
   private static HttpServer server(final Dispatcher dispatcher) {
-    return new HttpServer().dispatcher(dispatcher).port(8080).requestHandler(new RequestHandler() {
-      @Override public Response handle(final String clientIp,
-                                       final boolean secure, final boolean insecureOnly, final boolean http2,
-                                       final String method, final HttpUrl url,
-                                       final Headers requestHeaders,
-                                       @Nullable final Buffer requestBody) {
+    return new HttpServer().dispatcher(dispatcher).port(8080).requestHandler(
+      (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
         try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
         return new Response.Builder().statusLine(StatusLines.OK).body("Test").build();
-      }
-    });
+      });
   }
 
   private static final OkHttpClient client = new OkHttpClient();
@@ -51,15 +41,13 @@ public class DispatcherTest {
   }
 
   private static Runnable call(final AtomicInteger counter) {
-    return new Runnable() {
-      @Override public void run() {
-        try {
-          assertEquals("Test", client().newCall(request()).execute().body().string());
-          counter.incrementAndGet();
-        }
-        catch (final IOException e) {
-          throw new RuntimeException(e);
-        }
+    return () -> {
+      try {
+        assertEquals("Test", client().newCall(request()).execute().body().string());
+        counter.incrementAndGet();
+      }
+      catch (final IOException e) {
+        throw new RuntimeException(e);
       }
     };
   }

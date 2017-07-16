@@ -82,7 +82,8 @@ class Http11 {
             statusLine(StatusLines.BAD_REQUEST).
             header(Connection.HEADER, Connection.CLOSE).
             noBody().
-            build();        }
+            build();
+        }
         else {
           availableRequestSize -= (requestByteString.size() + 2);
           final String request = requestByteString.string(ASCII);

@@ -24,6 +24,7 @@ public class AcmeChallengeHandler implements Handler {
     domainDirectories = null;
   }
 
+  @SuppressWarnings("unused")
   public AcmeChallengeHandler(final Map<String, File> domainAcmeDirectories) {
     if (domainAcmeDirectories.isEmpty()) throw new IllegalArgumentException();
     directory = null;

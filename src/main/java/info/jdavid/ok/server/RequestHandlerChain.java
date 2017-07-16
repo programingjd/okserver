@@ -37,7 +37,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   @SuppressWarnings("UnusedReturnValue")
   static HttpServer cmd(final String[] args) {
     //final String[] args = new String[] { "--root", "i:/jdavid/pierreblanche.bitbucket.org" };
-    final Map<String, String> map = new HashMap<String, String>(args.length);
+    final Map<String, String> map = new HashMap<>(args.length);
     String key = null;
     String value = null;
     for (final String arg: args) {
@@ -157,7 +157,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
                        "prints this help.");
   }
 
-  private static String pad(final String s, final int n) {
+  private static String pad(final String s, @SuppressWarnings("SameParameterValue") final int n) {
     final String tenSpaces = "          ";
     final StringBuilder builder = new StringBuilder(s);
     while (builder.length() < n) {
@@ -167,7 +167,7 @@ public class RequestHandlerChain extends AbstractRequestHandler {
   }
 
   final Handler acmeHandler;
-  final List<Handler> chain = new LinkedList<Handler>();
+  final List<Handler> chain = new LinkedList<>();
 
   /**
    * Creates the default chain: a file handler serving the current directory.

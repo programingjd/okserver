@@ -158,8 +158,7 @@ public class HttpServer {
    * @param handler the candidate request handler.
    * @throws IllegalArgumentException if the handler is not suitable.
    */
-  @SuppressWarnings("unused")
-  protected void validateHandler(final RequestHandler handler) {}
+  protected void validateHandler(@SuppressWarnings("unused") final RequestHandler handler) {}
 
   /**
    * Sets the request handler.

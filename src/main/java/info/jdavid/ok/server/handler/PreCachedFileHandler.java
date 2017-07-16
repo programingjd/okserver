@@ -25,7 +25,7 @@ import okio.Okio;
 /**
  * Extension of FileHandler that precaches all files.
  */
-@SuppressWarnings({ "WeakerAccess" })
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public class PreCachedFileHandler extends FileHandler {
 
   private static final String UTF8 = "UTF-8";
@@ -33,7 +33,7 @@ public class PreCachedFileHandler extends FileHandler {
   String etagPrefix = null;
 
   final Map<String, Data> cache =
-    new LinkedHashMap<String, Data>(4096, 0.75f, true);
+    new LinkedHashMap<>(4096, 0.75f, true);
 
   /**
    * Creates a new file handler that will accept all requests.
@@ -83,7 +83,7 @@ public class PreCachedFileHandler extends FileHandler {
   public Handler setup() {
     super.setup();
     etagPrefix = etagPrefix(webRoot);
-    final Deque<File> deque = new ArrayDeque<File>();
+    final Deque<File> deque = new ArrayDeque<>();
     deque.push(webRoot);
     while (!deque.isEmpty()) {
       final File current = deque.pop();

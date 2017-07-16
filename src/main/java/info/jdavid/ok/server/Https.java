@@ -48,7 +48,7 @@ public final class Https {
     context = createSSLContext(cert);
     final Platform platform = this.platform = Platform.findPlatform();
     additionalContexts =
-      new HashMap<String, SSLContext>(additionalCerts == null ? 0 : additionalCerts.size());
+      new HashMap<>(additionalCerts == null ? 0 : additionalCerts.size());
     if (additionalCerts != null) {
       for (final Map.Entry<String, byte[]> entry : additionalCerts.entrySet()) {
         final SSLContext additionalContext = createSSLContext(entry.getValue());
@@ -136,7 +136,7 @@ public final class Https {
     private List<String> mProtocols = null;
     private List<String> mCipherSuites = null;
     private byte[] mCertificate = null;
-    private final Map<String, byte[]> mAdditionalCertificates = new HashMap<String, byte[]>(4);
+    private final Map<String, byte[]> mAdditionalCertificates = new HashMap<>(4);
 
     public Builder() {}
 
@@ -192,7 +192,7 @@ public final class Https {
      * @return this.
      */
     public Builder protocols(final Protocol[] protocols) {
-      final List<String> list = new ArrayList<String>(protocols.length);
+      final List<String> list = new ArrayList<>(protocols.length);
       for (final Protocol protocol: protocols) {
         list.add(protocol.name);
       }

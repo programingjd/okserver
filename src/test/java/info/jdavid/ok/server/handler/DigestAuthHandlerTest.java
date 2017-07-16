@@ -31,6 +31,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class DigestAuthHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
@@ -41,12 +42,8 @@ public class DigestAuthHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
-    try {
+    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
       raf.readFully(cert);
-    }
-    finally {
-      raf.close();
     }
     final Handler handler = new Handler() {
       @Override public Handler setup() { return this; }
@@ -57,7 +54,7 @@ public class DigestAuthHandlerTest {
         return new Response.Builder().statusLine(StatusLines.OK).noBody();
       }
     };
-    final Map<String, String> credentials = new HashMap<String, String>();
+    final Map<String, String> credentials = new HashMap<>();
     credentials.put("user1", "password1");
     credentials.put("user 2", "password 2");
     SERVER.

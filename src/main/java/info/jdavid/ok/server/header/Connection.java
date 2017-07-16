@@ -3,7 +3,7 @@ package info.jdavid.ok.server.header;
 /**
  * Connection header.
  */
-@SuppressWarnings({ "WeakerAccess" })
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public final class Connection {
 
   private Connection() {}

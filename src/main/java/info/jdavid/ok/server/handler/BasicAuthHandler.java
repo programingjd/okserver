@@ -54,7 +54,7 @@ public class BasicAuthHandler extends AuthHandler {
 
   private static Set<String> credentials(final Map<String, String> credentials) {
     final Base64Helper helper = new Base64Helper();
-    final Set<String> set = new HashSet<String>(credentials.size());
+    final Set<String> set = new HashSet<>(credentials.size());
     for (final Map.Entry<String, String> entry: credentials.entrySet()) {
       final String user = entry.getKey();
       final String password = entry.getValue();

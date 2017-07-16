@@ -8,12 +8,9 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
 
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
-import okio.Buffer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -55,14 +52,10 @@ public class ClientIpTest {
 
   @BeforeClass
   public static void startServer() {
-    SERVER.port(8080).requestHandler(new RequestHandler() {
-      @Override public Response handle(final String clientIp,
-                                       final boolean secure, final boolean insecureOnly, final boolean http2,
-                                       final String method, final HttpUrl url,
-                                       final Headers requestHeaders, @Nullable final Buffer requestBody) {
-        return new Response.Builder().statusLine(StatusLines.OK).body(clientIp).build();
-      }
-    }).start();
+    SERVER.port(8080).requestHandler(
+      (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) ->
+        new Response.Builder().statusLine(StatusLines.OK).body(clientIp).build()
+      ).start();
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.
     try {

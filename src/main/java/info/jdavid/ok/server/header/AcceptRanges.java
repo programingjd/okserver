@@ -84,7 +84,7 @@ public final class AcceptRanges {
       private static final ByteString CONTENT_RANGE_PREFIX = ByteString.encodeUtf8("Content-Range: bytes ");
 
       final MediaType contentType;
-      final List<Part> parts = new ArrayList<Part>(8);
+      final List<Part> parts = new ArrayList<>(8);
       final ByteString boundary;
 
       public Builder(final MediaType contentType) {

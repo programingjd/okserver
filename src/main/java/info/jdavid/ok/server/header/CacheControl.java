@@ -22,6 +22,7 @@ public final class CacheControl {
   /**
    * Cache-Control directive.
    */
+  @SuppressWarnings("unused")
   public static class Directive {
 
     private Directive() {}

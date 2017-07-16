@@ -30,7 +30,7 @@ final class Handshake {
   String[] getCipherSuites() {
     final Buffer buffer = new Buffer();
     buffer.write(cipherSuites);
-    final List<String> list = new ArrayList<String>(cipherSuites.length / 2);
+    final List<String> list = new ArrayList<>(cipherSuites.length / 2);
     while (buffer.size() > 0) {
       final String name = CIPHER_SUITES.get(buffer.readShort());
       if (name != null) {
@@ -359,7 +359,7 @@ final class Handshake {
 
   static Map<Short, String> createCipherSuitesMap() {
     // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
-    final Map<Short, String> map = new HashMap<Short, String>(1024);
+    final Map<Short, String> map = new HashMap<>(1024);
     map.put((short)0, "TLS_NULL_WITH_NULL_NULL");
     map.put((short)1, "TLS_RSA_WITH_NULL_MD5");
     map.put((short)2, "TLS_RSA_WITH_NULL_SHA");

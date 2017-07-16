@@ -4,7 +4,7 @@ package info.jdavid.ok.server.header;
 /**
  * Cross origin headers.
  */
-@SuppressWarnings({ "WeakerAccess" })
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public final class Cors {
 
   private Cors() {}

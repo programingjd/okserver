@@ -34,12 +34,8 @@ public class PreCachedFileHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
-    try {
+    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
       raf.readFully(cert);
-    }
-    finally {
-      raf.close();
     }
     SERVER.
       ports(8080, 8181).
@@ -60,7 +56,7 @@ public class PreCachedFileHandlerTest {
     SERVER.shutdown();
   }
 
-  static File getWebRoot() throws IOException {
+  private static File getWebRoot() throws IOException {
     final File projectDir = new File(".").getCanonicalFile();
     final File root = new File(new File(new File(projectDir, "src"), "test"), "resources");
     assertTrue(root.isDirectory());

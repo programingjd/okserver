@@ -155,7 +155,7 @@ public abstract class Response {
    * You should not reuse builder instances when a body (or chunks) have been set, because those
    * can only be read once.
    */
-  @SuppressWarnings("UnusedReturnValue")
+  @SuppressWarnings({ "UnusedReturnValue", "unused" })
   public static final class Builder {
 
     private static final String CONTENT_LENGTH = "Content-Length";
@@ -701,7 +701,7 @@ public abstract class Response {
      * @return this
      */
     public Builder push(final HttpUrl url) {
-      if (this.push == null) this.push = new ArrayList<HttpUrl>(4);
+      if (this.push == null) this.push = new ArrayList<>(4);
       this.push.add(url);
       return this;
     }
@@ -798,7 +798,7 @@ public abstract class Response {
   public static final class EventSource {
 
     private final Lock lock = new ReentrantLock();
-    final List<SSE> responses = new ArrayList<SSE>();
+    final List<SSE> responses = new ArrayList<>();
 
     public EventSource() {}
 
@@ -894,7 +894,7 @@ public abstract class Response {
 
     private final Lock lock = new ReentrantLock();
     private final Condition isReady = lock.newCondition();
-    final List<Message> queue = new LinkedList<Message>();
+    final List<Message> queue = new LinkedList<>();
 
     static class Message {
       final String data;

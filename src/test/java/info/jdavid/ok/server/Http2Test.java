@@ -7,15 +7,11 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.annotation.Nullable;
-
 import okhttp3.ConnectionPool;
-import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
-import okio.Buffer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -72,22 +68,16 @@ public class Http2Test {
     SERVER.
       ports(0, 8181).
       https(new Https.Builder().certificate(HttpsTest.cert, true).build()).
-      requestHandler(new RequestHandler() {
-        @Override public Response handle(final String clientIp, final boolean secure,
-                                         final boolean insecureOnly, final boolean http2,
-                                         final String method, final HttpUrl url,
-                                         final Headers requestHeaders,
-                                         @Nullable final Buffer requestBody) {
-          final List<String> path = url.pathSegments();
-          if (path.isEmpty() || !path.get(path.size() - 1).equals("push")) {
-            final String s = url + "\n" + secure + "\n" + insecureOnly + "\n" + http2;
-            final HttpUrl pushUrl = url.newBuilder("push").build();
-            return new Response.Builder().statusLine(StatusLines.OK).body(s).push(pushUrl).build();
-          }
-          else {
-            pushCounter.incrementAndGet();
-            return new Response.Builder().statusLine(StatusLines.OK).body("push").build();
-          }
+      requestHandler((clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+        final List<String> path = url.pathSegments();
+        if (path.isEmpty() || !path.get(path.size() - 1).equals("push")) {
+          final String s = url + "\n" + secure + "\n" + insecureOnly + "\n" + http2;
+          final HttpUrl pushUrl = url.newBuilder("push").build();
+          return new Response.Builder().statusLine(StatusLines.OK).body(s).push(pushUrl).build();
+        }
+        else {
+          pushCounter.incrementAndGet();
+          return new Response.Builder().statusLine(StatusLines.OK).body("push").build();
         }
       }).
       start();

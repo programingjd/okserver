@@ -22,6 +22,7 @@ import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okio.Buffer;
 
+@SuppressWarnings({ "unused", "Convert2Lambda", "Anonymous2MethodRef" })
 public class Readme {
 
   public static void customRequestHandler() {
@@ -92,7 +93,7 @@ public class Readme {
   }
 
   public static void handlerChain() {
-    final Map<String, String> credentials = new HashMap<String, String>();
+    final Map<String, String> credentials = new HashMap<>();
     credentials.put("user1", "password1");
     final File webRoot = new File(new File(System.getProperty("user.home")), "www");
 

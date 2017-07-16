@@ -36,6 +36,7 @@ public class SSEServer {
     new SSEServer(8080, 15, 10, 5).start();
   }
 
+  @SuppressWarnings("AnonymousHasLambdaAlternative")
   private static class SSEHandler extends RegexHandler {
 
     private final int mRetrySecs;

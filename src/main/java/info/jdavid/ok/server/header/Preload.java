@@ -14,7 +14,7 @@ import okhttp3.HttpUrl;
 /**
  * Preload link header used for http2 push.
  */
-@SuppressWarnings({ "WeakerAccess" })
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public final class Preload {
 
   private Preload() {}
@@ -87,7 +87,7 @@ public final class Preload {
 
   private static List<HttpUrl> getPushUrls(@Nullable final List<String> values) {
     if (values == null || values.size() == 0) return Collections.emptyList();
-    final List<HttpUrl> urls = new ArrayList<HttpUrl>(values.size());
+    final List<HttpUrl> urls = new ArrayList<>(values.size());
     for (final String value: values) {
       final int index = value.indexOf(">; rel=preload");
       if (index != -1 && value.charAt(0) == '<' && !value.endsWith("; nopush")) {

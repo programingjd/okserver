@@ -19,6 +19,7 @@ import info.jdavid.ok.server.handler.Request;
 import okio.Buffer;
 
 
+@SuppressWarnings("WeakerAccess")
 public class ApiServer {
 
   final HttpServer mServer;

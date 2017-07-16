@@ -35,7 +35,7 @@ import okio.Timeout;
 public class FileHandler extends RegexHandler {
 
   final File webRoot;
-  final Collection<MediaType> allowedMediaTypes = new ArrayList<MediaType>(48);
+  final Collection<MediaType> allowedMediaTypes = new ArrayList<>(48);
   final List<String> indexNames;
 
   /**

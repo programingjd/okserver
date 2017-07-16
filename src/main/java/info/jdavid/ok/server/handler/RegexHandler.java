@@ -17,7 +17,7 @@ import okhttp3.HttpUrl;
  * Handler that accepts request based on the request method and a regular expression for the request url path.
  * The regex captured groups are passed as parameters to the handle method.
  */
-@SuppressWarnings({ "WeakerAccess" })
+@SuppressWarnings({ "WeakerAccess", "unused" })
 public abstract class RegexHandler implements Handler {
 
   final Pattern pattern;
@@ -33,7 +33,7 @@ public abstract class RegexHandler implements Handler {
     if (methods.isEmpty()) {
       throw new NullPointerException("The accepted request method cannot be null.");
     }
-    final List<String> list = this.methods = new ArrayList<String>(methods.size());
+    final List<String> list = this.methods = new ArrayList<>(methods.size());
     for (final String method: methods) {
       list.add(method.toUpperCase());
     }

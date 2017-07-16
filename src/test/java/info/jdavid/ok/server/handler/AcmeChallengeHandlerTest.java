@@ -22,6 +22,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class AcmeChallengeHandlerTest {
   private static final String FILENAME = "8sJDar9qlMMswuDxAa2rnfOid82dnSw_fQapdlxfjJl";
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
@@ -32,12 +33,8 @@ public class AcmeChallengeHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
-    try {
+    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
       raf.readFully(cert);
-    }
-    finally {
-      raf.close();
     }
     SERVER.
       ports(8080, 8181).
@@ -85,6 +82,7 @@ public class AcmeChallengeHandlerTest {
 
   @Test
   public void testHttps() throws Exception {
+    test("https://localhost:8181/");
     FileHandlerTest.testWeb("https://localhost:8181/");
   }
 

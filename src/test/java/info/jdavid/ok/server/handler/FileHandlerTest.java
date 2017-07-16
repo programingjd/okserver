@@ -39,6 +39,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class FileHandlerTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
@@ -49,12 +50,8 @@ public class FileHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
-    try {
+    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
       raf.readFully(cert);
-    }
-    finally {
-      raf.close();
     }
     SERVER.
       ports(8080, 8181).
@@ -75,14 +72,14 @@ public class FileHandlerTest {
     SERVER.shutdown();
   }
 
-  static File getWebRoot() throws IOException {
+  private static File getWebRoot() throws IOException {
     final File projectDir = new File(".").getCanonicalFile();
     final File root = new File(new File(new File(projectDir, "src"), "test"), "resources");
     assertTrue(root.isDirectory());
     return root;
   }
 
-  static OkHttpClient client() {
+  private static OkHttpClient client() {
     return HttpsTest.client.newBuilder().
       readTimeout(0, TimeUnit.SECONDS).
       retryOnConnectionFailure(false).
@@ -107,8 +104,7 @@ public class FileHandlerTest {
   static void testWeb(final String baseUrl) throws Exception {
     final File root = getWebRoot();
     //try { Thread.sleep(3000L); } catch (final InterruptedException ignore) {}
-    final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED);
-    try {
+    try (final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED)) {
       web.setCache(new Cache() {
         @Override
         protected boolean isCacheableContent(WebResponse response) {
@@ -131,7 +127,7 @@ public class FileHandlerTest {
       final WebResponse imgResponse = cache.getCachedResponse(req(baseUrl + "img.png"));
       assertEquals(200, imgResponse.getStatusCode());
       assertEquals(new File(root, "img.png").length(), imgResponse.getContentLength());
-      final WebResponse jsResponse = cache.getCachedResponse(req( baseUrl + "script.js"));
+      final WebResponse jsResponse = cache.getCachedResponse(req(baseUrl + "script.js"));
       assertEquals(200, jsResponse.getStatusCode());
       assertEquals(text(new File(root, "script.js")), jsResponse.getContentAsString().trim());
       final WebResponse htmlResponse = cache.getCachedResponse(req(baseUrl));
@@ -144,9 +140,6 @@ public class FileHandlerTest {
       final WebResponse indexResponse = cache.getCachedResponse(req(baseUrl + "index.html"));
       assertEquals(301, indexResponse.getStatusCode());
       assertEquals(baseUrl, indexResponse.getResponseHeaderValue("Location"));
-    }
-    finally {
-      web.close();
     }
   }
 

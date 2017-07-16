@@ -17,11 +17,11 @@ import okhttp3.HttpUrl;
 /**
  * Handler for implementing api endpoints.
  */
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class EndpointHandler implements Handler {
 
   final Map<String, Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>> resolvers =
-    new HashMap<String, Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>>(6);
+    new HashMap<>(6);
 
   @Override
   public Handler setup() {
@@ -236,7 +236,7 @@ public class EndpointHandler implements Handler {
   protected void add(final String method, final String regex, final Resolver<? extends ResourceAction> resolver) {
     Map<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>> map = resolvers.get(method);
     if (map == null) {
-      map = new LinkedHashMap<String, Map.Entry<Pattern, Resolver<? extends ResourceAction>>>();
+      map = new LinkedHashMap<>();
       resolvers.put(method, map);
     }
     map.put(
