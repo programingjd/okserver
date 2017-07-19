@@ -42,9 +42,16 @@ public class DigestAuthHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
+    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
+    try {
       raf.readFully(cert);
     }
+    finally {
+      raf.close();
+    }
+//    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
+//      raf.readFully(cert);
+//    }
     final Handler handler = new Handler() {
       @Override public Handler setup() { return this; }
       @Override public String[] matches(final String method, final HttpUrl url) {

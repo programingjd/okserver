@@ -23,7 +23,7 @@ final class Handshake {
   String hostname = null;
   boolean http2 = false;
 
-  private Handshake(final byte[] cipherSuites) {
+  Handshake(final byte[] cipherSuites) {
     this.cipherSuites = cipherSuites;
   }
 
@@ -42,7 +42,7 @@ final class Handshake {
 
   static final Map<Short, String> CIPHER_SUITES = createCipherSuitesMap();
 
-  private static int int24(final byte[] bytes) {
+  static int int24(final byte[] bytes) {
     return ((bytes[0] & 0xff) << 16) | ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
   }
 

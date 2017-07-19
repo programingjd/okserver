@@ -8,11 +8,16 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
@@ -63,9 +68,13 @@ public class HttpsTest {
       };
       final SSLContext context = SSLContext.getInstance("TLS");
       context.init(null, new TrustManager[] { trustManager }, new SecureRandom());
+      //noinspection Convert2Lambda
       client = new OkHttpClient.Builder().
         sslSocketFactory(context.getSocketFactory(), trustManager).
-        hostnameVerifier((hostname, sslSession) -> true).
+//        hostnameVerifier((hostname, sslSession) -> true).
+        hostnameVerifier(new HostnameVerifier() {
+          @Override public boolean verify(final String hostname, final SSLSession sslSession) {return true;}
+        }).
         build();
     }
     catch (final GeneralSecurityException e) {
@@ -86,15 +95,31 @@ public class HttpsTest {
 
   private static final HttpServer SERVER = new HttpServer(); //.dispatcher(new Dispatcher.Logged());
 
+//  public Response handle(final String clientIp, final boolean secure, final boolean insecureOnly,
+//                         final boolean http2, final String method, final HttpUrl url,
+//                         final Headers requestHeaders, final @Nullable Buffer requestBody) {
+
   @BeforeClass
   public static void startServer() throws IOException {
+    //noinspection Convert2Lambda
     SERVER.
       ports(8080, 8181).
       https(new Https.Builder().certificate(cert, false).build()).
-      requestHandler((clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
-        final String s = url + "\n" + secure + "\n" + insecureOnly;
-        return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
-      }).
+      requestHandler(
+        new RequestHandler() {
+          @Override
+          public Response handle(final String clientIp, final boolean secure, final boolean insecureOnly,
+                                 final boolean http2, final String method, final HttpUrl url,
+                                 final Headers requestHeaders, final @Nullable Buffer requestBody) {
+            final String s = url + "\n" + secure + "\n" + insecureOnly;
+            return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
+          }
+        }
+//        (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+//          final String s = url + "\n" + secure + "\n" + insecureOnly;
+//          return new Response.Builder().statusLine(StatusLines.OK).body(s).build();
+//        }
+      ).
       start();
     // Use an http client once to get rid of the static initializer penalty.
     // This is done so that the first test elapsed time doesn't get artificially high.

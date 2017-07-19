@@ -1,183 +1,82 @@
 package info.jdavid.ok.server;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-import static info.jdavid.ok.server.Logger.logger;
+import javax.annotation.Nullable;
 
 
 /**
  * The dispatcher is responsible for dispatching requests to workers.
  */
 @SuppressWarnings({ "WeakerAccess" })
-public interface Dispatcher {
+public abstract class Dispatcher<T extends Closeable> {
+
+  protected @Nullable T insecureSocket = null;
+  protected @Nullable T secureSocket = null;
+
+  private final Lock serverSocketLock = new ReentrantLock();
 
   /**
    * Starts the dispatcher.
    */
-  public void start();
+  public abstract void start();
 
   /**
    * Dispatches a request.
    * @param request the request.
    */
-  public void dispatch(final HttpServer.Request request);
+  public abstract void dispatch(final SocketDispatcher.Request request);
 
   /**
    * Shuts down the dispatcher.
    */
-  public void shutdown();
+  public abstract void shutdown();
 
-  /**
-   * Default dispatcher. Requests are handled by a set of threads from a CachedThreadPool.
-   */
-  public static class Default extends ThreadPoolDispatcher {
-    @Override protected ExecutorService createThreadPool() {
-      return Executors.newCachedThreadPool();
+  public void close() {
+    if (insecureSocket != null) close(insecureSocket);
+    if (secureSocket != null) close(secureSocket);
+  }
+
+  protected void close(final Closeable socket) {
+    serverSocketLock.lock();
+    try {
+      socket.close();
+    }
+    catch (final IOException ignore) {}
+    finally {
+      serverSocketLock.unlock();
     }
   }
 
-  /**
-   * Variation on the default dispatcher that keeps track of the number of active connections.
-   */
-  @SuppressWarnings("unused")
-  public static class Logged implements Dispatcher {
-    private ExecutorService mExecutors = null;
-    private ExecutorService mExecutor = null;
-    private final AtomicInteger mConnections = new AtomicInteger();
-    @Override public void start() {
-      mConnections.set(0);
-      mExecutors = Executors.newCachedThreadPool();
-      mExecutor = Executors.newSingleThreadExecutor();
-      mExecutor.execute(new Runnable() {
-        @Override public void run() {
-          while (!Thread.interrupted()) {
-            try { Thread.sleep(60000L); } catch (final InterruptedException ignore) { break; }
-            System.gc();
-            final float used =
-              Math.round((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024f);
-            logger.info(used + "k");
-          }
-        }
-      });
-    }
-    @Override public void dispatch(final HttpServer.Request request) {
-      mExecutors.execute(
-        new Runnable() {
-          @Override public void run() {
-            logger.info("Connections: " + mConnections.incrementAndGet());
-            try {
-              request.serve();
-            }
-            finally {
-              logger.info("Connections: " + mConnections.decrementAndGet());
-            }
-          }
-        }
-      );
-    }
-    @Override public void shutdown() {
-      if (mConnections.getAndSet(-9999) < 0) return;
-      mExecutors.shutdownNow();
-      try {
-        if (!mExecutors.awaitTermination(15, TimeUnit.SECONDS)) {
-          throw new RuntimeException("Failed to stop request handler.");
-        }
-      }
-      catch (final InterruptedException ignore) {}
-      mExecutors = null;
-      mExecutor.shutdownNow();
-      try {
-        if (!mExecutor.awaitTermination(15, TimeUnit.SECONDS)) {
-          throw new RuntimeException("Failed to stop request handler.");
-        }
-      }
-      catch (final InterruptedException ignore) {}
-      mExecutor = null;
-    }
-  }
+  protected abstract void loop(final T socket, final boolean secure, final boolean insecureOnly,
+                               final @Nullable Https https, final @Nullable String hostname,
+                               final long maxRequestSize,
+                               final KeepAliveStrategy keepAliveStrategy,
+                               final RequestHandler requestHandler);
 
-  /**
-   * Dispatcher implementation that simply runs the dispatch job synchronously on the current thread.
-   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
-   * little while even after the request has been served.
-   */
-  @SuppressWarnings("unused")
-  public static class SameThreadDispatcher implements Dispatcher {
-    @Override public void start() {}
-    @Override public void dispatch(final HttpServer.Request request) {
-      request.serve();
-    }
-    @Override public void shutdown() {}
-  }
+  protected abstract void initSockets(final int insecurePort, final int securePort,
+                                      final @Nullable Https https,
+                                      final @Nullable InetAddress address) throws IOException;
 
-  /**
-   * Dispatcher implementation that only uses one thread.
-   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
-   * little while even after the request has been served.
-   */
-  @SuppressWarnings("unused")
-  public static class SingleThreadDispatcher extends ThreadPoolDispatcher {
-    @Override protected ExecutorService createThreadPool() {
-      return Executors.newSingleThreadExecutor();
+  final void loop(final int insecurePort, final int securePort,
+                  final @Nullable Https https,
+                  final @Nullable InetAddress address,
+                  final @Nullable String hostname,
+                  final long maxRequestSize,
+                  final KeepAliveStrategy keepAliveStrategy,
+                  final RequestHandler requestHandler) throws IOException {
+    initSockets(insecurePort, securePort, https, address);
+    if (insecureSocket != null) {
+      loop(insecureSocket, false, secureSocket == null, https, hostname,
+           maxRequestSize, keepAliveStrategy, requestHandler);
     }
-  }
-
-  /**
-   * Dispatcher implementation that uses a fixed thread pool with the specified number of threads.
-   */
-  @SuppressWarnings("unused")
-  public static class MultiThreadsDispatcher extends ThreadPoolDispatcher {
-    private final int threadCount;
-    public MultiThreadsDispatcher(final int threadCount) {
-      this.threadCount = threadCount;
-    }
-    @Override protected ExecutorService createThreadPool() {
-      return Executors.newFixedThreadPool(threadCount);
-    }
-  }
-
-  /**
-   * Dispatcher implementation that uses a thread pool.
-   * WARNING: most clients keep connections alive and therefore will keep the dispatch thread busy for a
-   * little while even after the request has been served.
-   */
-  public static abstract class ThreadPoolDispatcher implements Dispatcher {
-    private ExecutorService mExecutors = null;
-    private final AtomicBoolean mShutdown = new AtomicBoolean();
-
-    /**
-     * Creates the thread pool that will be used to handle the server requests.
-     * @return the thread pool.
-     */
-    protected abstract ExecutorService createThreadPool();
-
-    @Override public void start() {
-      mShutdown.set(false);
-      mExecutors = createThreadPool();
-    }
-    @Override public void dispatch(final HttpServer.Request request) {
-      mExecutors.execute(
-        new Runnable() {
-          @Override public void run() {
-            request.serve();
-          }
-        }
-      );
-    }
-    @Override public void shutdown() {
-      if (mShutdown.getAndSet(true)) return;
-      mExecutors.shutdownNow();
-      try {
-        if (!mExecutors.awaitTermination(15, TimeUnit.SECONDS)) {
-          throw new RuntimeException("Failed to stop request handler.");
-        }
-      }
-      catch (final InterruptedException ignore) {}
-      mExecutors = null;
+    if (secureSocket != null) {
+      loop(secureSocket, true, false, https, hostname,
+           maxRequestSize, keepAliveStrategy, requestHandler);
     }
   }
 

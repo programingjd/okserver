@@ -18,7 +18,7 @@ import okio.Buffer;
 public class BenchmarkServer {
 
   public static void main(final String[] args) {
-    new HttpServer()/*.dispatcher(new Dispatcher.MultiThreadsDispatcher(16))*/.requestHandler(
+    new HttpServer()./*dispatcher(new Dispatcher.MultiThreadsDispatcher(16)).*/requestHandler(
       new RequestHandlerChain().add(new BenchmarkHandler())
     ).start();
   }

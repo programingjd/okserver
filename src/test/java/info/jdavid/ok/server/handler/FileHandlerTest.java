@@ -50,9 +50,16 @@ public class FileHandlerTest {
     final File certFile = new File(root, "test.p12");
     assertTrue(certFile.isFile());
     final byte[] cert = new byte[(int)certFile.length()];
-    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
+    final RandomAccessFile raf = new RandomAccessFile(certFile, "r");
+    try {
       raf.readFully(cert);
     }
+    finally {
+      raf.close();
+    }
+//    try (final RandomAccessFile raf = new RandomAccessFile(certFile, "r")) {
+//      raf.readFully(cert);
+//    }
     SERVER.
       ports(8080, 8181).
       https(new Https.Builder().certificate(cert).build()).
@@ -104,7 +111,8 @@ public class FileHandlerTest {
   static void testWeb(final String baseUrl) throws Exception {
     final File root = getWebRoot();
     //try { Thread.sleep(3000L); } catch (final InterruptedException ignore) {}
-    try (final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED)) {
+    final WebClient web = new WebClient(BrowserVersion.BEST_SUPPORTED);
+    try {
       web.setCache(new Cache() {
         @Override
         protected boolean isCacheableContent(WebResponse response) {
@@ -140,6 +148,9 @@ public class FileHandlerTest {
       final WebResponse indexResponse = cache.getCachedResponse(req(baseUrl + "index.html"));
       assertEquals(301, indexResponse.getStatusCode());
       assertEquals(baseUrl, indexResponse.getResponseHeaderValue("Location"));
+    }
+    finally {
+      web.close();
     }
   }
 

@@ -3,17 +3,9 @@ package info.jdavid.ok.server;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.Nullable;
-import javax.net.ssl.SSLHandshakeException;
-import javax.net.ssl.SSLSocket;
 
 import static info.jdavid.ok.server.Logger.logger;
 
@@ -30,13 +22,10 @@ public class HttpServer {
   int securePort = 8181; // 443
   String hostname = null;
   long maxRequestSize = 65536;
-  ServerSocket serverSocket = null;
-  SecureServerSocket secureServerSocket = null;
   Dispatcher dispatcher = null;
   KeepAliveStrategy keepAliveStrategy = KeepAliveStrategy.DEFAULT;
   RequestHandler requestHandler = null;
   Https https = null;
-  private final Lock serverSocketLock = new ReentrantLock();
 
   /**
    * Sets the port number for the server. You can use 0 for "none" (to disable the port binding).
@@ -229,7 +218,7 @@ public class HttpServer {
   private Dispatcher dispatcher() {
     Dispatcher dispatcher = this.dispatcher;
     if (dispatcher == null) {
-      dispatcher = this.dispatcher = new Dispatcher.Default();
+      dispatcher = this.dispatcher = new SocketDispatcher.Default();
     }
     return dispatcher;
   }
@@ -245,28 +234,16 @@ public class HttpServer {
   @SuppressWarnings("Duplicates")
   public void shutdown() {
     if (!started.get()) return;
-    try {
-      serverSocketLock.lock();
-      if (serverSocket != null) serverSocket.close();
-    }
-    catch (final IOException ignore) {}
-    finally {
-      serverSocketLock.unlock();
-    }
-    try {
-      serverSocketLock.lock();
-      if (secureServerSocket != null) secureServerSocket.close();
-    }
-    catch (final IOException ignore) {}
-    finally {
-      serverSocketLock.unlock();
-    }
-    try {
-      dispatcher.shutdown();
-    }
-    //catch (final Exception ignore) {}
-    finally {
-      started.set(false);
+    if (dispatcher != null) {
+      dispatcher.close();
+      try {
+        dispatcher.shutdown();
+      }
+      //catch (final Exception ignore) {}
+      finally {
+        dispatcher = null;
+        started.set(false);
+      }
     }
   }
 
@@ -276,27 +253,6 @@ public class HttpServer {
    */
   public final boolean isRunning() {
     return started.get();
-  }
-
-  protected void dispatchLoop(final Dispatcher dispatcher, final ServerSocket socket,
-                            final boolean secure, final boolean insecureOnly) {
-    while (true) {
-      try {
-        if (!Thread.currentThread().isInterrupted()) {
-          dispatcher.dispatch(new Request(socket.accept(), secure, insecureOnly));
-        }
-      }
-      catch (final BindException e) {
-        logger.warn("Could not bind to port: " + port, e);
-        break;
-      }
-      catch (final IOException e) {
-        if (serverSocket.isClosed()) {
-          break;
-        }
-        logger.warn(secure ? "HTTPS" : "HTTP", e);
-      }
-    }
   }
 
   /**
@@ -322,198 +278,14 @@ public class HttpServer {
         address = InetAddress.getByName(hostname);
       }
 
-      final ServerSocket serverSocket;
-      if (port > 0) {
-        serverSocket = new ServerSocket(port, -1, address);
-        try {
-          serverSocketLock.lock();
-          this.serverSocket = serverSocket;
-        }
-        finally {
-          serverSocketLock.unlock();
-        }
-        serverSocket.setReuseAddress(true);
-      }
-      else {
-        serverSocket = null;
-      }
-
-      final Https https = this.https;
-      final SecureServerSocket secureServerSocket;
-      if (https != null && securePort > 0) {
-        secureServerSocket = new SecureServerSocket(securePort, address);
-        secureServerSocket.setReuseAddress(true);
-        try {
-          serverSocketLock.lock();
-          this.secureServerSocket = secureServerSocket;
-        }
-        finally {
-          serverSocketLock.unlock();
-        }
-      }
-      else {
-        secureServerSocket = this.secureServerSocket = null;
-      }
-
-      if (serverSocket != null) {
-        new Thread(new Runnable() {
-          @Override public void run() {
-            try {
-              dispatchLoop(dispatcher, serverSocket, false, secureServerSocket == null);
-            }
-            finally {
-              try {
-                if (!serverSocket.isClosed()) serverSocket.close();
-              }
-              catch (final IOException ignore) {}
-              try {
-                serverSocketLock.lock();
-                HttpServer.this.serverSocket = null;
-              }
-              finally {
-                serverSocketLock.unlock();
-              }
-            }
-          }
-        }).start();
-      }
-
-      if (secureServerSocket != null) {
-        new Thread(new Runnable() {
-          @Override public void run() {
-            try {
-              dispatchLoop(dispatcher, secureServerSocket, true, false);
-            }
-            finally {
-              try {
-                if (!secureServerSocket.isClosed()) secureServerSocket.close();
-              }
-              catch (final IOException ignore) {}
-              try {
-                serverSocketLock.lock();
-                HttpServer.this.secureServerSocket = null;
-              }
-              finally {
-                serverSocketLock.unlock();
-              }
-            }
-          }
-        }).start();
-      }
+      dispatcher.loop(port, securePort, https, address, hostname,
+                      maxRequestSize, keepAliveStrategy, handler);
     }
     catch (final BindException e) {
       throw new RuntimeException(e);
     }
     catch (final IOException e) {
       logger.error(e.getMessage(), e);
-    }
-  }
-
-  public final class Request {
-    private final Socket mSocket;
-    private final boolean mSecure;
-    private final boolean mInsecureOnly;
-    private Request(final Socket socket, final boolean secure, final boolean insecureOnly) {
-      mSocket = socket;
-      mSecure = secure;
-      mInsecureOnly = insecureOnly;
-    }
-    public void serve() {
-      final Socket socket = mSocket;
-      if (mSecure) {
-        boolean http2 = false;
-        String hostname = null;
-        SSLSocket sslSocket = null;
-        try {
-          final Handshake handshake = Handshake.read(socket);
-          if (handshake != null) {
-            final Https https = HttpServer.this.https;
-            hostname = handshake.hostname;
-            http2 = handshake.http2 && https.http2;
-            try {
-              sslSocket = https.createSSLSocket(socket, hostname, http2);
-            }
-            catch (final SSLHandshakeException e) {
-              final String[] cipherSuites = handshake.getCipherSuites();
-              final StringBuilder s = new StringBuilder();
-              boolean addSeparator = false;
-              for (final String value: cipherSuites) {
-                if (addSeparator) {
-                  s.append(' ');
-                }
-                else {
-                  addSeparator = true;
-                }
-                s.append(value);
-              }
-              logger.info(s.toString());
-              throw new IOException(e);
-            }
-          }
-        }
-        catch (final SocketTimeoutException ignore) {}
-        catch (final Exception e) {
-          logger.warn(e.getMessage(), e);
-        }
-        if (sslSocket == null) {
-          try {
-            socket.close();
-          }
-          catch (final IOException ignore) {}
-        }
-        else {
-          if (http2) {
-            if (hostname == null) {
-              if (HttpServer.this.hostname == null) {
-                hostname = "localhost";
-              }
-              else {
-                hostname = HttpServer.this.hostname;
-              }
-            }
-            HttpServer.this.serveHttp2(sslSocket, hostname);
-          }
-          else {
-            HttpServer.this.serveHttp1(sslSocket, true, false);
-          }
-        }
-      }
-      else {
-        HttpServer.this.serveHttp1(socket, false, mInsecureOnly);
-      }
-    }
-  }
-
-  private void serveHttp1(final Socket socket, final boolean secure, final boolean insecureOnly) {
-    try {
-      Http11.serve(socket, secure, insecureOnly, maxRequestSize, keepAliveStrategy, requestHandler);
-    }
-    catch (final SocketTimeoutException ignore) {}
-    catch (final Exception e) {
-      logger.warn(e.getMessage(), e);
-    }
-  }
-
-  private void serveHttp2(final SSLSocket socket, final String hostname) {
-    try {
-      Http2.serve(socket, hostname, maxRequestSize, keepAliveStrategy, requestHandler);
-    }
-    catch (final SocketTimeoutException ignore) {}
-    catch (final Exception e) {
-      logger.warn(e.getMessage(), e);
-    }
-  }
-
-  private static class SecureServerSocket extends ServerSocket {
-    SecureServerSocket(final int port, @Nullable final InetAddress address) throws IOException {
-      super(port, -1, address);
-    }
-    @Override public Socket accept() throws IOException {
-      if (isClosed()) throw new SocketException("Socket is closed");
-      if (!isBound()) throw new SocketException("Socket is not bound yet");
-      final Handshake.HandshakeSocket s = new Handshake.HandshakeSocket();
-      implAccept(s);
-      return s;
     }
   }
 

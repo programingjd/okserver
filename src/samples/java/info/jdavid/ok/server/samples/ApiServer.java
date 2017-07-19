@@ -28,6 +28,7 @@ public class ApiServer {
 
   final ConcurrentHashMap<String, Item> resources = new ConcurrentHashMap<>();
 
+  @SuppressWarnings("Convert2Lambda")
   public ApiServer() {
     //noinspection Duplicates
     resources.put("item" +  nextId.incrementAndGet(), new Item("test1"));
@@ -37,12 +38,42 @@ public class ApiServer {
         new RequestHandlerChain().
           add(
             new EndpointHandler().
-              get("/resources/?", (final String[] params) -> new ItemCollection()).
-              head("/resources/([^/]+)", (final String[] params) -> new HeadItem(params[0])).
-              get("/resources/([^/]+)", (final String[] params) -> new GetItem(params[0])).
-              delete("/resources/([^/]+)", (final String[] params) -> new DeleteItem(params[0])).
-              post("/resources/?", (final String[] params) -> new PostItem()).
-              put("/resources/([^/]+)", (final String[] params) -> new PutItem(params[0]))
+              get("/resources/?", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new ItemCollection();
+                }
+              }).
+              head("/resources/([^/]+)", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new HeadItem(params[0]);
+                }
+              }).
+              get("/resources/([^/]+)", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new GetItem(params[0]);
+                }
+              }).
+              delete("/resources/([^/]+)", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new DeleteItem(params[0]);
+                }
+              }).
+              post("/resources/?", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new PostItem();
+                }
+              }).
+              put("/resources/([^/]+)", new EndpointHandler.Resolver<EndpointHandler.ResourceAction>() {
+                @Override public EndpointHandler.ResourceAction resolve(final String[] params) {
+                  return new PutItem(params[0]);
+                }
+              })
+//              get("/resources/?", (final String[] params) -> new ItemCollection()).
+//              head("/resources/([^/]+)", (final String[] params) -> new HeadItem(params[0])).
+//              get("/resources/([^/]+)", (final String[] params) -> new GetItem(params[0])).
+//              delete("/resources/([^/]+)", (final String[] params) -> new DeleteItem(params[0])).
+//              post("/resources/?", (final String[] params) -> new PostItem()).
+//              put("/resources/([^/]+)", (final String[] params) -> new PutItem(params[0]))
           )
       ).
       port(8080);

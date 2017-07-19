@@ -6,7 +6,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -22,8 +26,13 @@ import static org.junit.Assert.*;
 @SuppressWarnings("ConstantConditions")
 public class RequestHandlerTest {
 
+  @SuppressWarnings("Convert2Lambda")
   private static HttpServer SERVER = new HttpServer().requestHandler(
-    (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+    new RequestHandler() {
+      @Override
+      public Response handle(final String clientIp, final boolean secure, final boolean insecureOnly,
+                             final boolean http2, final String method, final HttpUrl url,
+                             final Headers requestHeaders, final @Nullable Buffer requestBody) {
         final Buffer buffer = new Buffer();
         System.out.println(clientIp);
         buffer.writeByte(byteLength(clientIp));
@@ -34,7 +43,7 @@ public class RequestHandlerTest {
         buffer.writeByte(byteLength(url.toString()));
         buffer.writeUtf8(url.toString());
         buffer.writeByte(requestHeaders.size());
-        for (int i=0; i<requestHeaders.size(); ++i) {
+        for (int i = 0; i < requestHeaders.size(); ++i) {
           final String name = requestHeaders.name(i);
           buffer.writeByte(byteLength(name));
           buffer.writeUtf8(name);
@@ -46,6 +55,30 @@ public class RequestHandlerTest {
         buffer.write(requestBody, requestBody.size());
         return new Response.Builder().statusLine(StatusLines.OK).body(buffer, (int)buffer.size()).build();
       }
+    }
+//    (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+//        final Buffer buffer = new Buffer();
+//        System.out.println(clientIp);
+//        buffer.writeByte(byteLength(clientIp));
+//        buffer.writeUtf8(clientIp);
+//        buffer.writeByte(secure ? 0x01 : 0x00);
+//        buffer.writeByte(byteLength(method));
+//        buffer.writeUtf8(method);
+//        buffer.writeByte(byteLength(url.toString()));
+//        buffer.writeUtf8(url.toString());
+//        buffer.writeByte(requestHeaders.size());
+//        for (int i=0; i<requestHeaders.size(); ++i) {
+//          final String name = requestHeaders.name(i);
+//          buffer.writeByte(byteLength(name));
+//          buffer.writeUtf8(name);
+//          final String value = requestHeaders.value(i);
+//          buffer.writeByte(byteLength(value));
+//          buffer.writeUtf8(value);
+//        }
+//        buffer.writeByte((int)requestBody.size());
+//        buffer.write(requestBody, requestBody.size());
+//        return new Response.Builder().statusLine(StatusLines.OK).body(buffer, (int)buffer.size()).build();
+//      }
     );
 
   private static int byteLength(final String s) {

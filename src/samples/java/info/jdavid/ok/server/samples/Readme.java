@@ -9,12 +9,12 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
 
-import info.jdavid.ok.server.Dispatcher;
 import info.jdavid.ok.server.HttpServer;
 import info.jdavid.ok.server.Https;
 import info.jdavid.ok.server.RequestHandler;
 import info.jdavid.ok.server.RequestHandlerChain;
 import info.jdavid.ok.server.Response;
+import info.jdavid.ok.server.SocketDispatcher;
 import info.jdavid.ok.server.StatusLines;
 import info.jdavid.ok.server.handler.BasicAuthHandler;
 import info.jdavid.ok.server.handler.FileHandler;
@@ -65,14 +65,14 @@ public class Readme {
   public static void customDispatcher() {
     new HttpServer().
       dispatcher(
-        new Dispatcher() {
+        new SocketDispatcher() {
           private ExecutorService mExecutors = null;
           @Override
           public void start() {
             mExecutors = Executors.newSingleThreadExecutor();
           }
           @Override
-          public void dispatch(final HttpServer.Request request) {
+          public void dispatch(final Request request) {
             mExecutors.execute(new Runnable() {
               @Override public void run() { request.serve(); }
             });
@@ -102,7 +102,7 @@ public class Readme {
         new RequestHandlerChain().
           add(new BasicAuthHandler(credentials, new FileHandler(webRoot)))
       ).
-      dispatcher(new Dispatcher.MultiThreadsDispatcher(4)).
+      dispatcher(new SocketDispatcher.MultiThreadsDispatcher(4)).
       port(8080).
       start();
   }

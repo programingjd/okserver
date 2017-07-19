@@ -4,9 +4,14 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okio.Buffer;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -17,11 +22,22 @@ import static org.junit.Assert.*;
 public class DispatcherTest {
 
   private static HttpServer server(final Dispatcher dispatcher) {
+    //noinspection Convert2Lambda
     return new HttpServer().dispatcher(dispatcher).port(8080).requestHandler(
-      (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
-        try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
-        return new Response.Builder().statusLine(StatusLines.OK).body("Test").build();
-      });
+      new RequestHandler() {
+        @Override
+        public Response handle(final String clientIp, final boolean secure, final boolean insecureOnly,
+                               final boolean http2, final String method, final HttpUrl url,
+                               final Headers requestHeaders, final @Nullable Buffer requestBody) {
+          try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
+          return new Response.Builder().statusLine(StatusLines.OK).body("Test").build();
+        }
+      }
+    );
+//      (clientIp, secure, insecureOnly, http2, method, url, requestHeaders, requestBody) -> {
+//        try { Thread.sleep(1000L); } catch (final InterruptedException ignore) {}
+//        return new Response.Builder().statusLine(StatusLines.OK).body("Test").build();
+//      });
   }
 
   private static final OkHttpClient client = new OkHttpClient();
@@ -41,13 +57,26 @@ public class DispatcherTest {
   }
 
   private static Runnable call(final AtomicInteger counter) {
-    return () -> {
-      try {
-        assertEquals("Test", client().newCall(request()).execute().body().string());
-        counter.incrementAndGet();
-      }
-      catch (final IOException e) {
-        throw new RuntimeException(e);
+//    return () -> {
+//      try {
+//        assertEquals("Test", client().newCall(request()).execute().body().string());
+//        counter.incrementAndGet();
+//      }
+//      catch (final IOException e) {
+//        throw new RuntimeException(e);
+//      }
+//    };
+    //noinspection Convert2Lambda
+    return new Runnable() {
+      @Override
+      public void run() {
+        try {
+          assertEquals("Test", client().newCall(request()).execute().body().string());
+          counter.incrementAndGet();
+        }
+        catch (final IOException e) {
+          throw new RuntimeException(e);
+        }
       }
     };
   }
@@ -66,13 +95,13 @@ public class DispatcherTest {
 
   @Test
   public void testSameThread() {
-    final HttpServer server = server(new Dispatcher.SameThreadDispatcher());
+    final HttpServer server = server(new SocketDispatcher.SameThreadDispatcher());
     testOneThread(server);
   }
 
   @Test
   public void testSingleThread() {
-    final HttpServer server = server(new Dispatcher.SingleThreadDispatcher());
+    final HttpServer server = server(new SocketDispatcher.SingleThreadDispatcher());
     testOneThread(server);
   }
 
@@ -98,7 +127,7 @@ public class DispatcherTest {
 
   @Test
   public void testTwoThreads() {
-    final HttpServer server = server(new Dispatcher.MultiThreadsDispatcher(2));
+    final HttpServer server = server(new SocketDispatcher.MultiThreadsDispatcher(2));
     try {
       server.start();
       final AtomicInteger counter = new AtomicInteger();
@@ -118,7 +147,7 @@ public class DispatcherTest {
 
   @Test
   public void testThreeThreads() {
-    final HttpServer server = server(new Dispatcher.Default());
+    final HttpServer server = server(new SocketDispatcher.Default());
     try {
       server.start();
       final AtomicInteger counter = new AtomicInteger();
