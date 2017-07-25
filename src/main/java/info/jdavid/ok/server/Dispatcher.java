@@ -26,12 +26,6 @@ public abstract class Dispatcher<T extends Closeable> {
   public abstract void start();
 
   /**
-   * Dispatches a request.
-   * @param request the request.
-   */
-  public abstract void dispatch(final SocketDispatcher.Request request);
-
-  /**
    * Shuts down the dispatcher.
    */
   public abstract void shutdown();
