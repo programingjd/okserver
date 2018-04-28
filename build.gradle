@@ -129,7 +129,7 @@ dependencies {
 
   testCompile 'junit:junit:4.12'
   testCompile 'info.jdavid.ok.json:okjson:4.1.0'
-  testCompile 'net.sourceforge.htmlunit:htmlunit:2.30'
+  testCompile 'net.sourceforge.htmlunit:htmlunit:2.27'
   testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   //testCompile files('c:/progra~1/java/jdk1.8/lib/rt.jar')
   testRuntime 'org.slf4j:slf4j-jdk14:1.7.25'
