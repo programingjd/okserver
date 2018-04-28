@@ -21,6 +21,12 @@ import static info.jdavid.ok.server.Logger.logger;
 
 public abstract class SocketDispatcher extends Dispatcher<ServerSocket> {
 
+  /**
+   * Dispatches a request.
+   * @param request the request.
+   */
+  public abstract void dispatch(final SocketDispatcher.Request request);
+
   @Override
   protected void loop(final ServerSocket socket,
                       final boolean secure, final boolean insecureOnly,
@@ -56,10 +62,6 @@ public abstract class SocketDispatcher extends Dispatcher<ServerSocket> {
                                maxRequestSize, keepAliveStrategy, requestHandler));
         }
       }
-      catch (final BindException e) {
-        logger.warn("Could not bind to " + (secure ? "secure" : "insecure") + " port.", e);
-        break;
-      }
       catch (final IOException e) {
         if (socket.isClosed()) {
           break;
@@ -73,12 +75,22 @@ public abstract class SocketDispatcher extends Dispatcher<ServerSocket> {
   protected void initSockets(final int insecurePort, final int securePort, final @Nullable Https https,
                              final @Nullable InetAddress address) throws IOException {
     if (insecurePort > 0) {
-      insecureSocket = new ServerSocket(insecurePort, address);
-      insecureSocket.setReuseAddress(true);
+      try {
+        insecureSocket = new ServerSocket(insecurePort, address);
+        insecureSocket.setReuseAddress(true);
+      }
+      catch (final BindException e) {
+        logger.warn("Could not bind to port " + insecurePort + ".", e);
+      }
     }
     if (securePort > 0 && https != null) {
-      secureSocket = new SecureServerSocket(securePort, address);
-      secureSocket.setReuseAddress(true);
+      try {
+        secureSocket = new SecureServerSocket(securePort, address);
+        secureSocket.setReuseAddress(true);
+      }
+      catch (final BindException e) {
+        logger.warn("Could not bind to port " + securePort + ".", e);
+      }
     }
   }
 

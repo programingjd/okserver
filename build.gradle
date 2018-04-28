@@ -139,7 +139,7 @@ dependencies {
 
 task bigJar(type: Jar) {
   archiveName "${project.name}-${project.version}-all.jar"
-  from files(sourceSets.main.output.classesDir)
+  from sourceSets.main.output.classesDirs
   from {
     configurations.compile.collect {
       it.isDirectory() ? it : zipTree(it)
