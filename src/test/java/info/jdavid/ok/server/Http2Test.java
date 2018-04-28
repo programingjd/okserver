@@ -53,6 +53,10 @@ public class Http2Test {
     return (v != null && (v.startsWith("1.6") || v.startsWith("1.7") || v.startsWith("1.8")));
   }
 
+  public static void main(final String[] args) throws IOException {
+    startServer();
+  }
+
   @BeforeClass
   public static void startServer() throws IOException {
     if (needsAlpnBoot() && !"true".equals(System.getProperty("started-with-gradle"))) {
