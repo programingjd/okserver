@@ -28,7 +28,6 @@ abstract class Platform {
     }
   }
 
-
   abstract List<String> defaultProtocols();
 
   abstract List<String> defaultCipherSuites();
@@ -121,7 +120,7 @@ abstract class Platform {
         "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
         "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
-        "TLS_RSA_WITH_AES_128_CBC_SHA256"
+        "TLS_RSA_WITH_AES_128_CBC_SHA"
       );
     }
 
@@ -162,7 +161,7 @@ abstract class Platform {
         "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
         "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
-        "TLS_RSA_WITH_AES_128_CBC_SHA256"
+        "TLS_RSA_WITH_AES_128_CBC_SHA"
       );
     }
 
@@ -199,7 +198,7 @@ abstract class Platform {
         "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
         "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
         "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
-        "TLS_RSA_WITH_AES_128_CBC_SHA256"
+        "TLS_RSA_WITH_AES_128_CBC_SHA"
       );
     }
 

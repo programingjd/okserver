@@ -14,6 +14,7 @@ import javax.net.ssl.SSLSocket;
 import info.jdavid.ok.server.header.ETag;
 import okhttp3.*;
 import okhttp3.internal.Util;
+import okhttp3.internal.http2.Http2Codec;
 import okhttp3.internal.http2.Http2Connection;
 import okhttp3.internal.http2.Http2Stream;
 import okhttp3.internal.http2.Header;
@@ -76,8 +77,6 @@ class Http2 {
     }
   }
 
-  private static final byte PSEUDO_HEADER_PREFIX = ByteString.encodeUtf8(":").getByte(0);
-
   private static List<Header> responseHeaders(final Response response) {
     final Headers headers = response.headers();
     final int size = headers.size();
@@ -93,13 +92,13 @@ class Http2 {
     return responseHeaders;
   }
 
-  private static String restoreHeaderNameCase(final ByteString name) {
+  private static String restoreHeaderNameCase(final String name) {
     // name should be ascii lowercase
-    final int size = name.size();
+    final int size = name.length();
     final StringBuilder restored = new StringBuilder(size);
     char prev = '-';
     for (int i=0; i<size; ++i) {
-      final char c = (char)(prev == '-' ? Character.toUpperCase((int)name.getByte(i)) : name.getByte(i));
+      final char c = (prev == '-' ? Character.toUpperCase(name.charAt(i)) : name.charAt(i));
       restored.append(c);
       prev = c;
     }
@@ -121,30 +120,30 @@ class Http2 {
 
     @SuppressWarnings("TryFinallyCanBeTryWithResources")
     @Override public void onStream(final Http2Stream stream) throws IOException {
-      final List<Header> requestHeaderList = stream.getRequestHeaders();
+      final Headers requestHeaderList = stream.takeHeaders(); //  getRequestHeaders();
       final Headers.Builder requestHeaders = new Headers.Builder();
       String method = null;
       String scheme = null;
       String authority = null;
       String path = null;
-      for (final Header header: requestHeaderList) {
-        final ByteString name = header.name;
-        if (name.size() > 0 && name.getByte(0) == PSEUDO_HEADER_PREFIX) {
+      for (int i = 0; i<requestHeaderList.size(); ++i) {
+        final String name = requestHeaderList.name(i);
+        if (name.length() > 0 && name.charAt(0) == ':') {
           if (Header.TARGET_METHOD.equals(name)) {
-            method = header.value.utf8();
+            method = requestHeaderList.value(i);
           }
           else if (Header.TARGET_SCHEME.equals(name)) {
-            scheme = header.value.utf8();
+            scheme = requestHeaderList.value(i);
           }
           else if (Header.TARGET_AUTHORITY.equals(name)) {
-            authority = header.value.utf8();
+            authority = requestHeaderList.value(i);
           }
           else if (Header.TARGET_PATH.equals(name)) {
-            path = header.value.utf8();
+            path = requestHeaderList.value(i);
           }
         }
         else {
-          requestHeaders.add(restoreHeaderNameCase(name), header.value.utf8());
+          requestHeaders.add(restoreHeaderNameCase(name), requestHeaderList.value(i));
         }
       }
 
@@ -198,7 +197,7 @@ class Http2 {
 
       final List<Header> responseHeaders = responseHeaders(response);
       source.close();
-      stream.sendResponseHeaders(responseHeaders, true);
+      stream.writeHeaders(responseHeaders, true);
       final BufferedSink sink = Okio.buffer(stream.getSink());
       try {
         response.writeBody(source, sink);
@@ -226,7 +225,7 @@ class Http2 {
               handler.handle(clientIp, true, false,true, method, push,
                              requestHeaders.build(), null);
             final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
-            pushStream.sendResponseHeaders(responseHeaders(pushResponse), true);
+            pushStream.writeHeaders(responseHeaders(pushResponse), true);
             final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
             try {
               pushResponse.writeBody(null, pushSink);

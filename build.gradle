@@ -3,14 +3,14 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0'
+    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
     classpath 'org.jsoup:jsoup:1.11.3'
 //    classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.40'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.10.0.0'
+version '3.12.0.0'
 
 apply plugin: 'java'
 //apply plugin: 'kotlin'
@@ -32,8 +32,9 @@ ext {
   bintrayApiKey = new File("$projectDir/local.properties").with {
     it.text.splitEachLine('=', { if (it && it[0] == 'bintrayApiKey') return it[1] })
   }
+  println(Runtime.class.getPackage().getImplementationVersion())
   jdkVersion = Runtime.class.getPackage().getImplementationVersion()?.
-    replaceFirst('1\\.([78])\\.0_([0-9]+)', '$1.$2')
+    replaceFirst('1\\.([78])\\.0_([0-9]+)(?:-[1-9a-z]+)*', '$1.$2')
   println jdkVersion
 }
 
@@ -113,8 +114,8 @@ compileTestJava {
 //}
 
 dependencies {
-  compile 'com.squareup.okio:okio:1.14.0'
-  compile 'com.squareup.okhttp3:okhttp:3.10.0'
+  compile 'com.squareup.okio:okio:1.16.0'
+  compile 'com.squareup.okhttp3:okhttp:3.12.0'
   compile 'org.slf4j:slf4j-api:1.7.25'
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
@@ -125,10 +126,10 @@ dependencies {
 //  coroutinesCompile 'org.jetbrains.kotlinx:kotlinx-coroutines-nio:0.16'
 
   samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompile 'info.jdavid.ok.json:okjson:4.0.0'
+  samplesCompile 'info.jdavid.ok.json:okjson:4.2.0'
 
   testCompile 'junit:junit:4.12'
-  testCompile 'info.jdavid.ok.json:okjson:4.1.0'
+  testCompile 'info.jdavid.ok.json:okjson:4.2.0'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.27'
   testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   //testCompile files('c:/progra~1/java/jdk1.8/lib/rt.jar')
