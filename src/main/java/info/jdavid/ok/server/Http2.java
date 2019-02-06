@@ -197,7 +197,7 @@ class Http2 {
 
       final List<Header> responseHeaders = responseHeaders(response);
       source.close();
-      stream.writeHeaders(responseHeaders, true);
+      stream.writeHeaders(responseHeaders, true,true);
       final BufferedSink sink = Okio.buffer(stream.getSink());
       try {
         response.writeBody(source, sink);
@@ -225,7 +225,7 @@ class Http2 {
               handler.handle(clientIp, true, false,true, method, push,
                              requestHeaders.build(), null);
             final Http2Stream pushStream = connection.pushStream(stream.getId(), pushHeaderList, true);
-            pushStream.writeHeaders(responseHeaders(pushResponse), true);
+            pushStream.writeHeaders(responseHeaders(pushResponse), true,true);
             final BufferedSink pushSink = Okio.buffer(pushStream.getSink());
             try {
               pushResponse.writeBody(null, pushSink);

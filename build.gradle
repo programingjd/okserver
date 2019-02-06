@@ -10,7 +10,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.12.0.0'
+version '3.13.1.0'
 
 apply plugin: 'java'
 //apply plugin: 'kotlin'
@@ -114,8 +114,8 @@ compileTestJava {
 //}
 
 dependencies {
-  compile 'com.squareup.okio:okio:1.16.0'
-  compile 'com.squareup.okhttp3:okhttp:3.12.0'
+  compile 'com.squareup.okio:okio:1.17.3'
+  compile 'com.squareup.okhttp3:okhttp:3.13.1'
   compile 'org.slf4j:slf4j-api:1.7.25'
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
@@ -126,10 +126,10 @@ dependencies {
 //  coroutinesCompile 'org.jetbrains.kotlinx:kotlinx-coroutines-nio:0.16'
 
   samplesCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-  samplesCompile 'info.jdavid.ok.json:okjson:4.2.0'
+  samplesCompile 'info.jdavid.ok.json:okjson:4.3.0'
 
   testCompile 'junit:junit:4.12'
-  testCompile 'info.jdavid.ok.json:okjson:4.2.0'
+  testCompile 'info.jdavid.ok.json:okjson:4.3.0'
   testCompile 'net.sourceforge.htmlunit:htmlunit:2.27'
   testCompileOnly 'com.google.code.findbugs:jsr305:3.0.2'
   //testCompile files('c:/progra~1/java/jdk1.8/lib/rt.jar')
