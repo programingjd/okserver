@@ -10,7 +10,7 @@ buildscript {
 }
 
 group 'info.jdavid.ok.server'
-version '3.13.1.0'
+version '3.14.1.0'
 
 apply plugin: 'java'
 //apply plugin: 'kotlin'
@@ -115,7 +115,7 @@ compileTestJava {
 
 dependencies {
   compile 'com.squareup.okio:okio:1.17.3'
-  compile 'com.squareup.okhttp3:okhttp:3.13.1'
+  compile 'com.squareup.okhttp3:okhttp:3.14.1'
   compile 'org.slf4j:slf4j-api:1.7.25'
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 

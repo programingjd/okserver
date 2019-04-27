@@ -14,7 +14,6 @@ import javax.net.ssl.SSLSocket;
 import info.jdavid.ok.server.header.ETag;
 import okhttp3.*;
 import okhttp3.internal.Util;
-import okhttp3.internal.http2.Http2Codec;
 import okhttp3.internal.http2.Http2Connection;
 import okhttp3.internal.http2.Http2Stream;
 import okhttp3.internal.http2.Header;
