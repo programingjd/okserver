@@ -4,13 +4,13 @@ buildscript {
   }
   dependencies {
     classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
-    classpath 'org.jsoup:jsoup:1.11.3'
+    classpath 'org.jsoup:jsoup:1.12.1'
 //    classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.40'
   }
 }
 
 group 'info.jdavid.ok.server'
-version '3.14.1.0'
+version '3.14.4.0'
 
 apply plugin: 'java'
 //apply plugin: 'kotlin'
@@ -115,7 +115,7 @@ compileTestJava {
 
 dependencies {
   compile 'com.squareup.okio:okio:1.17.3'
-  compile 'com.squareup.okhttp3:okhttp:3.14.1'
+  compile 'com.squareup.okhttp3:okhttp:3.14.4'
   compile 'org.slf4j:slf4j-api:1.7.25'
   compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
